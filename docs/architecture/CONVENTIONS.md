@@ -12,7 +12,8 @@ The authoritative mathematical contract is [Math and Coordinate Conventions](MAT
 - Expose stable crate APIs through deliberate `pub use` re-exports.
 - Keep implementation modules private unless external consumers have a reason to access them.
 - Public types and methods must have Rustdoc comments.
-- Recoverable failures use `ZyneResult<T>` and typed `ZyneError` variants.
+- Recoverable failures use `ZyneResult<T>` and typed `ZyneError` variants. Keep input, missing-resource, configuration-parse, configuration-serialization, configuration-validation, and subsystem failures distinguishable; do not report serialization failures as parse failures.
+- Convert third-party errors at the crate boundary into the appropriate engine error category. Keep third-party error types out of public core contracts unless that dependency is an intentional, documented part of the API.
 - Avoid panics for invalid project input or normal runtime failures.
 - Do not expose third-party subsystem types through core contracts unless that coupling is intentional and documented.
 - Before 0.1, public APIs may evolve, but changes must be intentional, documented, and accompanied by migration notes when they affect consumers.
