@@ -6,10 +6,12 @@ mod config;
 mod context;
 mod engine;
 mod error;
+mod resource;
 mod version;
 
 pub use config::EngineConfig;
 pub use context::EngineContext;
 pub use engine::Engine;
 pub use error::{ZyneError, ZyneResult};
+pub use resource::{Handle, ResourceId};
 pub use version::EngineVersion;
