@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,18 +25,6 @@ jobs:
           components: rustfmt, clippy
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Generate and commit updated dependency lockfile
-        run: |
-          cargo generate-lockfile
-          if git diff --quiet -- Cargo.lock; then
-            echo "Cargo.lock is already up to date."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add Cargo.lock
-            git commit -m "chore: update Cargo.lock for platform dependencies"
-            git push
-          fi
       - name: Validate workspace metadata
         run: cargo metadata --locked --no-deps --format-version 1 > /dev/null
       - name: Check formatting
