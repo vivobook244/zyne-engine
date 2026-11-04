@@ -1,5 +1,6 @@
 use zyne_platform::{
-    PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
+    PlatformEvent, PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler,
+    WindowRunner,
 };
 
 struct WindowSmoke;
@@ -15,16 +16,15 @@ impl WindowEventHandler for WindowSmoke {
         Ok(())
     }
 
-    fn on_window_event(
+    fn on_platform_event(
         &mut self,
-        event: WindowEvent,
+        event: PlatformEvent,
         _window: &PlatformWindow,
     ) -> Result<WindowControl, String> {
-        println!("Window event: {event:?}");
-        Ok(if event == WindowEvent::CloseRequested {
-            WindowControl::Exit
-        } else {
-            WindowControl::Continue
+        println!("Platform event: {event:?}");
+        Ok(match event {
+            PlatformEvent::Window(WindowEvent::CloseRequested) => WindowControl::Exit,
+            _ => WindowControl::Continue,
         })
     }
 }
