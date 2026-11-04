@@ -59,7 +59,7 @@ Initial renderer: forward rendering with Blinn–Phong lighting. Intended pass s
 
 ## Coordinate conventions
 
-Target a right-handed world coordinate system with +Y up. The forward-axis convention (+Z forward) must remain consistent across camera controls, GLTF import, and GPU projection code. Conversion belongs at explicit boundaries.
+The authoritative contract is [Math and Coordinate Conventions](MATH.md): right-handed world, +Y up, +Z engine forward, column-vector algebra, and a [0, 1] projection depth range. Import conversion belongs at explicit asset boundaries.
 
 ## Quality strategy
 
