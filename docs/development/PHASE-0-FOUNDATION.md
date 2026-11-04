@@ -18,7 +18,7 @@
 - [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
 - [x] DONE — UUID-based persistent resource identity and generation-checked typed runtime handles are implemented and documented; full registry/loader remains deferred.
 - [x] DONE — Initial public API and module conventions are documented.
-- [ ] PARTIAL — Core unit tests are written, including error formatting; integration/smoke test execution is still pending.
+- [ ] PARTIAL — Core unit tests and a runtime lifecycle integration test are written; execution is pending.
 - [x] DONE — Minimal headless lifecycle smoke example is present; build/run validation is pending.
 - [x] DONE — Direct dependency inventory and dependency review policy are documented.
 - [ ] TODO — Cargo.lock generation and repository tracking (verify during local Cargo validation).
@@ -34,7 +34,7 @@
 - [x] Configure workspace resolver and shared package metadata.
 - [x] Set Rust stable toolchain and required components (rustfmt, clippy).
 - [x] Set workspace lint policy (unsafe_code = forbid, unused_must_use = deny, Clippy warnings).
-- [ ] Run cargo metadata --no-deps and inspect the resolved workspace.
+- [x] Add cargo metadata --no-deps validation to CI (successful run pending).
 - [ ] Run cargo check --workspace successfully.
 - [ ] Generate and commit Cargo.lock after validation.
 
