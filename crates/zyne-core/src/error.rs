@@ -68,3 +68,4 @@ mod tests {
         assert_eq!(error.to_string(), "subsystem error: device unavailable");
     }
 }
+
