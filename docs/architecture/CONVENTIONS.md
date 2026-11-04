@@ -40,6 +40,12 @@ Do not infer a matrix convention from the +Z forward decision alone. These detai
 - Default filter is `info`; `RUST_LOG` may override it.
 - Use trace/debug for high-volume details, info for lifecycle milestones, warn for recoverable degraded behavior, and error for failed operations.
 
-## Resource policy — provisional
+## Resource policy
 
-Resource identity, typed handles, serialization stability, and load/unload lifecycle are not yet implemented. These decisions must be documented and tested before the asset pipeline phase.
+- Persisted assets and scene references use `zyne_core::ResourceId` (UUID v4).
+- Runtime references use typed `Handle<T>` values containing a slot index and generation.
+- Persistent IDs survive project/scene serialization; runtime handles do not.
+- Registries must validate both handle index and generation. Releasing a slot invalidates its previous handles before reuse.
+- Resource managers own loaded runtime objects; consumers borrow through validated handles.
+- Persist metadata and source/import information, never GPU allocations or runtime handles.
+- See [Resource Identity and Lifecycle](RESOURCES.md) for the complete contract.
