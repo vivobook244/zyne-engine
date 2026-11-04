@@ -151,8 +151,8 @@ pub(crate) fn run_window<H: WindowEventHandler>(
     config: WindowConfig,
     handler: H,
 ) -> Result<(), PlatformError> {
-    let event_loop = EventLoop::new()
-        .map_err(|error| PlatformError::EventLoopCreation(error.to_string()))?;
+    let event_loop =
+        EventLoop::new().map_err(|error| PlatformError::EventLoopCreation(error.to_string()))?;
     let mut application = WinitApplication::new(config, handler);
 
     let run_result = event_loop.run_app(&mut application);
