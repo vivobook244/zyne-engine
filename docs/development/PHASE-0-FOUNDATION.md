@@ -16,7 +16,7 @@
 - [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
 - [x] DONE — TOML configuration format, schema, defaults, parser, serializer, and validation are implemented.
 - [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
-- [ ] TODO — Resource identity, handle, and lifecycle conventions.
+- [x] DONE — UUID-based persistent resource identity and generation-checked typed runtime handles are implemented and documented; full registry/loader remains deferred.
 - [x] DONE — Initial public API and module conventions are documented.
 - [ ] PARTIAL — Core unit tests are written; integration/smoke tests and execution are still pending.
 - [ ] TODO — Minimal runnable example / smoke-test target.
@@ -106,11 +106,11 @@
 
 ### 0.7 Resource conventions
 
-- [ ] Define resource identity (planned UUID-based identity).
-- [ ] Define typed handles and invalid-handle behavior.
-- [ ] Define ownership and lifecycle rules (load, use, unload).
-- [ ] Define whether handles are stable across scene save/load.
-- [ ] Document the boundary between resource metadata and loaded GPU/runtime objects.
+- [x] Define persistent resource identity (`ResourceId`, UUID v4).
+- [x] Define typed runtime handles (`Handle<T>`) and stale-handle detection contract (index + generation validation by registry).
+- [x] Define manager ownership and Unloaded/Loading/Loaded/Failed lifecycle rules.
+- [x] Define that `ResourceId` is stable across save/load while runtime handles are process-local and must be reacquired.
+- [x] Document persisted metadata versus transient GPU/runtime objects.
 
 ### 0.8 Public API and coding conventions
 
@@ -136,7 +136,7 @@
 - [x] Add MIT license.
 - [x] Add Cargo-oriented .gitignore.
 - [x] Add dependency inventory with rationale for current direct dependencies.
-- [ ] Add configuration, logging, error, resource, and coordinate convention documents.
+- [ ] Add remaining error and coordinate convention details; configuration, resource, and general engine conventions are documented.
 - [ ] Add a Phase 0 completion record with validation evidence.
 
 ### 0.11 CI and validation
