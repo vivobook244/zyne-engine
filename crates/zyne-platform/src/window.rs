@@ -236,7 +236,8 @@ impl WindowRunner {
     /// Creates and runs a single desktop window.
     ///
     /// The window is created from the active `resumed` callback as required by
-    /// winit 0.30.
+    /// winit 0.30. Call this method from the process main thread; winit event
+    /// loops are main-thread-bound and only one event loop is supported per process.
     ///
     /// # Errors
     ///
