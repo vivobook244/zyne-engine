@@ -26,14 +26,14 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
       - name: Validate workspace metadata
-        run: cargo metadata --no-deps --format-version 1 > /dev/null
+        run: cargo metadata --locked --no-deps --format-version 1 > /dev/null
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --locked --workspace
       - name: Check workspace
-        run: cargo check --workspace
+        run: cargo check --locked --workspace
       - name: Run headless lifecycle smoke example
-        run: cargo run -p zyne-runtime --example headless_smoke
+        run: cargo run --locked -p zyne-runtime --example headless_smoke
