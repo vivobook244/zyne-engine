@@ -38,9 +38,12 @@ mod tests {
 
     #[test]
     fn creates_context_with_current_version() {
-        let context = EngineContext::new(EngineConfig::default()).unwrap();
+        let result = EngineContext::new(EngineConfig::default());
+        assert!(result.is_ok());
 
-        assert_eq!(context.version().major, 0);
-        assert_eq!(context.config().fixed_timestep_hz, 60);
+        if let Ok(context) = result {
+            assert_eq!(context.version().major, 0);
+            assert_eq!(context.config().fixed_timestep_hz, 60);
+        }
     }
 }
