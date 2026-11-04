@@ -47,7 +47,7 @@ impl EngineConfig {
     /// Returns an error when the configuration is invalid or serialization fails.
     pub fn to_toml(&self) -> ZyneResult<String> {
         self.validate()?;
-        toml::to_string_pretty(self).map_err(|error| ZyneError::ConfigParse(error.to_string()))
+        toml::to_string_pretty(self).map_err(|error| ZyneError::ConfigSerialize(error.to_string()))
     }
 
     /// Validate values before the runtime consumes them.
