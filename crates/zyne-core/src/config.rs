@@ -29,6 +29,10 @@ impl Default for EngineConfig {
 
 impl EngineConfig {
     /// Parse a project configuration document from TOML.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when TOML parsing fails or a parsed value is invalid.
     pub fn from_toml(source: &str) -> ZyneResult<Self> {
         let config: Self =
             toml::from_str(source).map_err(|error| ZyneError::ConfigParse(error.to_string()))?;
@@ -37,6 +41,10 @@ impl EngineConfig {
     }
 
     /// Serialize this configuration as a TOML document.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the configuration is invalid or serialization fails.
     pub fn to_toml(&self) -> ZyneResult<String> {
         self.validate()?;
         toml::to_string_pretty(self)
@@ -44,6 +52,10 @@ impl EngineConfig {
     }
 
     /// Validate values before the runtime consumes them.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a field is outside its supported range.
     pub fn validate(&self) -> ZyneResult<()> {
         if self.application_name.trim().is_empty() {
             return Err(ZyneError::ConfigValidation(
