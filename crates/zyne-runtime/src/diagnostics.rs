@@ -1,4 +1,4 @@
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 use zyne_core::{ZyneError, ZyneResult};
 
@@ -6,6 +6,10 @@ use zyne_core::{ZyneError, ZyneResult};
 ///
 /// Libraries and engine subsystems should only emit tracing events. The
 /// executable/game host owns subscriber initialization and output policy.
+///
+/// # Errors
+///
+/// Returns an error if another global subscriber has already been installed.
 pub fn init_logging() -> ZyneResult<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
