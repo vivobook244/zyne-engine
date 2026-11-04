@@ -1,26 +1,10 @@
 # Engine Conventions
 
-This document records conventions that must remain consistent across engine crates. Where a convention is still provisional, it is explicitly marked.
+This document records conventions that must remain consistent across engine crates.
 
-## Coordinate system
+## Coordinate and math conventions
 
-- World coordinates are right-handed.
-- +Y is world up.
-- +Z is the intended world forward direction.
-- One world unit is a logical engine unit; its physical scale is not fixed in Phase 0.
-- Imported asset coordinate conversion must happen at an explicit importer boundary, not be scattered through gameplay or rendering code.
-
-## Transform and math policy
-
-The following implementation details are deliberately deferred until the math crate adopts concrete types and tests:
-
-- Vector, quaternion, and matrix representation.
-- Matrix storage layout and multiplication order.
-- Local-to-parent and local-to-world composition.
-- Camera view and projection conventions.
-- GLTF node and animation coordinate conversion.
-
-Do not infer a matrix convention from the +Z forward decision alone. These details must be selected together and locked by tests before renderer implementation.
+The authoritative mathematical contract is [Math and Coordinate Conventions](MATH.md). In short: right-handed world, +Y up, +Z engine forward, column-vector algebra, column-major matrices, and local transform composition `T * R * S`. Camera view space looks down -Z and uses a [0, 1] projection depth range for wgpu. GLTF conversion belongs at the importer boundary.
 
 ## API and module policy
 
@@ -31,6 +15,8 @@ Do not infer a matrix convention from the +Z forward decision alone. These detai
 - Recoverable failures use `ZyneResult<T>` and typed `ZyneError` variants.
 - Avoid panics for invalid project input or normal runtime failures.
 - Do not expose third-party subsystem types through core contracts unless that coupling is intentional and documented.
+- Before 0.1, public APIs may evolve, but changes must be intentional, documented, and accompanied by migration notes when they affect consumers.
+- After 0.1, compatibility is evaluated against the documented versioning policy; breaking changes require an explicit minor/major-version decision rather than accidental re-exports.
 
 ## Logging policy
 
@@ -39,6 +25,7 @@ Do not infer a matrix convention from the +Z forward decision alone. These detai
 - The executable/game host initializes diagnostics once, at startup.
 - Default filter is `info`; `RUST_LOG` may override it.
 - Use trace/debug for high-volume details, info for lifecycle milestones, warn for recoverable degraded behavior, and error for failed operations.
+- Runtime startup and shutdown should emit one lifecycle event each; subsystem crates emit their own ready/failed events when those subsystems exist.
 
 ## Resource policy
 
