@@ -16,7 +16,7 @@ The initial visual target is the atmosphere and gameplay presentation of classic
 
 ## Status
 
-**Phase 0 — Project Foundation** is in progress. See the [roadmap](docs/ROADMAP.md) and [architecture overview](docs/architecture/OVERVIEW.md).
+**Phase 0 — Project Foundation** is in progress. See the [roadmap](docs/ROADMAP.md), [Phase 0 tracker](docs/development/PHASE-0-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), and [configuration reference](docs/CONFIGURATION.md).
 
 ## Development
 
