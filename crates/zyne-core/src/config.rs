@@ -82,7 +82,9 @@ mod tests {
 
     #[test]
     fn parses_toml_and_applies_defaults() {
-        let config = EngineConfig::from_toml("application_name = \"Test Game\"").unwrap();
+        let result = EngineConfig::from_toml("application_name = \"Test Game\"");
+        assert!(result.is_ok());
+        let config = result.unwrap_or_default();
 
         assert_eq!(config.application_name, "Test Game");
         assert_eq!(config.fixed_timestep_hz, 60);
