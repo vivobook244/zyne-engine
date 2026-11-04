@@ -109,9 +109,12 @@ mod tests {
     #[test]
     fn serializes_and_round_trips() {
         let config = EngineConfig::default();
-        let serialized = config.to_toml().unwrap();
-        let parsed = EngineConfig::from_toml(&serialized).unwrap();
+        let serialized = config.to_toml();
+        assert!(serialized.is_ok());
+        let parsed = serialized
+            .ok()
+            .and_then(|source| EngineConfig::from_toml(&source).ok());
 
-        assert_eq!(config, parsed);
+        assert_eq!(parsed, Some(config));
     }
 }
