@@ -9,6 +9,10 @@ pub struct EngineContext {
 
 impl EngineContext {
     /// Create a context after validating the supplied configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the configuration is invalid.
     pub fn new(config: EngineConfig) -> ZyneResult<Self> {
         config.validate()?;
 
