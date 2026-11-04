@@ -35,3 +35,5 @@ jobs:
         run: cargo test --workspace
       - name: Check workspace
         run: cargo check --workspace
+      - name: Run headless lifecycle smoke example
+        run: cargo run -p zyne-runtime --example headless_smoke
