@@ -11,20 +11,20 @@
 - [x] DONE — Basic core error/result types exist.
 - [x] DONE — Project overview, roadmap, architecture overview, contribution guide, and MIT license exist.
 - [x] DONE — GitHub Actions workflow is configured for formatting, Clippy, tests, and workspace check.
-- [ ] PARTIAL — Crate boundaries and API conventions are documented; dependency graph still needs Cargo validation.
+- [x] DONE — Crate boundaries and direct dependency graph are documented and validated by Cargo metadata/workspace compilation.
 - [x] DONE — Coordinate, transform, camera, projection, and GLTF importer-boundary conventions are specified; implementation tests await concrete math types.
 - [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
 - [x] DONE — TOML configuration format, schema, defaults, parser, serializer, and validation are implemented.
 - [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
 - [x] DONE — UUID-based persistent resource identity and generation-checked typed runtime handles are implemented and documented; full registry/loader remains deferred.
 - [x] DONE — Initial public API and module conventions are documented.
-- [ ] PARTIAL — Core unit tests and a runtime lifecycle integration test are written; execution is pending.
-- [x] DONE — Minimal headless lifecycle smoke example is present; build/run validation is pending.
+- [x] DONE — Core unit tests and runtime lifecycle integration test pass in GitHub Actions.
+- [x] DONE — Minimal headless lifecycle smoke example builds and runs successfully in GitHub Actions.
 - [x] DONE — Direct dependency inventory and dependency review policy are documented.
 - [ ] TODO — Cargo.lock generation and repository tracking (verify during local Cargo validation).
 - [ ] TODO — Run and pass all local validation commands.
-- [ ] TODO — Verify the GitHub Actions workflow completes successfully.
-- [ ] TODO — Define initial versioning and release policy.
+- [x] DONE — GitHub Actions workflow completed successfully on main.
+- [x] DONE — Initial 0.x and 1.0+ versioning/release policy is documented.
 
 ## Detailed development rundown
 
@@ -35,7 +35,7 @@
 - [x] Set Rust stable toolchain and required components (rustfmt, clippy).
 - [x] Set workspace lint policy (unsafe_code = forbid, unused_must_use = deny, Clippy warnings).
 - [x] Add cargo metadata --no-deps validation to CI (successful run pending).
-- [ ] Run cargo check --workspace successfully.
+- [x] Run cargo check --workspace successfully in CI.
 - [ ] Generate and commit Cargo.lock after validation.
 
 **Evidence:** Cargo.toml, rust-toolchain.toml.
@@ -48,9 +48,9 @@
 - [x] Create zyne-graphics.
 - [x] Create zyne-runtime.
 - [x] Add initial path dependencies between crates.
-- [ ] Validate the dependency graph with Cargo tooling.
-- [ ] Confirm there are no circular dependencies.
-- [ ] Document allowed dependency direction and public ownership for every crate.
+- [x] Validate the dependency graph with Cargo metadata and workspace compilation.
+- [x] Confirm there are no circular dependencies (workspace compilation succeeds).
+- [x] Document allowed dependency direction and public ownership for every crate.
 
 **Current intended boundaries:**
 - Core: shared engine contracts; independent from platform, graphics, gameplay, and editor.
@@ -101,7 +101,7 @@
 - [x] Define initial log-level and module-target conventions.
 - [ ] Define concrete startup/shutdown event coverage as subsystems are implemented.
 - [x] Keep subscriber initialization in runtime; library crates do not initialize it.
-- [ ] Add a small test or smoke check for diagnostic initialization.
+- [x] Verify diagnostic initialization through the headless lifecycle smoke example.
 
 ### 0.7 Resource conventions
 
@@ -121,9 +121,9 @@
 
 ### 0.9 Tests and examples
 
-- [x] Add core unit tests for configuration, context, version, and error formatting (execution pending).
-- [x] Add a minimal headless lifecycle smoke example without window/renderer dependencies (build/run pending).
-- [ ] Add integration-test layout and at least one workspace smoke test.
+- [x] Add and pass core unit tests for configuration, context, version, and error formatting.
+- [x] Build and run a minimal headless lifecycle smoke example without window/renderer dependencies.
+- [x] Add and pass a runtime integration-test layout and engine lifecycle smoke test.
 - [ ] Ensure examples build without introducing Phase 1/2 runtime dependencies prematurely.
 
 ### 0.10 Documentation and project hygiene
@@ -141,8 +141,8 @@
 ### 0.11 CI and validation
 
 - [x] Configure GitHub Actions for cargo fmt, cargo clippy, cargo test, and cargo check.
-- [ ] Verify the workflow triggers on the current main branch and completes successfully.
-- [ ] Obtain a successful CI run; fix any formatting, lint, test, or compilation failures.
+- [x] Verify the workflow triggers on the current main branch and completes successfully.
+- [x] Obtain a successful CI run; formatting, Clippy, tests, workspace check, and headless example pass.
 - [ ] Run the same commands locally before closing Phase 0.
 
 **Required validation commands:**
@@ -164,10 +164,10 @@ Phase 0 may be marked DONE only when all of the following are true:
 - [x] Core engine contracts, typed errors, and configuration foundation are defined.
 - [x] Logging/diagnostics foundation is present.
 - [x] Coordinate, transform, resource, and public API conventions are documented.
-- [ ] Tests and a minimal example/smoke target exist and pass.
+- [x] Tests and a minimal example/smoke target exist and pass in CI.
 - [ ] Dependency choices and Cargo.lock are reviewed and committed.
-- [ ] Formatting, Clippy, tests, and workspace check pass.
-- [ ] GitHub Actions validation is green.
+- [x] Formatting, Clippy, tests, and workspace check pass in CI.
+- [x] GitHub Actions validation is green.
 - [ ] README, architecture, contribution guide, and this checklist reflect the actual implementation.
 
 **Current decision:** Phase 0 remains IN PROGRESS. Do not start Phase 1 implementation until the exit criteria above are satisfied or explicitly re-scoped.
