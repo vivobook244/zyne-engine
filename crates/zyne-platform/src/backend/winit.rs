@@ -7,7 +7,7 @@ use winit::{
 };
 
 use crate::{
-    PlatformError,
+    PlatformError, PlatformEvent,
     window::{
         PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler, WindowMode,
     },
@@ -88,12 +88,12 @@ impl<H: WindowEventHandler> WinitApplication<H> {
         }
     }
 
-    fn dispatch_window_event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {
+    fn dispatch_platform_event(&mut self, event_loop: &ActiveEventLoop, event: PlatformEvent) {
         let Some(window) = self.window.as_ref() else {
             return;
         };
 
-        match self.handler.on_window_event(event, window) {
+        match self.handler.on_platform_event(event, window) {
             Ok(WindowControl::Continue) => {}
             Ok(WindowControl::Exit) => event_loop.exit(),
             Err(message) => {
@@ -107,6 +107,13 @@ impl<H: WindowEventHandler> WinitApplication<H> {
 impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.create_window(event_loop);
+        if self.window.is_some() {
+            self.dispatch_platform_event(event_loop, PlatformEvent::Resumed);
+        }
+    }
+
+    fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        self.dispatch_platform_event(event_loop, PlatformEvent::Suspended);
     }
 
     fn window_event(
@@ -138,7 +145,7 @@ impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
         };
 
         if let Some(event) = translated {
-            self.dispatch_window_event(event_loop, event);
+            self.dispatch_platform_event(event_loop, PlatformEvent::Window(event));
         }
     }
 
