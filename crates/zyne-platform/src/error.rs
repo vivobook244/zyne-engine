@@ -18,11 +18,19 @@ pub enum PlatformError {
 impl fmt::Display for PlatformError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EventLoopCreation(message) => write!(formatter, "failed to create platform event loop: {message}"),
-            Self::WindowCreation(message) => write!(formatter, "failed to create platform window: {message}"),
-            Self::InvalidWindowConfig(message) => write!(formatter, "invalid window configuration: {message}"),
+            Self::EventLoopCreation(message) => {
+                write!(formatter, "failed to create platform event loop: {message}")
+            }
+            Self::WindowCreation(message) => {
+                write!(formatter, "failed to create platform window: {message}")
+            }
+            Self::InvalidWindowConfig(message) => {
+                write!(formatter, "invalid window configuration: {message}")
+            }
             Self::Handler(message) => write!(formatter, "window event handler failed: {message}"),
-            Self::EventLoopRun(message) => write!(formatter, "platform event loop failed: {message}"),
+            Self::EventLoopRun(message) => {
+                write!(formatter, "platform event loop failed: {message}")
+            }
         }
     }
 }
