@@ -1,8 +1,11 @@
 /// Semantic version of the ZYNE engine API/runtime.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EngineVersion {
+    /// Major compatibility version.
     pub major: u32,
+    /// Minor feature version.
     pub minor: u32,
+    /// Patch version.
     pub patch: u32,
 }
 
