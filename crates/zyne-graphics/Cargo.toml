@@ -1,0 +1,13 @@
+[package]
+name = "zyne-graphics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+zyne-core = { path = "../zyne-core" }
+zyne-math = { path = "../zyne-math" }
+
+[lints]
+workspace = true
