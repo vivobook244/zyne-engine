@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-Each phase must produce a verifiable result before the next phase expands the architecture.
+Each phase must produce a verifiable result before the next phase expands the architecture. Detailed task checklists and progress status are tracked in [Phase 0 — Project Foundation](development/PHASE-0-FOUNDATION.md).
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|
