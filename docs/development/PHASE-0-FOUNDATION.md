@@ -11,16 +11,16 @@
 - [x] DONE — Basic core error/result types exist.
 - [x] DONE — Project overview, roadmap, architecture overview, contribution guide, and MIT license exist.
 - [x] DONE — GitHub Actions workflow is configured for formatting, Clippy, tests, and workspace check.
-- [ ] PARTIAL — Crate boundaries exist, but dependency direction and public API contracts still need validation.
-- [ ] PARTIAL — Coordinate conventions are documented, but math/transform conventions are not yet fully specified.
-- [ ] PARTIAL — Error foundation exists, but engine-level context and error contracts are incomplete.
-- [ ] TODO — Engine configuration format and schema.
-- [ ] TODO — Logging and diagnostics foundation.
+- [ ] PARTIAL — Crate boundaries and API conventions are documented; dependency graph still needs Cargo validation.
+- [ ] PARTIAL — Coordinate direction is documented; matrix, transform composition, and import conversion remain provisional.
+- [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
+- [x] DONE — TOML configuration format, schema, defaults, parser, serializer, and validation are implemented.
+- [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
 - [ ] TODO — Resource identity, handle, and lifecycle conventions.
-- [ ] TODO — Public API, module, naming, and compatibility conventions.
-- [ ] TODO — Unit-test and integration-test foundation with actual tests.
+- [x] DONE — Initial public API and module conventions are documented.
+- [ ] PARTIAL — Core unit tests are written; integration/smoke tests and execution are still pending.
 - [ ] TODO — Minimal runnable example / smoke-test target.
-- [ ] TODO — Dependency inventory and dependency policy details.
+- [x] DONE — Direct dependency inventory and dependency review policy are documented.
 - [ ] TODO — Cargo.lock generation and repository tracking (verify during local Cargo validation).
 - [ ] TODO — Run and pass all local validation commands.
 - [ ] TODO — Verify the GitHub Actions workflow completes successfully.
@@ -65,12 +65,12 @@
 
 - [x] Add ZyneResult<T>.
 - [x] Add basic ZyneError variants for invalid input, missing resources, and subsystem failures.
-- [ ] Define Engine lifecycle contract.
-- [ ] Define EngineConfig and configuration validation errors.
-- [ ] Define EngineContext ownership/access rules.
-- [ ] Define EngineVersion and version exposure.
+- [x] Define Engine lifecycle contract.
+- [x] Define EngineConfig and configuration validation errors.
+- [x] Define EngineContext ownership/access rules.
+- [x] Define EngineVersion and version exposure.
 - [ ] Review error categories and conversions across crate boundaries.
-- [ ] Add tests for error formatting and configuration validation.
+- [ ] Add tests for error formatting and configuration validation (configuration tests are written; execution pending).
 
 **Evidence:** crates/zyne-core/src/lib.rs.
 
@@ -90,18 +90,18 @@
 
 ### 0.5 Configuration
 
-- [ ] Choose and document the engine/project configuration format (planned: TOML).
-- [ ] Define initial configuration fields and defaults.
-- [ ] Define validation behavior and useful error messages.
-- [ ] Add parse/serialize tests.
-- [ ] Document which settings belong to project config versus runtime overrides.
+- [x] Choose and document TOML as the engine/project configuration format.
+- [x] Define initial configuration fields and defaults.
+- [x] Define validation behavior and useful error messages.
+- [x] Add TOML parse/serialize and validation unit tests (execution pending).
+- [x] Document configuration ownership boundaries.
 
 ### 0.6 Logging and diagnostics
 
-- [ ] Add tracing and a minimal subscriber setup at the application boundary.
-- [ ] Define log levels and target/module naming conventions.
-- [ ] Define startup, shutdown, subsystem initialization, and failure diagnostics.
-- [ ] Ensure libraries emit events without forcing a global subscriber.
+- [x] Add tracing and a minimal subscriber setup in the runtime host boundary.
+- [x] Define initial log-level and module-target conventions.
+- [ ] Define concrete startup/shutdown event coverage as subsystems are implemented.
+- [x] Keep subscriber initialization in runtime; library crates do not initialize it.
 - [ ] Add a small test or smoke check for diagnostic initialization.
 
 ### 0.7 Resource conventions
@@ -114,15 +114,15 @@
 
 ### 0.8 Public API and coding conventions
 
-- [ ] Define public versus internal module policy.
-- [ ] Define naming, visibility, documentation, and re-export conventions.
-- [ ] Define how errors cross crate boundaries.
-- [ ] Define dependency addition policy (reason, license, maintenance, compile cost).
+- [x] Define public versus internal module policy.
+- [x] Define naming, visibility, documentation, and re-export conventions.
+- [x] Define typed ZyneResult/ZyneError as the initial cross-crate error contract.
+- [x] Define dependency addition policy (feature need, license, maintenance, platform, compile cost).
 - [ ] Define compatibility expectations for public APIs before 0.1.
 
 ### 0.9 Tests and examples
 
-- [ ] Add unit-test conventions and at least one meaningful core test.
+- [x] Add core unit tests for configuration, context, and version (execution pending).
 - [ ] Add integration-test layout and at least one workspace smoke test.
 - [ ] Add a minimal example that can be built and run (or a documented headless smoke example if no window is introduced in Phase 0).
 - [ ] Ensure examples do not introduce Phase 1/2 runtime dependencies prematurely.
@@ -135,14 +135,14 @@
 - [x] Add contribution guide.
 - [x] Add MIT license.
 - [x] Add Cargo-oriented .gitignore.
-- [ ] Add dependency inventory with rationale for every direct dependency.
+- [x] Add dependency inventory with rationale for current direct dependencies.
 - [ ] Add configuration, logging, error, resource, and coordinate convention documents.
 - [ ] Add a Phase 0 completion record with validation evidence.
 
 ### 0.11 CI and validation
 
 - [x] Configure GitHub Actions for cargo fmt, cargo clippy, cargo test, and cargo check.
-- [ ] Verify the workflow triggers on the current main branch.
+- [ ] Verify the workflow triggers on the current main branch and completes successfully.
 - [ ] Obtain a successful CI run; fix any formatting, lint, test, or compilation failures.
 - [ ] Run the same commands locally before closing Phase 0.
 
@@ -161,10 +161,10 @@ Phase 0 may be marked DONE only when all of the following are true:
 
 - [ ] Workspace metadata resolves and all workspace crates compile.
 - [ ] No circular crate dependency exists.
-- [ ] Core engine contracts, typed errors, and configuration foundation are defined.
-- [ ] Logging/diagnostics foundation is present.
+- [x] Core engine contracts, typed errors, and configuration foundation are defined.
+- [x] Logging/diagnostics foundation is present.
 - [ ] Coordinate, transform, resource, and public API conventions are documented.
-- [ ] Tests and a minimal example/smoke target exist.
+- [ ] Tests and a minimal example/smoke target exist and pass.
 - [ ] Dependency choices and Cargo.lock are reviewed and committed.
 - [ ] Formatting, Clippy, tests, and workspace check pass.
 - [ ] GitHub Actions validation is green.
