@@ -1,2 +1,14 @@
-//! Windowing, OS integration, input devices, and application lifecycle.
-//! Platform code owns OS-facing concerns and must not depend on gameplay or editor UI.
+//! OS integration for ZYNE desktop applications.
+//!
+//! This crate owns native window and operating-system event integration.
+//! Engine lifecycle policy and frame scheduling belong to `zyne-runtime`.
+
+mod backend;
+mod error;
+mod window;
+
+pub use error::PlatformError;
+pub use window::{
+    PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler, WindowMode,
+    WindowRunner, WindowSize,
+};
