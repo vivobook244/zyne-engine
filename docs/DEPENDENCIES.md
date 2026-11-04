@@ -24,6 +24,14 @@ Workspace-wide versions are declared in the root Cargo.toml where shared by mult
 - Can the dependency remain behind the owning crate's public API?
 - Is there a smaller standard-library or existing-dependency solution?
 
-## Planned, not yet added
+## Reviewed candidate, not yet added
 
-winit, wgpu, glam, bevy_ecs, rapier3d, kira, egui, gltf, image, and other subsystem dependencies are planned for later phases. They must not be treated as current dependencies until added to a crate manifest.
+| Dependency | Candidate version | Target crate | Decision | Planned phase |
+|---|---:|---|---|---|
+| winit | 0.30.13 | zyne-platform | Selected stable candidate; default features retain Linux X11 and Wayland support. Add only when window implementation begins. | 1.2 |
+
+The winit decision and API constraints are recorded in [Phase 1.1 Review](development/PHASE-1-1-REVIEW.md). Do not add prerelease 0.31 to the initial implementation.
+
+## Planned, not yet reviewed or added
+
+wgpu, glam, bevy_ecs, rapier3d, kira, egui, gltf, image, and other subsystem dependencies are planned for later phases. They must not be treated as current dependencies until reviewed for their phase and added to a crate manifest.
