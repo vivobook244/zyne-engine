@@ -1,4 +1,4 @@
-use zyne_runtime::{diagnostics, Engine, EngineConfig, EngineContext, ZyneResult};
+use zyne_runtime::{Engine, EngineConfig, EngineContext, ZyneResult, diagnostics};
 
 struct SmokeEngine;
 
