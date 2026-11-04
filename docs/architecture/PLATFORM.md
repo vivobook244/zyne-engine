@@ -1,6 +1,6 @@
 # Platform Architecture
 
-**Status:** APPROVED FOR PHASE 1.1  
+**Status:** REVIEWED — READY FOR PHASE 1.2  
 **Scope:** Architecture contract; no window backend implementation yet.
 
 ## 1. Purpose
@@ -105,17 +105,15 @@ Use `std::time` initially unless implementation demonstrates a need for another 
 - Define explicit ownership and shutdown order for event loop, windows, and future presentation resources during implementation.
 - Do not introduce background threads solely to make the API appear asynchronous.
 
-## 10. Planned backend evaluation
+## 10. Backend decision
 
-The current candidate is `winit`. Before adding it:
+**Selected initial backend: stable `winit 0.30.13`.** The release and API were reviewed on 2026-11-04. It is compatible with the workspace's declared Rust 1.85 minimum (winit documents MSRV 1.70), and its default feature set includes Linux X11 and Wayland support. Its `ApplicationHandler` / `run_app` event-loop model requires window creation from an active event-loop callback such as `resumed`.
 
-1. Verify the current stable release and its minimum supported Rust version against the workspace toolchain policy.
-2. Confirm Windows and Linux support and event-loop constraints.
-3. Review the API shape for window creation, event delivery, resize/focus/close handling, and control flow.
-4. Review feature flags and transitive dependency impact.
-5. Record the selected version and rationale in the dependency documentation.
+Do not use `0.31.0-beta.4` for the initial implementation: it is prerelease and contains significant API changes. Re-evaluate the stable 0.31 release before a future upgrade.
 
-No backend dependency is added by this architecture document.
+For the first Windows/Linux implementation, retain winit's default features unless a concrete Phase 1.2 validation result justifies changing them. The detailed review and references are recorded in [Phase 1.1 Review](../development/PHASE-1-1-REVIEW.md).
+
+The dependency is not added by this architecture document; it may be added in Phase 1.2 when window implementation begins.
 
 ## 11. Phase 1.1 acceptance criteria
 
@@ -126,8 +124,9 @@ No backend dependency is added by this architecture document.
 - [x] Error conversion boundary is documented.
 - [x] Timing/frame policy is assigned to runtime.
 - [x] Window and renderer configuration ownership is documented.
-- [ ] Architecture overview is aligned with this document.
-- [ ] The decision is reviewed before Phase 1.2 backend implementation.
+- [x] Architecture overview is aligned with this document.
+- [x] Backend candidate and API constraints reviewed before Phase 1.2.
+- [x] Review record published in [Phase 1.1 Review](../development/PHASE-1-1-REVIEW.md).
 
 ## 12. Deferred to later work
 
