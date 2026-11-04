@@ -142,7 +142,7 @@ mod tests {
 
         if let Ok(serialized) = serialized {
             let deserialized = toml::from_str::<ResourceIdDocument>(&serialized);
-            assert_eq!(deserialized.map(|document| document.id), Ok(ResourceIdDocument { id: first }.id));
+            assert!(matches!(deserialized, Ok(document) if document.id == first));
         }
     }
 
