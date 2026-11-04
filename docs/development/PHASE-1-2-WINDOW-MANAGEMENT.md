@@ -46,11 +46,13 @@ The first implementation supports one window. Multi-window identity/management i
 - [x] Add single-window runner and default close behavior.
 - [x] Add a manual desktop window smoke example.
 - [x] Add configuration unit tests.
-- [ ] Generate and commit updated Cargo.lock.
-- [ ] Run formatting, Clippy, tests, and workspace check.
-- [ ] Build on Windows and Linux.
+- [x] Generate and commit updated Cargo.lock.
+- [x] Run formatting, Clippy, tests, and workspace check on Linux CI.
+- [x] Run the headless lifecycle smoke example on Linux CI.
+- [x] Add a Linux/Windows CI matrix; Linux validation passed.
+- [ ] Confirm Windows CI result.
 - [ ] Run the window smoke example on a desktop session and verify close/shutdown.
-- [ ] Record validation evidence and close Phase 1.2.
+- [ ] Record final cross-platform validation evidence and close Phase 1.2.
 
 ## 5. Manual smoke test
 
