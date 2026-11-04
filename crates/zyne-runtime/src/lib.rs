@@ -6,5 +6,5 @@ mod event_queue;
 
 pub use event_queue::EventQueue;
 
-pub use zyne_platform::PlatformEvent;
 pub use zyne_core::{Engine, EngineConfig, EngineContext, EngineVersion, ZyneError, ZyneResult};
+pub use zyne_platform::PlatformEvent;
