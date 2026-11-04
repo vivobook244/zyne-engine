@@ -44,7 +44,10 @@ mod tests {
         let parse = ZyneError::ConfigParse("unexpected token".to_owned());
         let validation = ZyneError::ConfigValidation("invalid timestep".to_owned());
 
-        assert_eq!(parse.to_string(), "configuration parse failed: unexpected token");
+        assert_eq!(
+            parse.to_string(),
+            "configuration parse failed: unexpected token"
+        );
         assert_eq!(
             validation.to_string(),
             "invalid engine configuration: invalid timestep"
