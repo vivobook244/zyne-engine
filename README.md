@@ -16,7 +16,7 @@ The initial visual target is the atmosphere and gameplay presentation of classic
 
 ## Status
 
-**Phase 0 — Project Foundation** is in progress. See the [roadmap](docs/ROADMAP.md), [Phase 0 tracker](docs/development/PHASE-0-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), and [configuration reference](docs/CONFIGURATION.md).
+**Phase 0 — Project Foundation** is in progress. See the [roadmap](docs/ROADMAP.md), [Phase 0 tracker](docs/development/PHASE-0-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), [math conventions](docs/architecture/MATH.md), [configuration reference](docs/CONFIGURATION.md), and [versioning policy](docs/VERSIONING.md).
 
 ## Development
 
@@ -24,8 +24,11 @@ Requirements: Rust stable toolchain with Cargo.
 
 ~~~sh
 rustup update stable
-cargo check --workspace
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo check --workspace
+cargo run -p zyne-runtime --example headless_smoke
 ~~~
 
 ## Principles
