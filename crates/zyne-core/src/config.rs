@@ -110,8 +110,10 @@ mod tests {
 
     #[test]
     fn rejects_invalid_fixed_timestep() {
-        let mut config = EngineConfig::default();
-        config.fixed_timestep_hz = 0;
+        let config = EngineConfig {
+            fixed_timestep_hz: 0,
+            ..EngineConfig::default()
+        };
 
         assert!(matches!(
             config.validate(),
