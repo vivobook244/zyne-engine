@@ -15,6 +15,9 @@ pub enum ZyneError {
     /// A configuration document could not be parsed.
     #[error("configuration parse failed: {0}")]
     ConfigParse(String),
+    /// A configuration document could not be serialized.
+    #[error("configuration serialization failed: {0}")]
+    ConfigSerialize(String),
     /// A parsed configuration did not satisfy engine requirements.
     #[error("invalid engine configuration: {0}")]
     ConfigValidation(String),
@@ -42,11 +45,16 @@ mod tests {
     #[test]
     fn formats_configuration_errors() {
         let parse = ZyneError::ConfigParse("unexpected token".to_owned());
+        let serialize = ZyneError::ConfigSerialize("unsupported value".to_owned());
         let validation = ZyneError::ConfigValidation("invalid timestep".to_owned());
 
         assert_eq!(
             parse.to_string(),
             "configuration parse failed: unexpected token"
+        );
+        assert_eq!(
+            serialize.to_string(),
+            "configuration serialization failed: unsupported value"
         );
         assert_eq!(
             validation.to_string(),
