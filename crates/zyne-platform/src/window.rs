@@ -1,4 +1,4 @@
-use crate::PlatformError;
+use crate::{PlatformError, PlatformEvent};
 
 /// Window dimensions expressed in logical pixels (DPI-independent points).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,6 +204,25 @@ pub trait WindowEventHandler {
     /// Return an error to stop the event loop and report initialization failure.
     fn on_window_created(&mut self, _window: &PlatformWindow) -> Result<(), String> {
         Ok(())
+    }
+
+    /// Called for every platform lifecycle or window event.
+    ///
+    /// The default implementation forwards window events to on_window_event
+    /// and ignores lifecycle notifications.
+    ///
+    /// # Errors
+    ///
+    /// Return an error to stop the event loop and report handler failure.
+    fn on_platform_event(
+        &mut self,
+        event: PlatformEvent,
+        window: &PlatformWindow,
+    ) -> Result<WindowControl, String> {
+        match event {
+            PlatformEvent::Window(event) => self.on_window_event(event, window),
+            PlatformEvent::Resumed | PlatformEvent::Suspended => Ok(WindowControl::Continue),
+        }
     }
 
     /// Called when a supported window event is received.
