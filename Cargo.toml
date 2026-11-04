@@ -10,6 +10,12 @@ rust-version = "1.85"
 authors = ["ZYNE Contributors"]
 repository = "https://github.com/vivobook244/zyne-engine"
 
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
