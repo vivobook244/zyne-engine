@@ -208,7 +208,7 @@ pub trait WindowEventHandler {
 
     /// Called for every platform lifecycle or window event.
     ///
-    /// The default implementation forwards window events to on_window_event
+    /// The default implementation forwards window events to `on_window_event`
     /// and ignores lifecycle notifications.
     ///
     /// # Errors
