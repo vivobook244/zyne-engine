@@ -12,14 +12,14 @@
 - [x] DONE — Project overview, roadmap, architecture overview, contribution guide, and MIT license exist.
 - [x] DONE — GitHub Actions workflow is configured for formatting, Clippy, tests, and workspace check.
 - [ ] PARTIAL — Crate boundaries and API conventions are documented; dependency graph still needs Cargo validation.
-- [ ] PARTIAL — Coordinate direction is documented; matrix, transform composition, and import conversion remain provisional.
+- [x] DONE — Coordinate, transform, camera, projection, and GLTF importer-boundary conventions are specified; implementation tests await concrete math types.
 - [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
 - [x] DONE — TOML configuration format, schema, defaults, parser, serializer, and validation are implemented.
 - [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
 - [x] DONE — UUID-based persistent resource identity and generation-checked typed runtime handles are implemented and documented; full registry/loader remains deferred.
 - [x] DONE — Initial public API and module conventions are documented.
-- [ ] PARTIAL — Core unit tests are written; integration/smoke tests and execution are still pending.
-- [ ] TODO — Minimal runnable example / smoke-test target.
+- [ ] PARTIAL — Core unit tests are written, including error formatting; integration/smoke test execution is still pending.
+- [x] DONE — Minimal headless lifecycle smoke example is present; build/run validation is pending.
 - [x] DONE — Direct dependency inventory and dependency review policy are documented.
 - [ ] TODO — Cargo.lock generation and repository tracking (verify during local Cargo validation).
 - [ ] TODO — Run and pass all local validation commands.
@@ -54,7 +54,7 @@
 
 **Current intended boundaries:**
 - Core: shared engine contracts; independent from platform, graphics, gameplay, and editor.
-- Math: shared math types and engine coordinate conventions.
+- Math: shared mathematical conventions and types.
 - Platform: OS, window, input, and application lifecycle.
 - Graphics: GPU and rendering implementation; no gameplay policy.
 - Runtime: public facade used by game projects.
@@ -69,24 +69,23 @@
 - [x] Define EngineConfig and configuration validation errors.
 - [x] Define EngineContext ownership/access rules.
 - [x] Define EngineVersion and version exposure.
+- [x] Add error display-format tests; configuration tests are written but execution remains pending.
 - [ ] Review error categories and conversions across crate boundaries.
-- [ ] Add tests for error formatting and configuration validation (configuration tests are written; execution pending).
 
-**Evidence:** crates/zyne-core/src/lib.rs.
+**Evidence:** crates/zyne-core/src/lib.rs, crates/zyne-core/src/error.rs.
 
 ### 0.4 Math and coordinate conventions
 
 - [x] Define the intended right-handed world coordinate system and +Y up.
-- [x] Record the intended +Z forward convention.
+- [x] Record the +Z engine world-forward convention.
 - [x] Add a preliminary WorldUnit = f32 alias.
-- [ ] Specify vector, matrix, quaternion, and transform conventions.
-- [ ] Specify local-space versus world-space behavior.
-- [ ] Specify matrix multiplication / transform composition order.
-- [ ] Specify camera forward and projection conventions.
-- [ ] Specify GLTF import coordinate conversion boundary.
+- [x] Specify vector/point semantics, matrix algebra/layout, and transform composition.
+- [x] Specify local-space versus world-space behavior.
+- [x] Specify camera forward and projection conventions.
+- [x] Specify the GLTF importer conversion boundary.
 - [ ] Add convention tests when concrete math types are introduced.
 
-**Evidence:** crates/zyne-math/src/lib.rs, docs/architecture/OVERVIEW.md.
+**Evidence:** docs/architecture/MATH.md, docs/architecture/CONVENTIONS.md.
 
 ### 0.5 Configuration
 
@@ -106,10 +105,10 @@
 
 ### 0.7 Resource conventions
 
-- [x] Define persistent resource identity (`ResourceId`, UUID v4).
-- [x] Define typed runtime handles (`Handle<T>`) and stale-handle detection contract (index + generation validation by registry).
+- [x] Define persistent resource identity (ResourceId, UUID v4).
+- [x] Define typed runtime handles (Handle<T>) and stale-handle detection contract (index + generation validation by registry).
 - [x] Define manager ownership and Unloaded/Loading/Loaded/Failed lifecycle rules.
-- [x] Define that `ResourceId` is stable across save/load while runtime handles are process-local and must be reacquired.
+- [x] Define that ResourceId is stable across save/load while runtime handles are process-local and must be reacquired.
 - [x] Document persisted metadata versus transient GPU/runtime objects.
 
 ### 0.8 Public API and coding conventions
@@ -118,14 +117,14 @@
 - [x] Define naming, visibility, documentation, and re-export conventions.
 - [x] Define typed ZyneResult/ZyneError as the initial cross-crate error contract.
 - [x] Define dependency addition policy (feature need, license, maintenance, platform, compile cost).
-- [ ] Define compatibility expectations for public APIs before 0.1.
+- [x] Define pre-0.1 API evolution and compatibility expectations.
 
 ### 0.9 Tests and examples
 
-- [x] Add core unit tests for configuration, context, and version (execution pending).
+- [x] Add core unit tests for configuration, context, version, and error formatting (execution pending).
+- [x] Add a minimal headless lifecycle smoke example without window/renderer dependencies (build/run pending).
 - [ ] Add integration-test layout and at least one workspace smoke test.
-- [ ] Add a minimal example that can be built and run (or a documented headless smoke example if no window is introduced in Phase 0).
-- [ ] Ensure examples do not introduce Phase 1/2 runtime dependencies prematurely.
+- [ ] Ensure examples build without introducing Phase 1/2 runtime dependencies prematurely.
 
 ### 0.10 Documentation and project hygiene
 
@@ -136,7 +135,7 @@
 - [x] Add MIT license.
 - [x] Add Cargo-oriented .gitignore.
 - [x] Add dependency inventory with rationale for current direct dependencies.
-- [ ] Add remaining error and coordinate convention details; configuration, resource, and general engine conventions are documented.
+- [x] Document error display contract and coordinate/transform conventions.
 - [ ] Add a Phase 0 completion record with validation evidence.
 
 ### 0.11 CI and validation
@@ -153,6 +152,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo check --workspace
+cargo run -p zyne-runtime --example headless_smoke
 ~~~
 
 ## Phase 0 exit criteria
@@ -163,7 +163,7 @@ Phase 0 may be marked DONE only when all of the following are true:
 - [ ] No circular crate dependency exists.
 - [x] Core engine contracts, typed errors, and configuration foundation are defined.
 - [x] Logging/diagnostics foundation is present.
-- [ ] Coordinate, transform, resource, and public API conventions are documented.
+- [x] Coordinate, transform, resource, and public API conventions are documented.
 - [ ] Tests and a minimal example/smoke target exist and pass.
 - [ ] Dependency choices and Cargo.lock are reviewed and committed.
 - [ ] Formatting, Clippy, tests, and workspace check pass.
