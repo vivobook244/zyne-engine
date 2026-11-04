@@ -26,9 +26,9 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 |---|---|---|
 | zyne-core | Engine-wide contracts, configuration, errors, version, resource identity/handles | OS, GPU, gameplay, editor |
 | zyne-math | Shared math types and coordinate conventions | Windowing, rendering policy, gameplay |
-| zyne-platform | OS integration, windows, input, application lifecycle | GPU rendering and game rules |
+| zyne-platform | OS integration, native windows, OS event acquisition/translation, platform input acquisition | GPU rendering, engine lifecycle policy, and game rules |
 | zyne-graphics | GPU resources, render pipeline, materials, render-facing data | Gameplay policy and editor workflows |
-| zyne-runtime | Public host facade, diagnostics setup, eventual engine startup/event loop | Subsystem implementation details that belong in their owning crates |
+| zyne-runtime | Public host facade, diagnostics setup, engine lifecycle policy, update scheduling, frame-time policy, subsystem orchestration | Native OS implementation and subsystem implementation details that belong in their owning crates |
 
 ## Boundary rules
 
@@ -36,7 +36,9 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 - Math provides shared mathematical conventions and types and remains independent of other workspace crates.
 - Platform may depend on core contracts, but not graphics or gameplay.
 - Graphics may depend on core and math, but not platform or gameplay.
-- Runtime composes core, platform, and graphics; it must not move their implementation into the facade.
+- Runtime composes core, platform, and graphics; it owns engine lifecycle policy and update/frame scheduling, but delegates native event-loop mechanics and OS event translation to platform.
+- Platform owns backend integration (planned: winit); runtime decides what platform events mean for engine lifecycle. Core remains independent of windows and OS event loops.
+- See [Platform Architecture](PLATFORM.md) for event-loop ownership, public API/backend separation, error boundaries, timing ownership, and deferred implementation decisions.
 - Physics does not directly control animation.
 - Asset loading does not depend on editor UI.
 - Scene/world data does not depend on editor implementation.
