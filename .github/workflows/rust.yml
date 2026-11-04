@@ -37,5 +37,3 @@ jobs:
         run: cargo check --workspace
       - name: Run headless lifecycle smoke example
         run: cargo run -p zyne-runtime --example headless_smoke
-      - name: Export resolved lockfile for initial repository commit
-        run: printf 'CARGO_LOCK_BASE64='; base64 -w0 Cargo.lock; printf '\\n'
