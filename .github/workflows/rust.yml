@@ -25,6 +25,8 @@ jobs:
           components: rustfmt, clippy
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
+      - name: Generate workspace lockfile
+        run: cargo generate-lockfile
       - name: Validate workspace metadata
         run: cargo metadata --no-deps --format-version 1 > /dev/null
       - name: Check formatting
@@ -37,3 +39,10 @@ jobs:
         run: cargo check --workspace
       - name: Run headless lifecycle smoke example
         run: cargo run -p zyne-runtime --example headless_smoke
+      - name: Upload generated Cargo.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: zyne-cargo-lock
+          path: Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
