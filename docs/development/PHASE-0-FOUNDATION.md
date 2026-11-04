@@ -10,7 +10,7 @@
 - [x] DONE — Initial crate responsibilities and dependency direction are documented.
 - [x] DONE — Basic core error/result types exist.
 - [x] DONE — Project overview, roadmap, architecture overview, contribution guide, and MIT license exist.
-- [x] DONE — GitHub Actions workflow is configured for formatting, Clippy, tests, and workspace check.
+- [x] DONE — GitHub Actions validates metadata, formatting, Clippy, tests, workspace check, and the headless smoke example.
 - [x] DONE — Crate boundaries and direct dependency graph are documented and validated by Cargo metadata/workspace compilation.
 - [x] DONE — Coordinate, transform, camera, projection, and GLTF importer-boundary conventions are specified; implementation tests await concrete math types.
 - [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
@@ -124,7 +124,7 @@
 - [x] Add and pass core unit tests for configuration, context, version, and error formatting.
 - [x] Build and run a minimal headless lifecycle smoke example without window/renderer dependencies.
 - [x] Add and pass a runtime integration-test layout and engine lifecycle smoke test.
-- [ ] Verify the headless example builds/runs without introducing Phase 1/2 runtime dependencies.
+- [x] Verify the headless example builds/runs without introducing Phase 1/2 runtime dependencies.
 
 ### 0.10 Documentation and project hygiene
 
