@@ -31,6 +31,12 @@ The initial graph is intentionally small. Add crates when their phase requires t
 - Editor consumes public engine APIs.
 - Avoid circular crate dependencies.
 
+## Engine contracts and configuration
+
+The `zyne-core` crate owns engine-wide contracts: `Engine` lifecycle callbacks, validated `EngineConfig`, immutable `EngineContext`, `EngineVersion`, and `ZyneError`/`ZyneResult`. Project configuration is TOML; subsystem-specific settings stay with their owning crate. See [configuration](../CONFIGURATION.md) and [engine conventions](CONVENTIONS.md).
+
+The `zyne-runtime` crate exposes `init_logging()` as the host-level tracing subscriber setup. Library crates must not initialize a global subscriber.
+
 ## Planned building blocks
 
 | Concern | Foundation | ZYNE responsibility |
