@@ -5,9 +5,11 @@
 
 mod backend;
 mod error;
+mod event;
 mod window;
 
 pub use error::PlatformError;
+pub use event::PlatformEvent;
 pub use window::{
     PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler, WindowMode,
     WindowRunner, WindowSize,
