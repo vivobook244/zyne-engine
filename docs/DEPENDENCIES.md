@@ -12,6 +12,8 @@ ZYNE is one Rust workspace. Dependencies are added only when an implemented feat
 | uuid 1 (v4, serde) | zyne-core | Persistent resource identity |
 | tracing 0.1 | zyne-runtime | Instrumentation facade for engine diagnostics |
 | tracing-subscriber 0.3 (fmt, env-filter) | zyne-runtime | Optional process-level log subscriber |
+| winit 0.30 | zyne-platform | Native desktop window creation and OS event loop (Windows, Linux X11/Wayland) |
+| tracing 0.1 | zyne-platform | Structured platform lifecycle diagnostics |
 
 Workspace-wide versions are declared in the root Cargo.toml where shared by multiple crates.
 
@@ -24,13 +26,13 @@ Workspace-wide versions are declared in the root Cargo.toml where shared by mult
 - Can the dependency remain behind the owning crate's public API?
 - Is there a smaller standard-library or existing-dependency solution?
 
-## Reviewed candidate, not yet added
+## Reviewed and added
 
-| Dependency | Candidate version | Target crate | Decision | Planned phase |
-|---|---:|---|---|---|
-| winit | 0.30.13 | zyne-platform | Selected stable candidate; default features retain Linux X11 and Wayland support. Add only when window implementation begins. | 1.2 |
+| Dependency | Version range | Target crate | Purpose |
+|---|---:|---|---|
+| winit | 0.30.13 | zyne-platform | Initial desktop window and OS event backend. Default features retain Linux X11 and Wayland support. |
 
-The winit decision and API constraints are recorded in [Phase 1.1 Review](development/PHASE-1-1-REVIEW.md). Do not add prerelease 0.31 to the initial implementation.
+The backend decision and API constraints are recorded in [Phase 1.1 Review](development/PHASE-1-1-REVIEW.md). The initial implementation intentionally uses stable 0.30.x rather than prerelease 0.31.
 
 ## Planned, not yet reviewed or added
 
