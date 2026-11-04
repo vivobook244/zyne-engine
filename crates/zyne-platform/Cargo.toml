@@ -7,6 +7,8 @@ rust-version.workspace = true
 
 [dependencies]
 zyne-core = { path = "../zyne-core" }
+winit = "0.30.13"
+tracing.workspace = true
 
 [lints]
 workspace = true
