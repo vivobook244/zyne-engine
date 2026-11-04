@@ -25,6 +25,8 @@ jobs:
           components: rustfmt, clippy
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
+      - name: Validate workspace metadata
+        run: cargo metadata --no-deps --format-version 1 > /dev/null
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy
