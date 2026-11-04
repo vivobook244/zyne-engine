@@ -36,7 +36,7 @@
 - [x] Set workspace lint policy (unsafe_code = forbid, unused_must_use = deny, Clippy warnings).
 - [x] Run cargo metadata --no-deps successfully in CI.
 - [x] Run cargo check --workspace successfully in CI.
-- [ ] Generate and commit Cargo.lock after validation.
+- [ ] Generate and commit Cargo.lock after validation (requires Cargo dependency resolution in a Rust-enabled environment).
 
 **Evidence:** Cargo.toml, rust-toolchain.toml.
 
@@ -70,7 +70,7 @@
 - [x] Define EngineContext ownership/access rules.
 - [x] Define EngineVersion and version exposure.
 - [x] Add and pass error display-format and configuration tests in CI.
-- [ ] Review error categories and conversions across crate boundaries.
+- [x] Review error categories and conversions across crate boundaries.
 
 **Evidence:** crates/zyne-core/src/lib.rs, crates/zyne-core/src/error.rs.
 
@@ -144,7 +144,7 @@
 - [x] Configure GitHub Actions for cargo fmt, cargo clippy, cargo test, and cargo check.
 - [x] Verify the workflow triggers on the current main branch and completes successfully.
 - [x] Obtain a successful CI run; formatting, Clippy, tests, workspace check, and headless example pass.
-- [ ] Run the same commands locally before closing Phase 0.
+- [ ] Run the same commands locally before closing Phase 0 (the current editing environment has no Rust/Cargo toolchain).
 
 **Required validation commands:**
 
@@ -171,4 +171,4 @@ Phase 0 may be marked DONE only when all of the following are true:
 - [x] GitHub Actions validation is green.
 - [x] README, architecture, contribution guide, and this checklist reflect the actual implementation.
 
-**Current decision:** Phase 0 remains IN PROGRESS. Do not start Phase 1 implementation until the exit criteria above are satisfied or explicitly re-scoped.
+**Current decision:** Phase 0 remains IN PROGRESS. Core error taxonomy review is complete. The remaining closure blockers are a generated/committed `Cargo.lock` and a local validation run in a Rust-enabled environment. CI success is recorded as remote validation, not a substitute for the requested local run. Do not start Phase 1 implementation until the exit criteria above are satisfied or explicitly re-scoped.
