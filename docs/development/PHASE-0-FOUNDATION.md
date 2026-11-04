@@ -152,7 +152,7 @@
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo check --workspace
+cargo check --locked --workspace
 cargo run --locked -p zyne-runtime --example headless_smoke
 ~~~
 
