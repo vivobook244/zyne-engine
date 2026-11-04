@@ -15,7 +15,7 @@
 - [x] DONE — Coordinate, transform, camera, projection, and GLTF importer-boundary conventions are specified; implementation tests await concrete math types.
 - [x] DONE — Engine lifecycle, context, version, typed errors, and validated configuration contracts are implemented.
 - [x] DONE — TOML configuration format, schema, defaults, parser, serializer, and validation are implemented.
-- [x] DONE — Runtime logging initialization via tracing-subscriber is implemented; execution still needs validation.
+- [x] DONE — Runtime logging initialization via tracing-subscriber is implemented and validated by the headless smoke example.
 - [x] DONE — UUID-based persistent resource identity and generation-checked typed runtime handles are implemented and documented; full registry/loader remains deferred.
 - [x] DONE — Initial public API and module conventions are documented.
 - [x] DONE — Core unit tests and runtime lifecycle integration test pass in GitHub Actions.
@@ -34,7 +34,7 @@
 - [x] Configure workspace resolver and shared package metadata.
 - [x] Set Rust stable toolchain and required components (rustfmt, clippy).
 - [x] Set workspace lint policy (unsafe_code = forbid, unused_must_use = deny, Clippy warnings).
-- [x] Add cargo metadata --no-deps validation to CI (successful run pending).
+- [x] Run cargo metadata --no-deps successfully in CI.
 - [x] Run cargo check --workspace successfully in CI.
 - [ ] Generate and commit Cargo.lock after validation.
 
@@ -69,7 +69,7 @@
 - [x] Define EngineConfig and configuration validation errors.
 - [x] Define EngineContext ownership/access rules.
 - [x] Define EngineVersion and version exposure.
-- [x] Add error display-format tests; configuration tests are written but execution remains pending.
+- [x] Add and pass error display-format and configuration tests in CI.
 - [ ] Review error categories and conversions across crate boundaries.
 
 **Evidence:** crates/zyne-core/src/lib.rs, crates/zyne-core/src/error.rs.
@@ -92,7 +92,7 @@
 - [x] Choose and document TOML as the engine/project configuration format.
 - [x] Define initial configuration fields and defaults.
 - [x] Define validation behavior and useful error messages.
-- [x] Add TOML parse/serialize and validation unit tests (execution pending).
+- [x] Add and pass TOML parse/serialize and validation unit tests in CI.
 - [x] Document configuration ownership boundaries.
 
 ### 0.6 Logging and diagnostics
@@ -124,7 +124,7 @@
 - [x] Add and pass core unit tests for configuration, context, version, and error formatting.
 - [x] Build and run a minimal headless lifecycle smoke example without window/renderer dependencies.
 - [x] Add and pass a runtime integration-test layout and engine lifecycle smoke test.
-- [ ] Ensure examples build without introducing Phase 1/2 runtime dependencies prematurely.
+- [ ] Verify the headless example builds/runs without introducing Phase 1/2 runtime dependencies.
 
 ### 0.10 Documentation and project hygiene
 
@@ -135,6 +135,7 @@
 - [x] Add MIT license.
 - [x] Add Cargo-oriented .gitignore.
 - [x] Add dependency inventory with rationale for current direct dependencies.
+- [x] Add versioning and release policy.
 - [x] Document error display contract and coordinate/transform conventions.
 - [ ] Add a Phase 0 completion record with validation evidence.
 
@@ -159,8 +160,8 @@ cargo run -p zyne-runtime --example headless_smoke
 
 Phase 0 may be marked DONE only when all of the following are true:
 
-- [ ] Workspace metadata resolves and all workspace crates compile.
-- [ ] No circular crate dependency exists.
+- [x] Workspace metadata resolves and all workspace crates compile in CI.
+- [x] No circular crate dependency exists; Cargo workspace compilation passes.
 - [x] Core engine contracts, typed errors, and configuration foundation are defined.
 - [x] Logging/diagnostics foundation is present.
 - [x] Coordinate, transform, resource, and public API conventions are documented.
@@ -168,6 +169,6 @@ Phase 0 may be marked DONE only when all of the following are true:
 - [ ] Dependency choices and Cargo.lock are reviewed and committed.
 - [x] Formatting, Clippy, tests, and workspace check pass in CI.
 - [x] GitHub Actions validation is green.
-- [ ] README, architecture, contribution guide, and this checklist reflect the actual implementation.
+- [x] README, architecture, contribution guide, and this checklist reflect the actual implementation.
 
 **Current decision:** Phase 0 remains IN PROGRESS. Do not start Phase 1 implementation until the exit criteria above are satisfied or explicitly re-scoped.
