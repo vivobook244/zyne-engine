@@ -70,26 +70,41 @@ impl InputState {
 
     /// Releases all held inputs, intended for window focus loss.
     pub fn reset(&mut self) {
-        self.keys_released.extend(self.keys_down.drain());
-        self.mouse_released.extend(self.mouse_down.drain());
+        self.keys_released.append(&mut self.keys_down);
+        self.mouse_released.append(&mut self.mouse_down);
     }
 
+    /// Returns whether a key is currently held.
     #[must_use]
-    /// Returns whether a key is currently held.\n    #[must_use]\n    pub fn is_key_pressed(&self, key: KeyCode) -> bool { self.keys_down.contains(&key) }
+    pub fn is_key_pressed(&self, key: KeyCode) -> bool { self.keys_down.contains(&key) }
+
+    /// Returns whether a key transitioned to pressed this frame.
     #[must_use]
-    /// Returns whether a key transitioned to pressed this frame.\n    #[must_use]\n    pub fn just_key_pressed(&self, key: KeyCode) -> bool { self.keys_pressed.contains(&key) }
+    pub fn just_key_pressed(&self, key: KeyCode) -> bool { self.keys_pressed.contains(&key) }
+
+    /// Returns whether a key transitioned to released this frame.
     #[must_use]
-    /// Returns whether a key transitioned to released this frame.\n    #[must_use]\n    pub fn just_key_released(&self, key: KeyCode) -> bool { self.keys_released.contains(&key) }
+    pub fn just_key_released(&self, key: KeyCode) -> bool { self.keys_released.contains(&key) }
+
+    /// Returns whether a mouse button is currently held.
     #[must_use]
-    /// Returns whether a mouse button is currently held.\n    #[must_use]\n    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_down.contains(&button) }
+    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_down.contains(&button) }
+
+    /// Returns whether a mouse button transitioned to pressed this frame.
     #[must_use]
-    /// Returns whether a mouse button transitioned to pressed this frame.\n    #[must_use]\n    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_pressed.contains(&button) }
+    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_pressed.contains(&button) }
+
+    /// Returns whether a mouse button transitioned to released this frame.
     #[must_use]
-    /// Returns whether a mouse button transitioned to released this frame.\n    #[must_use]\n    pub fn just_mouse_released(&self, button: MouseButton) -> bool { self.mouse_released.contains(&button) }
+    pub fn just_mouse_released(&self, button: MouseButton) -> bool { self.mouse_released.contains(&button) }
+
+    /// Returns the latest cursor position in window coordinates, if received.
     #[must_use]
-    /// Returns the latest cursor position in window coordinates, if received.\n    #[must_use]\n    pub fn cursor_position(&self) -> Option<(f64, f64)> { self.cursor_position }
+    pub fn cursor_position(&self) -> Option<(f64, f64)> { self.cursor_position }
+
+    /// Returns accumulated scroll movement for the current frame.
     #[must_use]
-    /// Returns accumulated scroll movement for the current frame.\n    #[must_use]\n    pub fn scroll_delta(&self) -> (f32, f32) { self.scroll_delta }
+    pub fn scroll_delta(&self) -> (f64, f64) { self.scroll_delta }
 }
 
 #[cfg(test)]
