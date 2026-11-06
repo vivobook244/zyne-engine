@@ -1,8 +1,8 @@
 # Phase 1.5 — Application Lifecycle
 
-**Status:** DESIGN REVIEW — READY FOR IMPLEMENTATION  
+**Status:** IMPLEMENTATION IN PROGRESS — LOCAL VALIDATION PENDING  
 **Branch:** `main`  
-**Scope:** Runtime-owned application orchestration over the existing platform window runner. This document defines the implementation contract; it does not claim that the application loop is implemented.
+**Scope:** Runtime-owned application orchestration over the existing platform window runner. The first implementation slice is committed; platform/runtime validation and remaining acceptance work are still pending.
 
 ## 1. Goal
 
@@ -14,7 +14,7 @@ The first vertical slice remains intentionally small: one window, one engine ins
 
 The following pieces already exist:
 
-- `zyne_core::Engine`: `on_start`, variable-rate `on_update`, and `on_shutdown`.
+- `zyne_core::Engine`: `on_start`, default no-op `on_fixed_update`, variable-rate `on_update`, and `on_shutdown`.
 - `EngineConfig` and validated immutable `EngineContext`.
 - `zyne_platform::WindowRunner`: owns the winit 0.30 event loop and native window.
 - `PlatformEvent`: lifecycle, window, and normalized input events.
@@ -22,7 +22,7 @@ The following pieces already exist:
 - `zyne_runtime::InputState`: held/pressed/released keyboard and mouse state, cursor position, and accumulated scroll.
 - Runtime diagnostics initialization.
 
-The missing piece is a runtime host that connects these contracts. The current headless smoke example manually invokes engine callbacks and is not a desktop application loop.
+The runtime host now connects these contracts through `zyne_runtime::Application`. The separate headless smoke example still manually invokes engine callbacks and is not a desktop application loop.
 
 ## 3. Ownership contract
 
@@ -127,15 +127,15 @@ Do not add rendering, ECS, asset loading, physics, audio, editor UI, async runti
 
 ## 10. Acceptance criteria
 
-- [ ] A game can start a desktop application through one public `zyne-runtime` API.
-- [ ] The runtime owns the engine for the entire event-loop lifetime.
-- [ ] `on_start` is called once after successful window/application setup.
-- [ ] `on_shutdown` is called exactly once after successful startup on normal exit and recoverable runtime failure.
-- [ ] Primary errors are preserved when shutdown also fails.
-- [ ] Platform events are processed in FIFO order.
-- [ ] Input transient state is reset at frame boundaries; focus loss releases held inputs.
-- [ ] Frame delta is clamped and fixed-step catch-up is bounded.
-- [ ] The event loop sleeps/wakes without a busy loop.
+- [x] A game can start a desktop application through one public `zyne-runtime` API.
+- [x] The runtime owns the engine for the entire event-loop lifetime.
+- [x] `on_start` is called once after successful window/application setup.
+- [x] `on_shutdown` is attempted exactly once after successful startup on normal exit and recoverable runtime failure.
+- [x] Primary engine errors are preserved when shutdown also fails.
+- [x] Platform events are queued and drained in FIFO order.
+- [x] Input transient state is reset at frame boundaries; focus loss releases held inputs.
+- [x] Frame delta is clamped and fixed-step catch-up is bounded.
+- [x] The event loop uses deadline-based wait/sleep scheduling (desktop verification pending).
 - [ ] Desktop smoke example opens and closes normally on Windows and Linux.
 - [ ] `cargo fmt --all -- --check` passes.
 - [ ] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
