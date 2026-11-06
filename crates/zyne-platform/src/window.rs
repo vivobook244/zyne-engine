@@ -221,7 +221,7 @@ pub trait WindowEventHandler {
     ) -> Result<WindowControl, String> {
         match event {
             PlatformEvent::Window(event) => self.on_window_event(event, window),
-            PlatformEvent::Resumed | PlatformEvent::Suspended => Ok(WindowControl::Continue),
+            PlatformEvent::Resumed | PlatformEvent::Suspended | PlatformEvent::Input(_) => {\n                Ok(WindowControl::Continue)\n            },
         }
     }
 
