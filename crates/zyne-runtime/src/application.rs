@@ -70,7 +70,11 @@ impl Application {
         let mut failure = state.failure.take();
 
         if state.started {
-            if let Err(error) = state.engine.on_shutdown(&state.context) {
+            let shutdown_result = {
+                let RuntimeState { engine, context, .. } = &mut *state;
+                engine.on_shutdown(context)
+            };
+            if let Err(error) = shutdown_result {
                 tracing::error!(%error, "engine shutdown callback failed");
                 if failure.is_none() {
                     failure = Some(error);
@@ -112,7 +116,11 @@ struct ApplicationRunner<E> {
 impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
     fn on_window_created(&mut self, _window: &PlatformWindow) -> Result<(), String> {
         let mut state = self.state.borrow_mut();
-        match state.engine.on_start(&state.context) {
+        let startup_result = {
+            let RuntimeState { engine, context, .. } = &mut *state;
+            engine.on_start(context)
+        };
+        match startup_result {
             Ok(()) => {
                 state.started = true;
                 let now = Instant::now();
@@ -211,9 +219,11 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     while state.accumulator >= fixed_delta
         && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME
     {
-        state
-            .engine
-            .on_fixed_update(&state.context, fixed_delta_seconds)?;
+        let fixed_update_result = {
+            let RuntimeState { engine, context, .. } = state;
+            engine.on_fixed_update(context, fixed_delta_seconds)
+        };
+        fixed_update_result?;
         state.accumulator -= fixed_delta;
         fixed_updates += 1;
     }
