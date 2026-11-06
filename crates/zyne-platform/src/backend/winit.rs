@@ -169,7 +169,7 @@ impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
                 let delta = match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines { x: f64::from(x), y: f64::from(y) },
                     MouseScrollDelta::PixelDelta(position) => ScrollDelta::Pixels {
-                        x: position.x as f32, y: position.y as f32,
+                        x: position.x, y: position.y,
                     },
                 };
                 self.dispatch_platform_event(event_loop, PlatformEvent::Input(InputEvent::MouseWheel(delta)));
