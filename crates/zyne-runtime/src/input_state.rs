@@ -70,8 +70,8 @@ impl InputState {
 
     /// Releases all held inputs, intended for window focus loss.
     pub fn reset(&mut self) {
-        self.keys_released.append(&mut self.keys_down);
-        self.mouse_released.append(&mut self.mouse_down);
+        self.keys_released.extend(self.keys_down.drain());
+        self.mouse_released.extend(self.mouse_down.drain());
     }
 
     /// Returns whether a key is currently held.
