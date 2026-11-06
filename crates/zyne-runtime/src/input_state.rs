@@ -16,7 +16,7 @@ pub struct InputState {
     mouse_pressed: HashSet<MouseButton>,
     mouse_released: HashSet<MouseButton>,
     cursor_position: Option<(f64, f64)>,
-    scroll_delta: (f32, f32),
+    scroll_delta: (f64, f64),
 }
 
 impl InputState {
@@ -75,21 +75,21 @@ impl InputState {
     }
 
     #[must_use]
-    pub fn is_key_pressed(&self, key: KeyCode) -> bool { self.keys_down.contains(&key) }
+    /// Returns whether a key is currently held.\n    #[must_use]\n    pub fn is_key_pressed(&self, key: KeyCode) -> bool { self.keys_down.contains(&key) }
     #[must_use]
-    pub fn just_key_pressed(&self, key: KeyCode) -> bool { self.keys_pressed.contains(&key) }
+    /// Returns whether a key transitioned to pressed this frame.\n    #[must_use]\n    pub fn just_key_pressed(&self, key: KeyCode) -> bool { self.keys_pressed.contains(&key) }
     #[must_use]
-    pub fn just_key_released(&self, key: KeyCode) -> bool { self.keys_released.contains(&key) }
+    /// Returns whether a key transitioned to released this frame.\n    #[must_use]\n    pub fn just_key_released(&self, key: KeyCode) -> bool { self.keys_released.contains(&key) }
     #[must_use]
-    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_down.contains(&button) }
+    /// Returns whether a mouse button is currently held.\n    #[must_use]\n    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_down.contains(&button) }
     #[must_use]
-    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_pressed.contains(&button) }
+    /// Returns whether a mouse button transitioned to pressed this frame.\n    #[must_use]\n    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_pressed.contains(&button) }
     #[must_use]
-    pub fn just_mouse_released(&self, button: MouseButton) -> bool { self.mouse_released.contains(&button) }
+    /// Returns whether a mouse button transitioned to released this frame.\n    #[must_use]\n    pub fn just_mouse_released(&self, button: MouseButton) -> bool { self.mouse_released.contains(&button) }
     #[must_use]
-    pub fn cursor_position(&self) -> Option<(f64, f64)> { self.cursor_position }
+    /// Returns the latest cursor position in window coordinates, if received.\n    #[must_use]\n    pub fn cursor_position(&self) -> Option<(f64, f64)> { self.cursor_position }
     #[must_use]
-    pub fn scroll_delta(&self) -> (f32, f32) { self.scroll_delta }
+    /// Returns accumulated scroll movement for the current frame.\n    #[must_use]\n    pub fn scroll_delta(&self) -> (f32, f32) { self.scroll_delta }
 }
 
 #[cfg(test)]
