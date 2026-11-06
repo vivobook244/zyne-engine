@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{PlatformError, PlatformEvent};
 
 /// Window dimensions expressed in logical pixels (DPI-independent points).
@@ -204,6 +206,19 @@ pub trait WindowEventHandler {
     /// Return an error to stop the event loop and report initialization failure.
     fn on_window_created(&mut self, _window: &PlatformWindow) -> Result<(), String> {
         Ok(())
+    }
+
+    /// Called when the native event loop is about to wait for more events.
+    ///
+    /// Return the next runtime deadline to wake at, or `None` to sleep until
+    /// the operating system delivers another event. The platform layer maps
+    /// this deadline to its native event-loop scheduling mechanism.
+    ///
+    /// # Errors
+    ///
+    /// Return an error to stop the event loop and report handler failure.
+    fn on_about_to_wait(&mut self) -> Result<Option<Instant>, String> {
+        Ok(None)
     }
 
     /// Called for every platform lifecycle or window event.
