@@ -1,5 +1,5 @@
-/// Backend-independent keyboard and mouse input types.
- 
+//! Backend-independent keyboard and mouse input types.
+
 /// Physical keyboard keys represented by the platform abstraction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
