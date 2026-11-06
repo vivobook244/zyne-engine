@@ -41,7 +41,7 @@ impl Application {
     ///
     /// Returns the first runtime or platform error. A shutdown error is
     /// returned only when no earlier error occurred.
-    pub fn run<E: Engine + 'static>(self, engine: E) -> ZyneResult<()> {
+    pub fn run<E: Engine>(self, engine: E) -> ZyneResult<()> {
         let context = EngineContext::new(self.config.engine().clone())?;
         let fixed_delta = 1.0 / f64::from(self.config.engine().fixed_timestep_hz);
         let frame_interval = Duration::from_secs_f64(fixed_delta);
