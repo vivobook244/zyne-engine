@@ -1,7 +1,7 @@
 /// Events translated from the host operating system into ZYNE-owned types.
-use crate::window::WindowEvent;
+use crate::{input::InputEvent, window::WindowEvent};
 
-/// A platform lifecycle or window event delivered to the runtime.
+/// A platform lifecycle, window, or input event delivered to the runtime.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PlatformEvent {
     /// The host application became active or resumed.
@@ -10,4 +10,6 @@ pub enum PlatformEvent {
     Suspended,
     /// An event associated with the native window.
     Window(WindowEvent),
+    /// A normalized keyboard or mouse event.
+    Input(InputEvent),
 }
