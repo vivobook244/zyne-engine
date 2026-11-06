@@ -6,10 +6,12 @@
 mod backend;
 mod error;
 mod event;
+mod input;
 mod window;
 
 pub use error::PlatformError;
 pub use event::PlatformEvent;
+pub use input::{ButtonState, InputEvent, KeyCode, MouseButton, ScrollDelta};
 pub use window::{
     PlatformWindow, WindowConfig, WindowControl, WindowEvent, WindowEventHandler, WindowMode,
     WindowRunner, WindowSize,
