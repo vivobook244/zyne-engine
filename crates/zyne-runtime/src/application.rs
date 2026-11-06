@@ -134,7 +134,7 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
         event: PlatformEvent,
         _window: &PlatformWindow,
     ) -> Result<WindowControl, String> {
-        let should_exit = matches!(event, PlatformEvent::Window(WindowEvent::CloseRequested));
+        let should_exit = matches!(&event, PlatformEvent::Window(WindowEvent::CloseRequested));
         self.state.borrow_mut().events.push(event);
         Ok(if should_exit {
             WindowControl::Exit
