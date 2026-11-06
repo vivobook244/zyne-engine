@@ -184,7 +184,16 @@ impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        event_loop.set_control_flow(ControlFlow::Wait);
+        match self.handler.on_about_to_wait() {
+            Ok(Some(deadline)) => {
+                event_loop.set_control_flow(ControlFlow::WaitUntil(deadline));
+            }
+            Ok(None) => event_loop.set_control_flow(ControlFlow::Wait),
+            Err(message) => {
+                self.failure = Some(PlatformError::Handler(message));
+                event_loop.exit();
+            }
+        }
     }
 }
 
