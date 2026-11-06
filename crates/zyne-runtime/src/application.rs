@@ -213,7 +213,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     state.accumulator += delta;
 
     let fixed_delta = state.fixed_delta;
-    // The engine callback contract uses f32 seconds; timing remains f64 internally.\n    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]\n    let fixed_delta_seconds = fixed_delta as f32;
+    // The engine callback contract uses f32 seconds; timing remains f64 internally.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+    let fixed_delta_seconds = fixed_delta as f32;
     let mut fixed_updates = 0;
 
     while state.accumulator >= fixed_delta
@@ -236,7 +238,14 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         state.accumulator %= fixed_delta;
     }
 
-    // The engine callback contract uses f32 seconds; timing remains f64 internally.\n    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]\n    let frame_delta_seconds = delta as f32;\n    state.engine.on_update(&state.context, frame_delta_seconds)?;
+    // The engine callback contract uses f32 seconds; timing remains f64 internally.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+    let frame_delta_seconds = delta as f32;
+    let update_result = {
+        let RuntimeState { engine, context, .. } = state;
+        engine.on_update(context, frame_delta_seconds)
+    };
+    update_result?;
     state.next_frame = Some(now + state.frame_interval);
 
     Ok(())
