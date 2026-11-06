@@ -36,8 +36,8 @@ pub enum MouseButton {
 /// Scroll amount reported by the platform, preserving its native unit.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ScrollDelta {
-    Lines { x: f32, y: f32 },
-    Pixels { x: f32, y: f32 },
+    Lines { x: f64, y: f64 },
+    Pixels { x: f64, y: f64 },
 }
 
 /// A normalized keyboard or mouse event.
