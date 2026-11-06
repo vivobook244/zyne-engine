@@ -167,7 +167,7 @@ impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
             }
             WinitWindowEvent::MouseWheel { delta, .. } => {
                 let delta = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines { x, y },
+                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines { x: f64::from(x), y: f64::from(y) },
                     MouseScrollDelta::PixelDelta(position) => ScrollDelta::Pixels {
                         x: position.x as f32, y: position.y as f32,
                     },
