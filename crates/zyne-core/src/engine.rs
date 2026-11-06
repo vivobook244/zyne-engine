@@ -12,14 +12,31 @@ pub trait Engine {
     /// Returns an error if game or subsystem initialization fails.
     fn on_start(&mut self, context: &EngineContext) -> ZyneResult<()>;
 
-    /// Called for each variable-rate frame update.
+    /// Called at the configured fixed simulation frequency.
+    ///
+    /// The runtime may call this zero or more times per rendered frame to
+    /// catch up with elapsed simulation time. The default is a no-op so
+    /// existing engine implementations remain source-compatible.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the fixed update cannot complete.
+    fn on_fixed_update(
+        &mut self,
+        _context: &EngineContext,
+        _fixed_delta_seconds: f32,
+    ) -> ZyneResult<()> {
+        Ok(())
+    }
+
+    /// Called once for each runtime frame with the clamped elapsed frame time.
     ///
     /// # Errors
     ///
     /// Returns an error if the update cannot complete.
     fn on_update(&mut self, context: &EngineContext, delta_seconds: f32) -> ZyneResult<()>;
 
-    /// Called once during a graceful shutdown.
+    /// Called once during graceful shutdown, but only if startup succeeded.
     ///
     /// # Errors
     ///
