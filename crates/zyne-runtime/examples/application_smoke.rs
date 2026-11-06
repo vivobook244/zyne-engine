@@ -36,7 +36,7 @@ impl Engine for SmokeEngine {
 }
 
 fn main() -> ZyneResult<()> {
-    zyne_runtime::diagnostics::init_logging();
+    zyne_runtime::diagnostics::init_logging()?;
     let application = Application::new(ApplicationConfig::default())?;
     application.run(SmokeEngine { frames: 0 })
 }
