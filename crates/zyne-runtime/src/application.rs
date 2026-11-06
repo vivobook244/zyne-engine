@@ -234,9 +234,50 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Application, ApplicationConfig};
-    use zyne_core::{EngineConfig, ZyneError};
+    use std::{
+        cell::RefCell,
+        rc::Rc,
+        time::{Duration, Instant},
+    };
+
+    use super::{
+        Application, ApplicationConfig, MAX_FIXED_UPDATES_PER_FRAME, RuntimeState, update_runtime,
+    };
+    use crate::{EventQueue, InputState};
+    use zyne_core::{Engine, EngineConfig, EngineContext, ZyneError, ZyneResult};
     use zyne_platform::{WindowConfig, WindowSize};
+    
+    struct RecordingEngine {
+        callbacks: Rc<RefCell<Vec<&'static str>>>,
+    }
+
+    impl Engine for RecordingEngine {
+        fn on_start(&mut self, _context: &EngineContext) -> ZyneResult<()> {
+            Ok(())
+        }
+
+        fn on_fixed_update(
+            &mut self,
+            _context: &EngineContext,
+            _fixed_delta_seconds: f32,
+        ) -> ZyneResult<()> {
+            self.callbacks.borrow_mut().push("fixed");
+            Ok(())
+        }
+
+        fn on_update(
+            &mut self,
+            _context: &EngineContext,
+            _delta_seconds: f32,
+        ) -> ZyneResult<()> {
+            self.callbacks.borrow_mut().push("variable");
+            Ok(())
+        }
+
+        fn on_shutdown(&mut self, _context: &EngineContext) -> ZyneResult<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn rejects_invalid_configuration_before_running() {
@@ -257,5 +298,41 @@ mod tests {
     #[test]
     fn accepts_default_configuration() {
         assert!(Application::new(ApplicationConfig::default()).is_ok());
+    }
+    
+    #[test]
+    fn fixed_updates_are_bounded_and_run_before_variable_update() {
+        let callbacks = Rc::new(RefCell::new(Vec::new()));
+        let context = EngineContext::new(EngineConfig {
+            fixed_timestep_hz: 100,
+            max_frame_delta_seconds: 0.5,
+            ..EngineConfig::default()
+        })
+        .expect("test engine configuration should be valid");
+        let now = Instant::now();
+        let mut state = RuntimeState {
+            engine: RecordingEngine {
+                callbacks: Rc::clone(&callbacks),
+            },
+            context,
+            events: EventQueue::new(),
+            input: InputState::new(),
+            started: true,
+            suspended: false,
+            failure: None,
+            last_frame: Some(now - Duration::from_millis(500)),
+            next_frame: Some(now - Duration::from_millis(1)),
+            accumulator: 0.0,
+            fixed_delta: 0.01,
+            frame_interval: Duration::from_millis(10),
+            max_frame_delta: 0.5,
+        };
+
+        update_runtime(&mut state).expect("runtime update should succeed");
+
+        let callbacks = callbacks.borrow();
+        let fixed_count = callbacks.iter().filter(|&&name| name == "fixed").count();
+        assert_eq!(fixed_count, MAX_FIXED_UPDATES_PER_FRAME as usize);
+        assert_eq!(callbacks.last(), Some(&"variable"));
     }
 }
