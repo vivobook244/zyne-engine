@@ -34,7 +34,7 @@ impl GraphicsContext {
     ///
     /// Returns a descriptive graphics error if surface, adapter, device, or
     /// surface configuration initialization fails.
-    pub fn new(window: PlatformWindow) -> Result<Self, GraphicsError> {
+    pub fn new(window: &PlatformWindow) -> Result<Self, GraphicsError> {
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
             return Err(GraphicsError::ZeroSizedSurface);
