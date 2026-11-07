@@ -41,7 +41,10 @@ impl Camera3d {
         near: f32,
         far: f32,
     ) -> Result<Self, CameraError> {
-        if !position.iter().chain(target.iter()).chain(up.iter())
+        if !position
+            .iter()
+            .chain(target.iter())
+            .chain(up.iter())
             .chain([vertical_fov_radians, aspect_ratio, near, far].iter())
             .all(|value| value.is_finite())
         {
@@ -62,7 +65,15 @@ impl Camera3d {
         if length_squared(cross(normalize(sub(target, position)), up)) <= f32::EPSILON {
             return Err(CameraError::DegenerateUpDirection);
         }
-        Ok(Self { position, target, up, vertical_fov_radians, aspect_ratio, near, far })
+        Ok(Self {
+            position,
+            target,
+            up,
+            vertical_fov_radians,
+            aspect_ratio,
+            near,
+            far,
+        })
     }
 
     /// Changes the viewport aspect ratio after validating it.
@@ -87,7 +98,12 @@ impl Camera3d {
             [right[0], up[0], -forward[0], 0.0],
             [right[1], up[1], -forward[1], 0.0],
             [right[2], up[2], -forward[2], 0.0],
-            [-dot(right, self.position), -dot(up, self.position), dot(forward, self.position), 1.0],
+            [
+                -dot(right, self.position),
+                -dot(up, self.position),
+                dot(forward, self.position),
+                1.0,
+            ],
         ]
     }
 
@@ -111,15 +127,21 @@ impl Camera3d {
 
     /// Returns the camera world-space position.
     #[must_use]
-    pub const fn position(&self) -> [f32; 3] { self.position }
+    pub const fn position(&self) -> [f32; 3] {
+        self.position
+    }
 
     /// Returns the camera world-space target.
     #[must_use]
-    pub const fn target(&self) -> [f32; 3] { self.target }
+    pub const fn target(&self) -> [f32; 3] {
+        self.target
+    }
 
     /// Returns the current viewport aspect ratio.
     #[must_use]
-    pub const fn aspect_ratio(&self) -> f32 { self.aspect_ratio }
+    pub const fn aspect_ratio(&self) -> f32 {
+        self.aspect_ratio
+    }
 }
 
 fn multiply(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
@@ -141,12 +163,22 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
-fn length_squared(v: [f32; 3]) -> f32 { dot(v, v) }
+fn length_squared(v: [f32; 3]) -> f32 {
+    dot(v, v)
+}
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let inverse_length = length_squared(v).sqrt().recip();
-    [v[0] * inverse_length, v[1] * inverse_length, v[2] * inverse_length]
+    [
+        v[0] * inverse_length,
+        v[1] * inverse_length,
+        v[2] * inverse_length,
+    ]
 }
 
 #[cfg(test)]
@@ -155,9 +187,15 @@ mod tests {
 
     fn camera() -> Camera3d {
         Camera3d::new(
-            [4.0, 2.8, 4.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0],
-            55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0,
-        ).expect("test camera parameters should be valid")
+            [4.0, 2.8, 4.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            55.0_f32.to_radians(),
+            16.0 / 9.0,
+            0.1,
+            100.0,
+        )
+        .expect("test camera parameters should be valid")
     }
 
     #[test]
@@ -197,7 +235,10 @@ mod tests {
         let mut camera = camera();
         assert_eq!(camera.set_aspect_ratio(2.0), Ok(()));
         assert_eq!(camera.aspect_ratio(), 2.0);
-        assert_eq!(camera.set_aspect_ratio(0.0), Err(CameraError::InvalidAspectRatio));
+        assert_eq!(
+            camera.set_aspect_ratio(0.0),
+            Err(CameraError::InvalidAspectRatio)
+        );
         assert_eq!(camera.aspect_ratio(), 2.0);
     }
 }
