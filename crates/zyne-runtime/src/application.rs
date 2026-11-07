@@ -147,8 +147,29 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
     fn on_platform_event(
         &mut self,
         event: PlatformEvent,
-        _window: &PlatformWindow,
+        window: &PlatformWindow,
     ) -> Result<WindowControl, String> {
+        match &event {
+            PlatformEvent::Window(WindowEvent::Resized { width, height }) => {
+                if let Some(graphics) = self.state.borrow_mut().graphics.as_mut() {
+                    graphics.resize(*width, *height);
+                }
+            }
+            PlatformEvent::Window(WindowEvent::ScaleFactorChanged { .. })
+            | PlatformEvent::Resumed => {
+                let size = window.inner_size();
+                if let Some(graphics) = self.state.borrow_mut().graphics.as_mut() {
+                    graphics.resize(size.width, size.height);
+                }
+            }
+            PlatformEvent::Suspended => {
+                if let Some(graphics) = self.state.borrow_mut().graphics.as_mut() {
+                    graphics.suspend();
+                }
+            }
+            _ => {}
+        }
+
         match &event {
             PlatformEvent::Window(WindowEvent::Resized { width, height }) => {
                 tracing::info!(
