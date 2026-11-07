@@ -1,16 +1,18 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct Vertex {
-    position: [f32; 2],
+    position: [f32; 3],
     color: [f32; 3],
 }
 
 impl Vertex {
     const ATTRIBUTES: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3];
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 
     const fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -21,43 +23,84 @@ impl Vertex {
     }
 }
 
-const TRIANGLE_VERTICES: [Vertex; 3] = [
-    Vertex {
-        position: [0.0, 0.58],
-        color: [0.95, 0.30, 0.24],
-    },
-    Vertex {
-        position: [-0.58, -0.48],
-        color: [0.25, 0.78, 0.48],
-    },
-    Vertex {
-        position: [0.58, -0.48],
-        color: [0.25, 0.55, 0.95],
-    },
-];
-
-/// Minimal render pipeline used to validate the first geometry draw path.
-pub(super) struct TrianglePipeline {
-    pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct CameraUniform {
+    view_projection: [[f32; 4]; 4],
 }
 
-impl TrianglePipeline {
-    /// Creates a vertex-colored triangle pipeline for the active surface format.
+const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
+    ([0.95, 0.28, 0.22], [[-0.7,-0.7,0.7],[0.7,-0.7,0.7],[0.7,0.7,0.7],[-0.7,0.7,0.7]]),
+    ([0.22, 0.72, 0.95], [[0.7,-0.7,-0.7],[-0.7,-0.7,-0.7],[-0.7,0.7,-0.7],[0.7,0.7,-0.7]]),
+    ([0.30, 0.85, 0.48], [[0.7,-0.7,0.7],[0.7,-0.7,-0.7],[0.7,0.7,-0.7],[0.7,0.7,0.7]]),
+    ([0.95, 0.72, 0.24], [[-0.7,-0.7,-0.7],[-0.7,-0.7,0.7],[-0.7,0.7,0.7],[-0.7,0.7,-0.7]]),
+    ([0.68, 0.42, 0.92], [[-0.7,0.7,0.7],[0.7,0.7,0.7],[0.7,0.7,-0.7],[-0.7,0.7,-0.7]]),
+    ([0.24, 0.78, 0.82], [[-0.7,-0.7,-0.7],[0.7,-0.7,-0.7],[0.7,-0.7,0.7],[-0.7,-0.7,0.7]]),
+];
+
+fn cube_vertices() -> [Vertex; 36] {
+    let mut vertices = [Vertex { position: [0.0; 3], color: [0.0; 3] }; 36];
+    let triangles = [0, 1, 2, 0, 2, 3];
+    for (face_index, (color, corners)) in CUBE_FACES.iter().enumerate() {
+        for (vertex_index, triangle_corner) in triangles.iter().enumerate() {
+            vertices[face_index * 6 + vertex_index] = Vertex {
+                position: corners[*triangle_corner],
+                color: *color,
+            };
+        }
+    }
+    vertices
+}
+
+/// A perspective-projected, depth-tested cube pipeline.
+pub(super) struct CubePipeline {
+    pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
+}
+
+impl CubePipeline {
     pub(super) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ZYNE Basic Triangle Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic_triangle.wgsl").into()),
+            label: Some("ZYNE 3D Cube Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic_3d.wgsl").into()),
         });
-
+        let camera_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ZYNE Camera Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Camera Uniform"),
+            contents: bytemuck::bytes_of(&CameraUniform {
+                view_projection: identity_matrix(),
+            }),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ZYNE Camera Bind Group"),
+            layout: &camera_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+        });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ZYNE Basic Triangle Pipeline Layout"),
-            bind_group_layouts: &[],
+            label: Some("ZYNE 3D Cube Pipeline Layout"),
+            bind_group_layouts: &[&camera_layout],
             push_constant_ranges: &[],
         });
-
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ZYNE Basic Triangle Pipeline"),
+            label: Some("ZYNE 3D Cube Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -74,7 +117,13 @@ impl TrianglePipeline {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -89,46 +138,90 @@ impl TrianglePipeline {
             multiview: None,
             cache: None,
         });
-
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ZYNE Basic Triangle Vertices"),
-            contents: bytemuck::cast_slice(&TRIANGLE_VERTICES),
+            label: Some("ZYNE Cube Vertices"),
+            contents: bytemuck::cast_slice(&cube_vertices()),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        Self {
-            pipeline,
-            vertex_buffer,
+        Self { pipeline, vertex_buffer, camera_buffer, camera_bind_group }
+    }
+
+    pub(super) fn update_camera(&self, queue: &wgpu::Queue, width: u32, height: u32) {
+        if width == 0 || height == 0 { return; }
+        #[allow(clippy::cast_precision_loss)]
+        let aspect = width as f32 / height as f32;
+        let projection = perspective_rh_wgpu(55.0_f32.to_radians(), aspect, 0.1, 100.0);
+        let view = look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        let model = rotation_y(0.55);
+        let view_projection = multiply(projection, multiply(view, model));
+        let uniform = CameraUniform { view_projection: to_columns(view_projection) };
+        queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline { &self.pipeline }
+    pub(super) const fn vertex_buffer(&self) -> &wgpu::Buffer { &self.vertex_buffer }
+    pub(super) const fn camera_bind_group(&self) -> &wgpu::BindGroup { &self.camera_bind_group }
+}
+
+fn identity_matrix() -> [[f32; 4]; 4] {
+    [[1.0,0.0,0.0,0.0],[0.0,1.0,0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]]
+}
+fn to_columns(m: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    [[m[0][0],m[1][0],m[2][0],m[3][0]],[m[0][1],m[1][1],m[2][1],m[3][1]],[m[0][2],m[1][2],m[2][2],m[3][2]],[m[0][3],m[1][3],m[2][3],m[3][3]]]
+}
+fn multiply(a: [[f32;4];4], b: [[f32;4];4]) -> [[f32;4];4] {
+    let mut out = [[0.0;4];4];
+    for (row_index, row) in out.iter_mut().enumerate() {
+        for (column_index, value) in row.iter_mut().enumerate() {
+            for (inner_index, left) in a[row_index].iter().enumerate() {
+                *value += left * b[inner_index][column_index];
+            }
         }
     }
-
-    pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline {
-        &self.pipeline
-    }
-
-    pub(super) const fn vertex_buffer(&self) -> &wgpu::Buffer {
-        &self.vertex_buffer
-    }
+    out
 }
+fn rotation_y(angle: f32) -> [[f32;4];4] {
+    let (s,c) = angle.sin_cos();
+    [[c,0.0,s,0.0],[0.0,1.0,0.0,0.0],[-s,0.0,c,0.0],[0.0,0.0,0.0,1.0]]
+}
+fn perspective_rh_wgpu(fov: f32, aspect: f32, near: f32, far: f32) -> [[f32;4];4] {
+    let f = 1.0 / (fov * 0.5).tan();
+    [[f/aspect,0.0,0.0,0.0],[0.0,f,0.0,0.0],[0.0,0.0,far/(near-far),-1.0],[0.0,0.0,(near*far)/(near-far),0.0]]
+}
+fn look_at_rh(eye: [f32;3], target: [f32;3], up: [f32;3]) -> [[f32;4];4] {
+    let f = normalize(sub(target, eye));
+    let s = normalize(cross(f, up));
+    let u = cross(s, f);
+    [[s[0],u[0],-f[0],0.0],[s[1],u[1],-f[1],0.0],[s[2],u[2],-f[2],0.0],[-dot(s,eye),-dot(u,eye),dot(f,eye),1.0]]
+}
+fn sub(a:[f32;3],b:[f32;3])->[f32;3] { [a[0]-b[0],a[1]-b[1],a[2]-b[2]] }
+fn dot(a:[f32;3],b:[f32;3])->f32 { a[0]*b[0]+a[1]*b[1]+a[2]*b[2] }
+fn cross(a:[f32;3],b:[f32;3])->[f32;3] { [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]] }
+fn normalize(v:[f32;3])->[f32;3] { let len=dot(v,v).sqrt(); [v[0]/len,v[1]/len,v[2]/len] }
 
 #[cfg(test)]
 mod tests {
-    use super::{TRIANGLE_VERTICES, Vertex};
+    use super::{cube_vertices, multiply, perspective_rh_wgpu, rotation_y};
 
     #[test]
-    fn triangle_vertex_layout_has_expected_packed_size() {
-        assert_eq!(std::mem::size_of::<Vertex>(), 20);
-        assert_eq!(Vertex::layout().array_stride, 20);
+    fn cube_has_twelve_triangles_and_valid_colors() {
+        let vertices = cube_vertices();
+        assert_eq!(vertices.len(), 36);
+        assert!(vertices.iter().all(|v| v.position.iter().all(|n| (-0.7..=0.7).contains(n))));
+        assert!(vertices.iter().all(|v| v.color.iter().all(|n| (0.0..=1.0).contains(n))));
     }
 
     #[test]
-    fn triangle_contains_three_vertices_inside_clip_space() {
-        assert_eq!(TRIANGLE_VERTICES.len(), 3);
-        assert!(TRIANGLE_VERTICES.iter().all(|vertex| {
-            vertex
-                .position
-                .iter()
-                .all(|coordinate| (-1.0..=1.0).contains(coordinate))
-        }));
+    fn perspective_matrix_has_expected_clip_depth_terms() {
+        let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0/9.0, 0.1, 100.0);
+        assert!(matrix[3][2] < 0.0);
+        assert_eq!(matrix[3][3], 0.0);
+    }
+
+    #[test]
+    fn matrix_multiplication_preserves_identity() {
+        let identity = [[1.0,0.0,0.0,0.0],[0.0,1.0,0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
+        assert_eq!(multiply(identity, rotation_y(0.5)), rotation_y(0.5));
     }
 }

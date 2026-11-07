@@ -8,7 +8,7 @@ use wgpu::{
 };
 use zyne_platform::PlatformWindow;
 
-use crate::{FrameOutcome, GraphicsError, pipeline::TrianglePipeline};
+use crate::{FrameOutcome, GraphicsError, pipeline::CubePipeline};
 
 const DEFAULT_CLEAR_COLOR: Color = Color {
     r: 0.055,
@@ -26,7 +26,9 @@ pub struct GraphicsContext {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
-    triangle_pipeline: TrianglePipeline,
+    cube_pipeline: CubePipeline,
+    _depth_texture: wgpu::Texture,
+    depth_view: wgpu::TextureView,
     surface_suspended: bool,
 }
 
@@ -71,7 +73,12 @@ impl GraphicsContext {
         let capabilities = surface.get_capabilities(&adapter);
         let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
-        let triangle_pipeline = TrianglePipeline::new(&device, surface_config.format);
+        let cube_pipeline = CubePipeline::new(&device, surface_config.format);
+        let (depth_texture, depth_view) = create_depth_texture(
+            &device,
+            surface_config.width,
+            surface_config.height,
+        );
 
         tracing::info!(
             adapter = %adapter_info.name,
@@ -93,7 +100,9 @@ impl GraphicsContext {
             queue,
             surface,
             surface_config,
-            triangle_pipeline,
+            cube_pipeline,
+            _depth_texture: depth_texture,
+            depth_view,
             surface_suspended: false,
         })
     }
@@ -119,6 +128,12 @@ impl GraphicsContext {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+        self.cube_pipeline.update_camera(
+            &self.queue,
+            self.surface_config.width,
+            self.surface_config.height,
+        );
+
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -137,15 +152,23 @@ impl GraphicsContext {
             })];
 
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("ZYNE Triangle Render Pass"),
+                label: Some("ZYNE 3D Cube Render Pass"),
                 color_attachments: &color_attachments,
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: LoadOp::Clear(1.0),
+                        store: StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            render_pass.set_pipeline(self.triangle_pipeline.pipeline());
-            render_pass.set_vertex_buffer(0, self.triangle_pipeline.vertex_buffer().slice(..));
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_pipeline(self.cube_pipeline.pipeline());
+            render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
+            render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
+            render_pass.draw(0..36, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));
@@ -248,6 +271,13 @@ impl GraphicsContext {
         self.surface_config.width = width;
         self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
+        let (depth_texture, depth_view) = create_depth_texture(
+            &self.device,
+            self.surface_config.width,
+            self.surface_config.height,
+        );
+        self._depth_texture = depth_texture;
+        self.depth_view = depth_view;
         self.surface_suspended = false;
 
         tracing::info!(width, height, "graphics surface reconfigured");
@@ -278,6 +308,29 @@ impl GraphicsContext {
     pub const fn surface(&self) -> &Surface<'static> {
         &self.surface
     }
+}
+
+fn create_depth_texture(
+    device: &Device,
+    width: u32,
+    height: u32,
+) -> (wgpu::Texture, wgpu::TextureView) {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ZYNE Main Depth Texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Depth32Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    (texture, view)
 }
 
 fn surface_resize_requires_configuration(
