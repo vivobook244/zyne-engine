@@ -49,7 +49,7 @@ impl Application {
         let state = Rc::new(RefCell::new(RuntimeState {
             engine,
             context,
-            __graphics: None,
+            _graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: false,
@@ -98,7 +98,7 @@ impl Application {
 struct RuntimeState<E> {
     engine: E,
     context: EngineContext,
-    __graphics: Option<GraphicsContext>,
+    _graphics: Option<GraphicsContext>,
     events: EventQueue,
     input: InputState,
     started: bool,
@@ -362,7 +362,7 @@ mod tests {
                 callbacks: Rc::clone(&callbacks),
             },
             context,
-            __graphics: None,
+            _graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: true,
