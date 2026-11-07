@@ -170,6 +170,9 @@ impl GraphicsContext {
                     );
                     self.surface.configure(&self.device, &self.surface_config);
                 }
+                Err(error) => {
+                    return Err(GraphicsError::SurfaceAcquisition(error.to_string()));
+                }
             }
         }
 
