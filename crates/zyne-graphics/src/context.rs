@@ -262,23 +262,33 @@ mod tests {
 
     #[test]
     fn resize_requires_reconfiguration_when_dimensions_change() {
-        assert!(super::surface_resize_requires_configuration(1280, 720, false, 1920, 1080));
+        assert!(super::surface_resize_requires_configuration(
+            1280, 720, false, 1920, 1080
+        ));
     }
 
     #[test]
     fn resize_skips_reconfiguration_when_dimensions_are_unchanged() {
-        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 1280, 720));
+        assert!(!super::surface_resize_requires_configuration(
+            1280, 720, false, 1280, 720
+        ));
     }
 
     #[test]
     fn resize_reconfigures_after_surface_suspension_even_at_same_dimensions() {
-        assert!(super::surface_resize_requires_configuration(1280, 720, true, 1280, 720));
+        assert!(super::surface_resize_requires_configuration(
+            1280, 720, true, 1280, 720
+        ));
     }
 
     #[test]
     fn resize_does_not_configure_zero_sized_surface() {
-        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 0, 720));
-        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 1280, 0));
+        assert!(!super::surface_resize_requires_configuration(
+            1280, 720, false, 0, 720
+        ));
+        assert!(!super::surface_resize_requires_configuration(
+            1280, 720, false, 1280, 0
+        ));
     }
 
     #[test]

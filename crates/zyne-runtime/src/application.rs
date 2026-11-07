@@ -176,11 +176,7 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
 
         match &event {
             PlatformEvent::Window(WindowEvent::Resized { width, height }) => {
-                tracing::info!(
-                    width,
-                    height,
-                    "application window resized"
-                );
+                tracing::info!(width, height, "application window resized");
             }
             PlatformEvent::Window(WindowEvent::ScaleFactorChanged { scale_factor }) => {
                 tracing::info!(scale_factor, "application window scale factor changed");
