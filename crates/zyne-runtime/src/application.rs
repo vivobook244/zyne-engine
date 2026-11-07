@@ -49,7 +49,7 @@ impl Application {
         let state = Rc::new(RefCell::new(RuntimeState {
             engine,
             context,
-            graphics: None,
+            _graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: false,
@@ -98,7 +98,7 @@ impl Application {
 struct RuntimeState<E> {
     engine: E,
     context: EngineContext,
-    graphics: Option<GraphicsContext>,
+    _graphics: Option<GraphicsContext>,
     events: EventQueue,
     input: InputState,
     started: bool,
@@ -120,7 +120,7 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
     fn on_window_created(&mut self, window: &PlatformWindow) -> Result<(), String> {
         let graphics = GraphicsContext::new(window.clone()).map_err(|error| error.to_string())?;
         let mut state = self.state.borrow_mut();
-        state.graphics = Some(graphics);
+        state._graphics = Some(graphics);
         let startup_result = {
             let RuntimeState { engine, context, .. } = &mut *state;
             engine.on_start(context)
@@ -362,7 +362,7 @@ mod tests {
                 callbacks: Rc::clone(&callbacks),
             },
             context,
-            graphics: None,
+            _graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: true,
