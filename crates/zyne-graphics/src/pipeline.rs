@@ -30,17 +30,69 @@ struct CameraUniform {
 }
 
 const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
-    ([0.95, 0.28, 0.22], [[-0.7,-0.7,0.7],[0.7,-0.7,0.7],[0.7,0.7,0.7],[-0.7,0.7,0.7]]),
-    ([0.22, 0.72, 0.95], [[0.7,-0.7,-0.7],[-0.7,-0.7,-0.7],[-0.7,0.7,-0.7],[0.7,0.7,-0.7]]),
-    ([0.30, 0.85, 0.48], [[0.7,-0.7,0.7],[0.7,-0.7,-0.7],[0.7,0.7,-0.7],[0.7,0.7,0.7]]),
-    ([0.95, 0.72, 0.24], [[-0.7,-0.7,-0.7],[-0.7,-0.7,0.7],[-0.7,0.7,0.7],[-0.7,0.7,-0.7]]),
-    ([0.68, 0.42, 0.92], [[-0.7,0.7,0.7],[0.7,0.7,0.7],[0.7,0.7,-0.7],[-0.7,0.7,-0.7]]),
-    ([0.24, 0.78, 0.82], [[-0.7,-0.7,-0.7],[0.7,-0.7,-0.7],[0.7,-0.7,0.7],[-0.7,-0.7,0.7]]),
+    (
+        [0.95, 0.28, 0.22],
+        [
+            [-0.7, -0.7, 0.7],
+            [0.7, -0.7, 0.7],
+            [0.7, 0.7, 0.7],
+            [-0.7, 0.7, 0.7],
+        ],
+    ),
+    (
+        [0.22, 0.72, 0.95],
+        [
+            [0.7, -0.7, -0.7],
+            [-0.7, -0.7, -0.7],
+            [-0.7, 0.7, -0.7],
+            [0.7, 0.7, -0.7],
+        ],
+    ),
+    (
+        [0.30, 0.85, 0.48],
+        [
+            [0.7, -0.7, 0.7],
+            [0.7, -0.7, -0.7],
+            [0.7, 0.7, -0.7],
+            [0.7, 0.7, 0.7],
+        ],
+    ),
+    (
+        [0.95, 0.72, 0.24],
+        [
+            [-0.7, -0.7, -0.7],
+            [-0.7, -0.7, 0.7],
+            [-0.7, 0.7, 0.7],
+            [-0.7, 0.7, -0.7],
+        ],
+    ),
+    (
+        [0.68, 0.42, 0.92],
+        [
+            [-0.7, 0.7, 0.7],
+            [0.7, 0.7, 0.7],
+            [0.7, 0.7, -0.7],
+            [-0.7, 0.7, -0.7],
+        ],
+    ),
+    (
+        [0.24, 0.78, 0.82],
+        [
+            [-0.7, -0.7, -0.7],
+            [0.7, -0.7, -0.7],
+            [0.7, -0.7, 0.7],
+            [-0.7, -0.7, 0.7],
+        ],
+    ),
 ];
 
 fn cube_vertices() -> [Vertex; 36] {
-    let mut vertices = [Vertex { position: [0.0; 3], color: [0.0; 3] }; 36];
+    let mut vertices = [Vertex {
+        position: [0.0; 3],
+        color: [0.0; 3],
+    }; 36];
     let triangles = [0, 1, 2, 0, 2, 3];
+
     for (face_index, (color, corners)) in CUBE_FACES.iter().enumerate() {
         for (vertex_index, triangle_corner) in triangles.iter().enumerate() {
             vertices[face_index * 6 + vertex_index] = Vertex {
@@ -49,6 +101,7 @@ fn cube_vertices() -> [Vertex; 36] {
             };
         }
     }
+
     vertices
 }
 
@@ -144,34 +197,90 @@ impl CubePipeline {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        Self { pipeline, vertex_buffer, camera_buffer, camera_bind_group }
+        Self {
+            pipeline,
+            vertex_buffer,
+            camera_buffer,
+            camera_bind_group,
+        }
     }
 
     pub(super) fn update_camera(&self, queue: &wgpu::Queue, width: u32, height: u32) {
-        if width == 0 || height == 0 { return; }
+        if width == 0 || height == 0 {
+            return;
+        }
+
         #[allow(clippy::cast_precision_loss)]
         let aspect = width as f32 / height as f32;
         let projection = perspective_rh_wgpu(55.0_f32.to_radians(), aspect, 0.1, 100.0);
-        let view = look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        let view = look_at_rh(
+            [2.8, 2.1, 4.2],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
         let model = rotation_y(0.55);
         let view_projection = multiply(projection, multiply(view, model));
-        let uniform = CameraUniform { view_projection: to_columns(view_projection) };
+        let uniform = CameraUniform {
+            view_projection: to_columns(view_projection),
+        };
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 
-    pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline { &self.pipeline }
-    pub(super) const fn vertex_buffer(&self) -> &wgpu::Buffer { &self.vertex_buffer }
-    pub(super) const fn camera_bind_group(&self) -> &wgpu::BindGroup { &self.camera_bind_group }
+    pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline {
+        &self.pipeline
+    }
+
+    pub(super) const fn vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.vertex_buffer
+    }
+
+    pub(super) const fn camera_bind_group(&self) -> &wgpu::BindGroup {
+        &self.camera_bind_group
+    }
 }
 
 fn identity_matrix() -> [[f32; 4]; 4] {
-    [[1.0,0.0,0.0,0.0],[0.0,1.0,0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]]
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
-fn to_columns(m: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
-    [[m[0][0],m[1][0],m[2][0],m[3][0]],[m[0][1],m[1][1],m[2][1],m[3][1]],[m[0][2],m[1][2],m[2][2],m[3][2]],[m[0][3],m[1][3],m[2][3],m[3][3]]]
+
+fn to_columns(matrix: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    [
+        [
+            matrix[0][0],
+            matrix[1][0],
+            matrix[2][0],
+            matrix[3][0],
+        ],
+        [
+            matrix[0][1],
+            matrix[1][1],
+            matrix[2][1],
+            matrix[3][1],
+        ],
+        [
+            matrix[0][2],
+            matrix[1][2],
+            matrix[2][2],
+            matrix[3][2],
+        ],
+        [
+            matrix[0][3],
+            matrix[1][3],
+            matrix[2][3],
+            matrix[3][3],
+        ],
+    ]
 }
-fn multiply(a: [[f32;4];4], b: [[f32;4];4]) -> [[f32;4];4] {
-    let mut out = [[0.0;4];4];
+
+#[allow(clippy::many_single_char_names)]
+fn multiply(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let mut out = [[0.0; 4]; 4];
+
     for (row_index, row) in out.iter_mut().enumerate() {
         for (column_index, value) in row.iter_mut().enumerate() {
             for (inner_index, left) in a[row_index].iter().enumerate() {
@@ -179,26 +288,66 @@ fn multiply(a: [[f32;4];4], b: [[f32;4];4]) -> [[f32;4];4] {
             }
         }
     }
+
     out
 }
-fn rotation_y(angle: f32) -> [[f32;4];4] {
-    let (s,c) = angle.sin_cos();
-    [[c,0.0,s,0.0],[0.0,1.0,0.0,0.0],[-s,0.0,c,0.0],[0.0,0.0,0.0,1.0]]
+
+fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
+    let (s, c) = angle.sin_cos();
+    [
+        [c, 0.0, s, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [-s, 0.0, c, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
-fn perspective_rh_wgpu(fov: f32, aspect: f32, near: f32, far: f32) -> [[f32;4];4] {
+
+fn perspective_rh_wgpu(fov: f32, aspect: f32, near: f32, far: f32) -> [[f32; 4]; 4] {
     let f = 1.0 / (fov * 0.5).tan();
-    [[f/aspect,0.0,0.0,0.0],[0.0,f,0.0,0.0],[0.0,0.0,far/(near-far),-1.0],[0.0,0.0,(near*far)/(near-far),0.0]]
+    [
+        [f / aspect, 0.0, 0.0, 0.0],
+        [0.0, f, 0.0, 0.0],
+        [0.0, 0.0, far / (near - far), -1.0],
+        [0.0, 0.0, (near * far) / (near - far), 0.0],
+    ]
 }
-fn look_at_rh(eye: [f32;3], target: [f32;3], up: [f32;3]) -> [[f32;4];4] {
+
+fn look_at_rh(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> [[f32; 4]; 4] {
     let f = normalize(sub(target, eye));
     let s = normalize(cross(f, up));
     let u = cross(s, f);
-    [[s[0],u[0],-f[0],0.0],[s[1],u[1],-f[1],0.0],[s[2],u[2],-f[2],0.0],[-dot(s,eye),-dot(u,eye),dot(f,eye),1.0]]
+    [
+        [s[0], u[0], -f[0], 0.0],
+        [s[1], u[1], -f[1], 0.0],
+        [s[2], u[2], -f[2], 0.0],
+        [-dot(s, eye), -dot(u, eye), dot(f, eye), 1.0],
+    ]
 }
-fn sub(a:[f32;3],b:[f32;3])->[f32;3] { [a[0]-b[0],a[1]-b[1],a[2]-b[2]] }
-fn dot(a:[f32;3],b:[f32;3])->f32 { a[0]*b[0]+a[1]*b[1]+a[2]*b[2] }
-fn cross(a:[f32;3],b:[f32;3])->[f32;3] { [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]] }
-fn normalize(v:[f32;3])->[f32;3] { let len=dot(v,v).sqrt(); [v[0]/len,v[1]/len,v[2]/len] }
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn normalize(vector: [f32; 3]) -> [f32; 3] {
+    let length = dot(vector, vector).sqrt();
+    [
+        vector[0] / length,
+        vector[1] / length,
+        vector[2] / length,
+    ]
+}
 
 #[cfg(test)]
 mod tests {
@@ -208,20 +357,44 @@ mod tests {
     fn cube_has_twelve_triangles_and_valid_colors() {
         let vertices = cube_vertices();
         assert_eq!(vertices.len(), 36);
-        assert!(vertices.iter().all(|v| v.position.iter().all(|n| (-0.7..=0.7).contains(n))));
-        assert!(vertices.iter().all(|v| v.color.iter().all(|n| (0.0..=1.0).contains(n))));
+        assert!(
+            vertices
+                .iter()
+                .all(|vertex| vertex.position.iter().all(|n| (-0.7..=0.7).contains(n)))
+        );
+        assert!(
+            vertices
+                .iter()
+                .all(|vertex| vertex.color.iter().all(|n| (0.0..=1.0).contains(n)))
+        );
     }
 
     #[test]
     fn perspective_matrix_has_expected_clip_depth_terms() {
-        let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0/9.0, 0.1, 100.0);
+        let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
         assert!(matrix[3][2] < 0.0);
-        assert_eq!(matrix[3][3], 0.0);
+        assert!(matrix[3][3].abs() < f32::EPSILON);
     }
 
     #[test]
     fn matrix_multiplication_preserves_identity() {
-        let identity = [[1.0,0.0,0.0,0.0],[0.0,1.0,0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
-        assert_eq!(multiply(identity, rotation_y(0.5)), rotation_y(0.5));
+        let identity = identity_for_test();
+        let actual = multiply(identity, rotation_y(0.5));
+        let expected = rotation_y(0.5);
+
+        for row in 0..4 {
+            for column in 0..4 {
+                assert!((actual[row][column] - expected[row][column]).abs() < f32::EPSILON);
+            }
+        }
+    }
+
+    fn identity_for_test() -> [[f32; 4]; 4] {
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
     }
 }
