@@ -1,4 +1,8 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
+
+use raw_window_handle::{
+    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
+};
 
 use crate::{PlatformError, PlatformEvent};
 
@@ -144,14 +148,20 @@ pub enum WindowControl {
     Exit,
 }
 
-/// A platform-owned window wrapper. Native backend types remain private.
+/// A cloneable platform-owned window handle.
+///
+/// Clones keep the same native window alive. Implementing the raw-window-handle
+/// traits lets graphics backends create a surface without exposing winit types.
+#[derive(Clone)]
 pub struct PlatformWindow {
-    pub(crate) inner: winit::window::Window,
+    pub(crate) inner: Arc<winit::window::Window>,
 }
 
 impl PlatformWindow {
     pub(crate) fn new(inner: winit::window::Window) -> Self {
-        Self { inner }
+        Self {
+            inner: Arc::new(inner),
+        }
     }
 
     /// Returns the current client-area size in physical pixels.
@@ -192,6 +202,18 @@ impl PlatformWindow {
     /// Requests a redraw from the operating system.
     pub fn request_redraw(&self) {
         self.inner.request_redraw();
+    }
+}
+
+impl HasWindowHandle for PlatformWindow {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
+        self.inner.window_handle()
+    }
+}
+
+impl HasDisplayHandle for PlatformWindow {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        self.inner.display_handle()
     }
 }
 
