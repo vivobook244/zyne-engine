@@ -118,7 +118,7 @@ struct ApplicationRunner<E> {
 
 impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
     fn on_window_created(&mut self, window: &PlatformWindow) -> Result<(), String> {
-        let graphics = GraphicsContext::new(window.clone()).map_err(|error| error.to_string())?;
+        let graphics = GraphicsContext::new(window).map_err(|error| error.to_string())?;
         let mut state = self.state.borrow_mut();
         state._graphics = Some(graphics);
         let startup_result = {
