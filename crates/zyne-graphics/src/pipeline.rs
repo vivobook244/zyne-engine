@@ -213,11 +213,7 @@ impl CubePipeline {
         #[allow(clippy::cast_precision_loss)]
         let aspect = width as f32 / height as f32;
         let projection = perspective_rh_wgpu(55.0_f32.to_radians(), aspect, 0.1, 100.0);
-        let view = look_at_rh(
-            [2.8, 2.1, 4.2],
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        );
+        let view = look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
         let model = rotation_y(0.55);
         let view_projection = multiply(projection, multiply(view, model));
         let uniform = CameraUniform {
@@ -250,30 +246,10 @@ fn identity_matrix() -> [[f32; 4]; 4] {
 
 fn to_columns(matrix: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     [
-        [
-            matrix[0][0],
-            matrix[1][0],
-            matrix[2][0],
-            matrix[3][0],
-        ],
-        [
-            matrix[0][1],
-            matrix[1][1],
-            matrix[2][1],
-            matrix[3][1],
-        ],
-        [
-            matrix[0][2],
-            matrix[1][2],
-            matrix[2][2],
-            matrix[3][2],
-        ],
-        [
-            matrix[0][3],
-            matrix[1][3],
-            matrix[2][3],
-            matrix[3][3],
-        ],
+        [matrix[0][0], matrix[1][0], matrix[2][0], matrix[3][0]],
+        [matrix[0][1], matrix[1][1], matrix[2][1], matrix[3][1]],
+        [matrix[0][2], matrix[1][2], matrix[2][2], matrix[3][2]],
+        [matrix[0][3], matrix[1][3], matrix[2][3], matrix[3][3]],
     ]
 }
 
@@ -342,11 +318,7 @@ fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 
 fn normalize(vector: [f32; 3]) -> [f32; 3] {
     let length = dot(vector, vector).sqrt();
-    [
-        vector[0] / length,
-        vector[1] / length,
-        vector[2] / length,
-    ]
+    [vector[0] / length, vector[1] / length, vector[2] / length]
 }
 
 #[cfg(test)]

@@ -74,11 +74,8 @@ impl GraphicsContext {
         let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
         let cube_pipeline = CubePipeline::new(&device, surface_config.format);
-        let (depth_texture, depth_view) = create_depth_texture(
-            &device,
-            surface_config.width,
-            surface_config.height,
-        );
+        let (depth_texture, depth_view) =
+            create_depth_texture(&device, surface_config.width, surface_config.height);
 
         tracing::info!(
             adapter = %adapter_info.name,
