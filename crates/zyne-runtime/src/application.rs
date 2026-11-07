@@ -73,7 +73,9 @@ impl Application {
 
         if state.started {
             let shutdown_result = {
-                let RuntimeState { engine, context, .. } = &mut *state;
+                let RuntimeState {
+                    engine, context, ..
+                } = &mut *state;
                 engine.on_shutdown(context)
             };
             if let Err(error) = shutdown_result {
@@ -124,7 +126,9 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
         let mut state = self.state.borrow_mut();
         state.graphics = Some(graphics);
         let startup_result = {
-            let RuntimeState { engine, context, .. } = &mut *state;
+            let RuntimeState {
+                engine, context, ..
+            } = &mut *state;
             engine.on_start(context)
         };
         match startup_result {
@@ -179,10 +183,7 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
                 );
             }
             PlatformEvent::Window(WindowEvent::ScaleFactorChanged { scale_factor }) => {
-                tracing::info!(
-                    scale_factor,
-                    "application window scale factor changed"
-                );
+                tracing::info!(scale_factor, "application window scale factor changed");
             }
             _ => {}
         }
@@ -250,9 +251,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         return Ok(());
     }
 
-    let elapsed = state
-        .last_frame
-        .map_or(0.0, |last_frame| now.duration_since(last_frame).as_secs_f64());
+    let elapsed = state.last_frame.map_or(0.0, |last_frame| {
+        now.duration_since(last_frame).as_secs_f64()
+    });
     let delta = elapsed.min(state.max_frame_delta);
     state.last_frame = Some(now);
     state.accumulator += delta;
@@ -263,11 +264,11 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     let fixed_delta_seconds = fixed_delta as f32;
     let mut fixed_updates = 0;
 
-    while state.accumulator >= fixed_delta
-        && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME
-    {
+    while state.accumulator >= fixed_delta && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME {
         let fixed_update_result = {
-            let RuntimeState { engine, context, .. } = state;
+            let RuntimeState {
+                engine, context, ..
+            } = state;
             engine.on_fixed_update(context, fixed_delta_seconds)
         };
         fixed_update_result?;
@@ -287,7 +288,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
     let frame_delta_seconds = delta as f32;
     let update_result = {
-        let RuntimeState { engine, context, .. } = state;
+        let RuntimeState {
+            engine, context, ..
+        } = state;
         engine.on_update(context, frame_delta_seconds)
     };
     update_result?;
@@ -310,7 +313,7 @@ mod tests {
     use crate::{EventQueue, InputState};
     use zyne_core::{Engine, EngineConfig, EngineContext, ZyneError, ZyneResult};
     use zyne_platform::{WindowConfig, WindowSize};
-    
+
     struct RecordingEngine {
         callbacks: Rc<RefCell<Vec<&'static str>>>,
     }
@@ -329,11 +332,7 @@ mod tests {
             Ok(())
         }
 
-        fn on_update(
-            &mut self,
-            _context: &EngineContext,
-            _delta_seconds: f32,
-        ) -> ZyneResult<()> {
+        fn on_update(&mut self, _context: &EngineContext, _delta_seconds: f32) -> ZyneResult<()> {
             self.callbacks.borrow_mut().push("variable");
             Ok(())
         }
@@ -363,7 +362,7 @@ mod tests {
     fn accepts_default_configuration() {
         assert!(Application::new(ApplicationConfig::default()).is_ok());
     }
-    
+
     #[test]
     fn fixed_updates_are_bounded_and_run_before_variable_update() {
         let callbacks = Rc::new(RefCell::new(Vec::new()));

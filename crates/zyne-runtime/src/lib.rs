@@ -1,9 +1,9 @@
 //! Public runtime facade used by games built with ZYNE.
 //! Game projects should depend on this crate rather than renderer internals.
 
-pub mod diagnostics;
 mod application;
 mod application_config;
+pub mod diagnostics;
 mod event_queue;
 mod input_state;
 

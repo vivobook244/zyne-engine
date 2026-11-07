@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use zyne_platform::{ButtonState, InputEvent, KeyCode, MouseButton, PlatformEvent, ScrollDelta, WindowEvent};
+use zyne_platform::{
+    ButtonState, InputEvent, KeyCode, MouseButton, PlatformEvent, ScrollDelta, WindowEvent,
+};
 
 /// Per-frame keyboard and mouse state maintained by the runtime.
 ///
@@ -22,7 +24,9 @@ pub struct InputState {
 impl InputState {
     /// Creates an empty input state.
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Clears frame-transient states. Call once at the start of each frame.
     pub fn begin_frame(&mut self) {
@@ -45,17 +49,39 @@ impl InputState {
     /// Applies one normalized keyboard or mouse event.
     pub fn process_event(&mut self, event: InputEvent) {
         match event {
-            InputEvent::Key { code, state: ButtonState::Pressed, repeat } => {
-                if !repeat && self.keys_down.insert(code) { self.keys_pressed.insert(code); }
+            InputEvent::Key {
+                code,
+                state: ButtonState::Pressed,
+                repeat,
+            } => {
+                if !repeat && self.keys_down.insert(code) {
+                    self.keys_pressed.insert(code);
+                }
             }
-            InputEvent::Key { code, state: ButtonState::Released, .. } => {
-                if self.keys_down.remove(&code) { self.keys_released.insert(code); }
+            InputEvent::Key {
+                code,
+                state: ButtonState::Released,
+                ..
+            } => {
+                if self.keys_down.remove(&code) {
+                    self.keys_released.insert(code);
+                }
             }
-            InputEvent::MouseButton { button, state: ButtonState::Pressed } => {
-                if self.mouse_down.insert(button) { self.mouse_pressed.insert(button); }
+            InputEvent::MouseButton {
+                button,
+                state: ButtonState::Pressed,
+            } => {
+                if self.mouse_down.insert(button) {
+                    self.mouse_pressed.insert(button);
+                }
             }
-            InputEvent::MouseButton { button, state: ButtonState::Released } => {
-                if self.mouse_down.remove(&button) { self.mouse_released.insert(button); }
+            InputEvent::MouseButton {
+                button,
+                state: ButtonState::Released,
+            } => {
+                if self.mouse_down.remove(&button) {
+                    self.mouse_released.insert(button);
+                }
             }
             InputEvent::CursorMoved { x, y } => self.cursor_position = Some((x, y)),
             InputEvent::MouseWheel(delta) => {
@@ -76,52 +102,78 @@ impl InputState {
 
     /// Returns whether a key is currently held.
     #[must_use]
-    pub fn is_key_pressed(&self, key: KeyCode) -> bool { self.keys_down.contains(&key) }
+    pub fn is_key_pressed(&self, key: KeyCode) -> bool {
+        self.keys_down.contains(&key)
+    }
 
     /// Returns whether a key transitioned to pressed this frame.
     #[must_use]
-    pub fn just_key_pressed(&self, key: KeyCode) -> bool { self.keys_pressed.contains(&key) }
+    pub fn just_key_pressed(&self, key: KeyCode) -> bool {
+        self.keys_pressed.contains(&key)
+    }
 
     /// Returns whether a key transitioned to released this frame.
     #[must_use]
-    pub fn just_key_released(&self, key: KeyCode) -> bool { self.keys_released.contains(&key) }
+    pub fn just_key_released(&self, key: KeyCode) -> bool {
+        self.keys_released.contains(&key)
+    }
 
     /// Returns whether a mouse button is currently held.
     #[must_use]
-    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_down.contains(&button) }
+    pub fn is_mouse_pressed(&self, button: MouseButton) -> bool {
+        self.mouse_down.contains(&button)
+    }
 
     /// Returns whether a mouse button transitioned to pressed this frame.
     #[must_use]
-    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool { self.mouse_pressed.contains(&button) }
+    pub fn just_mouse_pressed(&self, button: MouseButton) -> bool {
+        self.mouse_pressed.contains(&button)
+    }
 
     /// Returns whether a mouse button transitioned to released this frame.
     #[must_use]
-    pub fn just_mouse_released(&self, button: MouseButton) -> bool { self.mouse_released.contains(&button) }
+    pub fn just_mouse_released(&self, button: MouseButton) -> bool {
+        self.mouse_released.contains(&button)
+    }
 
     /// Returns the latest cursor position in window coordinates, if received.
     #[must_use]
-    pub fn cursor_position(&self) -> Option<(f64, f64)> { self.cursor_position }
+    pub fn cursor_position(&self) -> Option<(f64, f64)> {
+        self.cursor_position
+    }
 
     /// Returns accumulated scroll movement for the current frame.
     #[must_use]
-    pub fn scroll_delta(&self) -> (f64, f64) { self.scroll_delta }
+    pub fn scroll_delta(&self) -> (f64, f64) {
+        self.scroll_delta
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::InputState;
-    use zyne_platform::{ButtonState, InputEvent, KeyCode, MouseButton, PlatformEvent, ScrollDelta, WindowEvent};
+    use zyne_platform::{
+        ButtonState, InputEvent, KeyCode, MouseButton, PlatformEvent, ScrollDelta, WindowEvent,
+    };
 
     #[test]
     fn tracks_key_press_hold_and_release() {
         let mut input = InputState::new();
-        input.process_event(InputEvent::Key { code: KeyCode::W, state: ButtonState::Pressed, repeat: false });
+        input.process_event(InputEvent::Key {
+            code: KeyCode::W,
+            state: ButtonState::Pressed,
+            repeat: false,
+        });
         assert!(input.is_key_pressed(KeyCode::W));
         assert!(input.just_key_pressed(KeyCode::W));
         input.begin_frame();
         assert!(input.is_key_pressed(KeyCode::W));
         assert!(!input.just_key_pressed(KeyCode::W));
-        input.process_event(InputEvent::Key { code: KeyCode::W, state: ButtonState::Released, repeat: false });
+        input.process_event(InputEvent::Key {
+            code: KeyCode::W,
+            state: ButtonState::Released,
+            repeat: false,
+        });
         assert!(!input.is_key_pressed(KeyCode::W));
         assert!(input.just_key_released(KeyCode::W));
     }
@@ -129,9 +181,17 @@ mod tests {
     #[test]
     fn ignores_repeated_key_down_for_just_pressed() {
         let mut input = InputState::new();
-        input.process_event(InputEvent::Key { code: KeyCode::Space, state: ButtonState::Pressed, repeat: false });
+        input.process_event(InputEvent::Key {
+            code: KeyCode::Space,
+            state: ButtonState::Pressed,
+            repeat: false,
+        });
         input.begin_frame();
-        input.process_event(InputEvent::Key { code: KeyCode::Space, state: ButtonState::Pressed, repeat: true });
+        input.process_event(InputEvent::Key {
+            code: KeyCode::Space,
+            state: ButtonState::Pressed,
+            repeat: true,
+        });
         assert!(!input.just_key_pressed(KeyCode::Space));
         assert!(input.is_key_pressed(KeyCode::Space));
     }
@@ -139,9 +199,15 @@ mod tests {
     #[test]
     fn tracks_mouse_buttons_cursor_and_scroll() {
         let mut input = InputState::new();
-        input.process_event(InputEvent::MouseButton { button: MouseButton::Left, state: ButtonState::Pressed });
+        input.process_event(InputEvent::MouseButton {
+            button: MouseButton::Left,
+            state: ButtonState::Pressed,
+        });
         input.process_event(InputEvent::CursorMoved { x: 12.0, y: 24.0 });
-        input.process_event(InputEvent::MouseWheel(ScrollDelta::Lines { x: 0.0, y: 1.0 }));
+        input.process_event(InputEvent::MouseWheel(ScrollDelta::Lines {
+            x: 0.0,
+            y: 1.0,
+        }));
         assert!(input.just_mouse_pressed(MouseButton::Left));
         assert_eq!(input.cursor_position(), Some((12.0, 24.0)));
         assert_eq!(input.scroll_delta(), (0.0, 1.0));
@@ -150,8 +216,15 @@ mod tests {
     #[test]
     fn focus_loss_releases_held_keyboard_and_mouse_inputs() {
         let mut input = InputState::new();
-        input.process_event(InputEvent::Key { code: KeyCode::A, state: ButtonState::Pressed, repeat: false });
-        input.process_event(InputEvent::MouseButton { button: MouseButton::Right, state: ButtonState::Pressed });
+        input.process_event(InputEvent::Key {
+            code: KeyCode::A,
+            state: ButtonState::Pressed,
+            repeat: false,
+        });
+        input.process_event(InputEvent::MouseButton {
+            button: MouseButton::Right,
+            state: ButtonState::Pressed,
+        });
         input.process_platform_event(PlatformEvent::Window(WindowEvent::Focused(false)));
         assert!(!input.is_key_pressed(KeyCode::A));
         assert!(!input.is_mouse_pressed(MouseButton::Right));

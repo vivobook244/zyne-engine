@@ -31,11 +31,7 @@ impl Engine for SmokeEngine {
         Ok(())
     }
 
-    fn on_update(
-        &mut self,
-        _context: &EngineContext,
-        delta_seconds: f32,
-    ) -> ZyneResult<()> {
+    fn on_update(&mut self, _context: &EngineContext, delta_seconds: f32) -> ZyneResult<()> {
         self.frames += 1;
         tracing::info!(frame = self.frames, delta_seconds, "application frame");
         Ok(())

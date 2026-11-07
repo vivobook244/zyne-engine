@@ -260,7 +260,7 @@ pub trait WindowEventHandler {
             PlatformEvent::Window(event) => self.on_window_event(event, window),
             PlatformEvent::Resumed | PlatformEvent::Suspended | PlatformEvent::Input(_) => {
                 Ok(WindowControl::Continue)
-            },
+            }
         }
     }
 

@@ -1,9 +1,12 @@
 use winit::{
-    keyboard::{KeyCode as WinitKeyCode, PhysicalKey},
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDelta, WindowEvent as WinitWindowEvent},
+    event::{
+        ElementState, MouseButton as WinitMouseButton, MouseScrollDelta,
+        WindowEvent as WinitWindowEvent,
+    },
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    keyboard::{KeyCode as WinitKeyCode, PhysicalKey},
     window::{Fullscreen, Window, WindowAttributes, WindowId},
 };
 
@@ -143,36 +146,57 @@ impl<H: WindowEventHandler> ApplicationHandler for WinitApplication<H> {
             WinitWindowEvent::CloseRequested => Some(WindowEvent::CloseRequested),
             WinitWindowEvent::RedrawRequested => Some(WindowEvent::RedrawRequested),
             WinitWindowEvent::KeyboardInput { event, .. } => {
-                let PhysicalKey::Code(code) = event.physical_key else { return; };
-                let Some(code) = map_key_code(code) else { return; };
-                self.dispatch_platform_event(event_loop, PlatformEvent::Input(InputEvent::Key {
-                    code,
-                    state: map_button_state(event.state),
-                    repeat: event.repeat,
-                }));
+                let PhysicalKey::Code(code) = event.physical_key else {
+                    return;
+                };
+                let Some(code) = map_key_code(code) else {
+                    return;
+                };
+                self.dispatch_platform_event(
+                    event_loop,
+                    PlatformEvent::Input(InputEvent::Key {
+                        code,
+                        state: map_button_state(event.state),
+                        repeat: event.repeat,
+                    }),
+                );
                 None
             }
             WinitWindowEvent::CursorMoved { position, .. } => {
-                self.dispatch_platform_event(event_loop, PlatformEvent::Input(InputEvent::CursorMoved {
-                    x: position.x, y: position.y,
-                }));
+                self.dispatch_platform_event(
+                    event_loop,
+                    PlatformEvent::Input(InputEvent::CursorMoved {
+                        x: position.x,
+                        y: position.y,
+                    }),
+                );
                 None
             }
             WinitWindowEvent::MouseInput { state, button, .. } => {
-                self.dispatch_platform_event(event_loop, PlatformEvent::Input(InputEvent::MouseButton {
-                    button: map_mouse_button(button),
-                    state: map_button_state(state),
-                }));
+                self.dispatch_platform_event(
+                    event_loop,
+                    PlatformEvent::Input(InputEvent::MouseButton {
+                        button: map_mouse_button(button),
+                        state: map_button_state(state),
+                    }),
+                );
                 None
             }
             WinitWindowEvent::MouseWheel { delta, .. } => {
                 let delta = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines { x: f64::from(x), y: f64::from(y) },
+                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines {
+                        x: f64::from(x),
+                        y: f64::from(y),
+                    },
                     MouseScrollDelta::PixelDelta(position) => ScrollDelta::Pixels {
-                        x: position.x, y: position.y,
+                        x: position.x,
+                        y: position.y,
                     },
                 };
-                self.dispatch_platform_event(event_loop, PlatformEvent::Input(InputEvent::MouseWheel(delta)));
+                self.dispatch_platform_event(
+                    event_loop,
+                    PlatformEvent::Input(InputEvent::MouseWheel(delta)),
+                );
                 None
             }
             _ => None,
@@ -217,40 +241,74 @@ fn map_mouse_button(button: WinitMouseButton) -> MouseButton {
 
 fn map_key_code(code: WinitKeyCode) -> Option<KeyCode> {
     Some(match code {
-        WinitKeyCode::KeyA => KeyCode::A, WinitKeyCode::KeyB => KeyCode::B,
-        WinitKeyCode::KeyC => KeyCode::C, WinitKeyCode::KeyD => KeyCode::D,
-        WinitKeyCode::KeyE => KeyCode::E, WinitKeyCode::KeyF => KeyCode::F,
-        WinitKeyCode::KeyG => KeyCode::G, WinitKeyCode::KeyH => KeyCode::H,
-        WinitKeyCode::KeyI => KeyCode::I, WinitKeyCode::KeyJ => KeyCode::J,
-        WinitKeyCode::KeyK => KeyCode::K, WinitKeyCode::KeyL => KeyCode::L,
-        WinitKeyCode::KeyM => KeyCode::M, WinitKeyCode::KeyN => KeyCode::N,
-        WinitKeyCode::KeyO => KeyCode::O, WinitKeyCode::KeyP => KeyCode::P,
-        WinitKeyCode::KeyQ => KeyCode::Q, WinitKeyCode::KeyR => KeyCode::R,
-        WinitKeyCode::KeyS => KeyCode::S, WinitKeyCode::KeyT => KeyCode::T,
-        WinitKeyCode::KeyU => KeyCode::U, WinitKeyCode::KeyV => KeyCode::V,
-        WinitKeyCode::KeyW => KeyCode::W, WinitKeyCode::KeyX => KeyCode::X,
-        WinitKeyCode::KeyY => KeyCode::Y, WinitKeyCode::KeyZ => KeyCode::Z,
-        WinitKeyCode::Digit0 => KeyCode::Digit0, WinitKeyCode::Digit1 => KeyCode::Digit1,
-        WinitKeyCode::Digit2 => KeyCode::Digit2, WinitKeyCode::Digit3 => KeyCode::Digit3,
-        WinitKeyCode::Digit4 => KeyCode::Digit4, WinitKeyCode::Digit5 => KeyCode::Digit5,
-        WinitKeyCode::Digit6 => KeyCode::Digit6, WinitKeyCode::Digit7 => KeyCode::Digit7,
-        WinitKeyCode::Digit8 => KeyCode::Digit8, WinitKeyCode::Digit9 => KeyCode::Digit9,
-        WinitKeyCode::Escape => KeyCode::Escape, WinitKeyCode::Enter => KeyCode::Enter,
-        WinitKeyCode::Space => KeyCode::Space, WinitKeyCode::Tab => KeyCode::Tab,
-        WinitKeyCode::Backspace => KeyCode::Backspace, WinitKeyCode::Delete => KeyCode::Delete,
-        WinitKeyCode::Insert => KeyCode::Insert, WinitKeyCode::Home => KeyCode::Home,
-        WinitKeyCode::End => KeyCode::End, WinitKeyCode::PageUp => KeyCode::PageUp,
-        WinitKeyCode::PageDown => KeyCode::PageDown, WinitKeyCode::ArrowUp => KeyCode::ArrowUp,
-        WinitKeyCode::ArrowDown => KeyCode::ArrowDown, WinitKeyCode::ArrowLeft => KeyCode::ArrowLeft,
-        WinitKeyCode::ArrowRight => KeyCode::ArrowRight, WinitKeyCode::ShiftLeft => KeyCode::ShiftLeft,
-        WinitKeyCode::ShiftRight => KeyCode::ShiftRight, WinitKeyCode::ControlLeft => KeyCode::ControlLeft,
-        WinitKeyCode::ControlRight => KeyCode::ControlRight, WinitKeyCode::AltLeft => KeyCode::AltLeft,
-        WinitKeyCode::AltRight => KeyCode::AltRight, WinitKeyCode::F1 => KeyCode::F1,
-        WinitKeyCode::F2 => KeyCode::F2, WinitKeyCode::F3 => KeyCode::F3,
-        WinitKeyCode::F4 => KeyCode::F4, WinitKeyCode::F5 => KeyCode::F5,
-        WinitKeyCode::F6 => KeyCode::F6, WinitKeyCode::F7 => KeyCode::F7,
-        WinitKeyCode::F8 => KeyCode::F8, WinitKeyCode::F9 => KeyCode::F9,
-        WinitKeyCode::F10 => KeyCode::F10, WinitKeyCode::F11 => KeyCode::F11,
+        WinitKeyCode::KeyA => KeyCode::A,
+        WinitKeyCode::KeyB => KeyCode::B,
+        WinitKeyCode::KeyC => KeyCode::C,
+        WinitKeyCode::KeyD => KeyCode::D,
+        WinitKeyCode::KeyE => KeyCode::E,
+        WinitKeyCode::KeyF => KeyCode::F,
+        WinitKeyCode::KeyG => KeyCode::G,
+        WinitKeyCode::KeyH => KeyCode::H,
+        WinitKeyCode::KeyI => KeyCode::I,
+        WinitKeyCode::KeyJ => KeyCode::J,
+        WinitKeyCode::KeyK => KeyCode::K,
+        WinitKeyCode::KeyL => KeyCode::L,
+        WinitKeyCode::KeyM => KeyCode::M,
+        WinitKeyCode::KeyN => KeyCode::N,
+        WinitKeyCode::KeyO => KeyCode::O,
+        WinitKeyCode::KeyP => KeyCode::P,
+        WinitKeyCode::KeyQ => KeyCode::Q,
+        WinitKeyCode::KeyR => KeyCode::R,
+        WinitKeyCode::KeyS => KeyCode::S,
+        WinitKeyCode::KeyT => KeyCode::T,
+        WinitKeyCode::KeyU => KeyCode::U,
+        WinitKeyCode::KeyV => KeyCode::V,
+        WinitKeyCode::KeyW => KeyCode::W,
+        WinitKeyCode::KeyX => KeyCode::X,
+        WinitKeyCode::KeyY => KeyCode::Y,
+        WinitKeyCode::KeyZ => KeyCode::Z,
+        WinitKeyCode::Digit0 => KeyCode::Digit0,
+        WinitKeyCode::Digit1 => KeyCode::Digit1,
+        WinitKeyCode::Digit2 => KeyCode::Digit2,
+        WinitKeyCode::Digit3 => KeyCode::Digit3,
+        WinitKeyCode::Digit4 => KeyCode::Digit4,
+        WinitKeyCode::Digit5 => KeyCode::Digit5,
+        WinitKeyCode::Digit6 => KeyCode::Digit6,
+        WinitKeyCode::Digit7 => KeyCode::Digit7,
+        WinitKeyCode::Digit8 => KeyCode::Digit8,
+        WinitKeyCode::Digit9 => KeyCode::Digit9,
+        WinitKeyCode::Escape => KeyCode::Escape,
+        WinitKeyCode::Enter => KeyCode::Enter,
+        WinitKeyCode::Space => KeyCode::Space,
+        WinitKeyCode::Tab => KeyCode::Tab,
+        WinitKeyCode::Backspace => KeyCode::Backspace,
+        WinitKeyCode::Delete => KeyCode::Delete,
+        WinitKeyCode::Insert => KeyCode::Insert,
+        WinitKeyCode::Home => KeyCode::Home,
+        WinitKeyCode::End => KeyCode::End,
+        WinitKeyCode::PageUp => KeyCode::PageUp,
+        WinitKeyCode::PageDown => KeyCode::PageDown,
+        WinitKeyCode::ArrowUp => KeyCode::ArrowUp,
+        WinitKeyCode::ArrowDown => KeyCode::ArrowDown,
+        WinitKeyCode::ArrowLeft => KeyCode::ArrowLeft,
+        WinitKeyCode::ArrowRight => KeyCode::ArrowRight,
+        WinitKeyCode::ShiftLeft => KeyCode::ShiftLeft,
+        WinitKeyCode::ShiftRight => KeyCode::ShiftRight,
+        WinitKeyCode::ControlLeft => KeyCode::ControlLeft,
+        WinitKeyCode::ControlRight => KeyCode::ControlRight,
+        WinitKeyCode::AltLeft => KeyCode::AltLeft,
+        WinitKeyCode::AltRight => KeyCode::AltRight,
+        WinitKeyCode::F1 => KeyCode::F1,
+        WinitKeyCode::F2 => KeyCode::F2,
+        WinitKeyCode::F3 => KeyCode::F3,
+        WinitKeyCode::F4 => KeyCode::F4,
+        WinitKeyCode::F5 => KeyCode::F5,
+        WinitKeyCode::F6 => KeyCode::F6,
+        WinitKeyCode::F7 => KeyCode::F7,
+        WinitKeyCode::F8 => KeyCode::F8,
+        WinitKeyCode::F9 => KeyCode::F9,
+        WinitKeyCode::F10 => KeyCode::F10,
+        WinitKeyCode::F11 => KeyCode::F11,
         WinitKeyCode::F12 => KeyCode::F12,
         _ => return None,
     })
