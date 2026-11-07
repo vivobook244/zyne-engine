@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Initialize a cross-platform GPU context for the existing desktop application. The first supported targets are Windows and Linux using wgpu's native backends.
+Initialize a cross-platform GPU context for the existing desktop application. The first supported targets are Windows and Linux using the Vulkan backend on Linux and Vulkan/Direct3D 12 backends on Windows.
 
 ## 2. Ownership boundaries
 
