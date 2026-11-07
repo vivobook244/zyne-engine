@@ -6,8 +6,12 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+pollster = "0.4.0"
+tracing.workspace = true
+wgpu = "26.0.1"
 zyne-core = { path = "../zyne-core" }
 zyne-math = { path = "../zyne-math" }
+zyne-platform = { path = "../zyne-platform" }
 
 [lints]
 workspace = true
