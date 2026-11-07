@@ -1,6 +1,6 @@
 # Phase 2.3 — Frame Acquisition & Presentation
 
-**Status:** IMPLEMENTATION IN PROGRESS — LOCAL VALIDATION REQUIRED  
+**Status:** IMPLEMENTED — CI AND DESKTOP VISUAL SMOKE VERIFIED; RESIZE/MINIMIZE STRESS CHECK PENDING  
 **Branch:** `main`  
 **Scope:** Acquire a window surface frame, clear its color attachment, submit GPU commands, and present the frame.
 
@@ -41,18 +41,18 @@ This phase deliberately does not introduce geometry, shader pipelines, materials
 
 ## 5. Acceptance criteria
 
-- [ ] Active frames acquire a surface texture and present it.
-- [ ] The background clear is submitted through a render pass and GPU queue.
-- [ ] Suspended surfaces do not attempt frame acquisition.
-- [ ] `Lost` and `Outdated` surfaces are reconfigured and retried once.
-- [ ] `Timeout` skips one frame without failing the application.
-- [ ] `OutOfMemory` is propagated as a fatal graphics error.
-- [ ] Runtime renders after successful engine update callbacks.
-- [ ] `cargo fmt --all -- --check` passes.
-- [ ] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
-- [ ] `cargo test --locked --workspace` passes.
-- [ ] `cargo check --locked --workspace` passes.
-- [ ] Desktop smoke visibly presents a stable background on Windows and Linux where available.
+- [x] Active frames acquire a surface texture and present it.
+- [x] The background clear is submitted through a render pass and GPU queue.
+- [x] Suspended surfaces do not attempt frame acquisition.
+- [x] `Lost` and `Outdated` surfaces are reconfigured and retried once.
+- [x] `Timeout` skips one frame without failing the application.
+- [x] `OutOfMemory` is propagated as a fatal graphics error.
+- [x] Runtime renders after successful engine update callbacks.
+- [x] `cargo fmt --all -- --check` passes.
+- [x] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
+- [x] `cargo test --locked --workspace` passes.
+- [x] `cargo check --locked --workspace` passes.
+- [x] Desktop smoke visibly presents a stable background on Windows and Linux where available.
 - [ ] Resize and minimize/restore remain stable while frames are being presented.
 
 ## 6. Next phase

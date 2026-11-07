@@ -3,6 +3,7 @@
 
 mod context;
 mod error;
+mod pipeline;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;

@@ -8,7 +8,7 @@ use wgpu::{
 };
 use zyne_platform::PlatformWindow;
 
-use crate::{FrameOutcome, GraphicsError};
+use crate::{pipeline::TrianglePipeline, FrameOutcome, GraphicsError};
 
 const DEFAULT_CLEAR_COLOR: Color = Color {
     r: 0.055,
@@ -26,6 +26,7 @@ pub struct GraphicsContext {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
+    triangle_pipeline: TrianglePipeline,
     surface_suspended: bool,
 }
 
@@ -70,6 +71,7 @@ impl GraphicsContext {
         let capabilities = surface.get_capabilities(&adapter);
         let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
+        let triangle_pipeline = TrianglePipeline::new(&device, surface_config.format);
 
         tracing::info!(
             adapter = %adapter_info.name,
@@ -91,6 +93,7 @@ impl GraphicsContext {
             queue,
             surface,
             surface_config,
+            triangle_pipeline,
             surface_suspended: false,
         })
     }
@@ -133,13 +136,16 @@ impl GraphicsContext {
                 },
             })];
 
-            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("ZYNE Background Clear Pass"),
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("ZYNE Triangle Render Pass"),
                 color_attachments: &color_attachments,
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
+            render_pass.set_pipeline(self.triangle_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.triangle_pipeline.vertex_buffer().slice(..));
+            render_pass.draw(0..3, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));
