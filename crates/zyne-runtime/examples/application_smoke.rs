@@ -2,6 +2,7 @@ use zyne_runtime::{Application, ApplicationConfig, Engine, EngineContext, ZyneRe
 
 struct SmokeEngine {
     frames: u64,
+    fixed_updates: u64,
 }
 
 impl Engine for SmokeEngine {
@@ -15,7 +16,18 @@ impl Engine for SmokeEngine {
         _context: &EngineContext,
         fixed_delta_seconds: f32,
     ) -> ZyneResult<()> {
-        tracing::trace!(fixed_delta_seconds, "fixed simulation update");
+        self.fixed_updates += 1;
+
+        // Log once per second so fixed-step execution is visible without
+        // flooding the terminal with one message per simulation tick.
+        if self.fixed_updates == 1 || self.fixed_updates % 60 == 0 {
+            tracing::info!(
+                fixed_update = self.fixed_updates,
+                fixed_delta_seconds,
+                "application fixed update"
+            );
+        }
+
         Ok(())
     }
 
@@ -30,7 +42,11 @@ impl Engine for SmokeEngine {
     }
 
     fn on_shutdown(&mut self, _context: &EngineContext) -> ZyneResult<()> {
-        tracing::info!(frames = self.frames, "application smoke engine stopped");
+        tracing::info!(
+            frames = self.frames,
+            fixed_updates = self.fixed_updates,
+            "application smoke engine shutdown"
+        );
         Ok(())
     }
 }
@@ -38,5 +54,8 @@ impl Engine for SmokeEngine {
 fn main() -> ZyneResult<()> {
     zyne_runtime::diagnostics::init_logging()?;
     let application = Application::new(ApplicationConfig::default())?;
-    application.run(SmokeEngine { frames: 0 })
+    application.run(SmokeEngine {
+        frames: 0,
+        fixed_updates: 0,
+    })
 }
