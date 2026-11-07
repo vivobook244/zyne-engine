@@ -246,15 +246,7 @@ mod tests {
     #[test]
     fn rejects_degenerate_camera_basis() {
         assert_eq!(
-            Camera3d::new(
-                [0.0; 3],
-                [0.0; 3],
-                [0.0, 1.0, 0.0],
-                1.0,
-                1.0,
-                0.1,
-                10.0
-            ),
+            Camera3d::new([0.0; 3], [0.0; 3], [0.0, 1.0, 0.0], 1.0, 1.0, 0.1, 10.0),
             Err(CameraError::DegenerateViewDirection)
         );
         assert_eq!(
