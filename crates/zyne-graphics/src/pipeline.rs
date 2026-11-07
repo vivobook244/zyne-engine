@@ -125,7 +125,10 @@ mod tests {
     fn triangle_contains_three_vertices_inside_clip_space() {
         assert_eq!(TRIANGLE_VERTICES.len(), 3);
         assert!(TRIANGLE_VERTICES.iter().all(|vertex| {
-            vertex.position.iter().all(|coordinate| (-1.0..=1.0).contains(coordinate))
+            vertex
+                .position
+                .iter()
+                .all(|coordinate| (-1.0..=1.0).contains(coordinate))
         }));
     }
 }
