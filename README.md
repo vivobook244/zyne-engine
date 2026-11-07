@@ -16,7 +16,7 @@ The initial visual target is the atmosphere and gameplay presentation of classic
 
 ## Status
 
-**Phase 0 — Project Foundation** is in progress. See the [roadmap](docs/ROADMAP.md), [Phase 0 tracker](docs/development/PHASE-0-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), [math conventions](docs/architecture/MATH.md), [configuration reference](docs/CONFIGURATION.md), and [versioning policy](docs/VERSIONING.md).
+**Phase 2.5 — Depth Buffer & 3D Foundation** is complete. Phase 2.6 (textures and controllable camera) is the next implementation target. See the [roadmap](docs/ROADMAP.md), [Phase 0 tracker](docs/development/PHASE-0-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), [math conventions](docs/architecture/MATH.md), [configuration reference](docs/CONFIGURATION.md), and [versioning policy](docs/VERSIONING.md).
 
 ## Development
 

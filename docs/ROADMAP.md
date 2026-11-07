@@ -7,6 +7,8 @@ Each phase must produce a verifiable result before the next phase expands the ar
 | 0 | Project foundation | 3–5 days | Workspace checks; architecture and conventions documented |
 | 1 | Platform & application core | 1 week | Stable Windows window, input, resize, timing, shutdown |
 | 2 | Rendering foundation | 2–3 weeks | Textured 3D model with controllable camera |
+
+Phase 2 implementation sequence: 2.1 GPU initialization, 2.2 surface resize/suspension, 2.3 frame acquisition/presentation, 2.4 shader pipeline, 2.5 depth-tested 3D foundation, 2.6 textures and controllable camera. See [Phase 2.6](development/PHASE-2-6-TEXTURES-CAMERA-CONTROL.md).
 | 3 | World, ECS & scene | 1–2 weeks | Multi-entity scene saves/reloads with transforms |
 | 4 | Asset & resource pipeline | 1–2 weeks | Textured GLB imports with stable references |
 | 5 | Materials, lighting & environment | 2–3 weeks | Multiple materials/lights and directional shadows |
