@@ -26,10 +26,16 @@ impl fmt::Display for GraphicsError {
                 write!(formatter, "failed to create graphics surface: {message}")
             }
             Self::AdapterRequest(message) => {
-                write!(formatter, "failed to request a compatible GPU adapter: {message}")
+                write!(
+                    formatter,
+                    "failed to request a compatible GPU adapter: {message}"
+                )
             }
             Self::DeviceRequest(message) => {
-                write!(formatter, "failed to create GPU device and queue: {message}")
+                write!(
+                    formatter,
+                    "failed to create GPU device and queue: {message}"
+                )
             }
             Self::NoSurfaceFormats => {
                 formatter.write_str("the window surface exposes no supported color formats")
@@ -37,9 +43,7 @@ impl fmt::Display for GraphicsError {
             Self::NoPresentModes => {
                 formatter.write_str("the window surface exposes no presentation modes")
             }
-            Self::NoAlphaModes => {
-                formatter.write_str("the window surface exposes no alpha modes")
-            }
+            Self::NoAlphaModes => formatter.write_str("the window surface exposes no alpha modes"),
             Self::ZeroSizedSurface => {
                 formatter.write_str("cannot configure a graphics surface with zero dimensions")
             }
