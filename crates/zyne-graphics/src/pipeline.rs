@@ -213,8 +213,9 @@ impl CubePipeline {
         #[allow(clippy::cast_precision_loss)]
         let aspect = width as f32 / height as f32;
         let projection = perspective_rh_wgpu(55.0_f32.to_radians(), aspect, 0.1, 100.0);
-        let view = look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-        let model = rotation_y(0.55);
+        let view = look_at_rh([4.0, 2.8, 4.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        // Keep a modest model rotation so the camera reveals three distinct faces.
+        let model = rotation_y(0.15);
         let view_projection = multiply(projection, multiply(view, model));
         let uniform = CameraUniform {
             view_projection: to_columns(view_projection),
