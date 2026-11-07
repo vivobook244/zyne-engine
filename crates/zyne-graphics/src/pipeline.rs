@@ -350,11 +350,7 @@ mod tests {
 
     #[test]
     fn view_matrix_places_the_camera_target_in_front_of_camera() {
-        let view = super::look_at_rh(
-            [2.8, 2.1, 4.2],
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        );
+        let view = super::look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
 
         // Row-major view matrices store translation in the final column.
         // The origin must be in front of the camera (negative view-space Z).
