@@ -115,7 +115,12 @@ impl Camera3d {
             [focal / self.aspect_ratio, 0.0, 0.0, 0.0],
             [0.0, focal, 0.0, 0.0],
             [0.0, 0.0, self.far / (self.near - self.far), -1.0],
-            [0.0, 0.0, (self.near * self.far) / (self.near - self.far), 0.0],
+            [
+                0.0,
+                0.0,
+                (self.near * self.far) / (self.near - self.far),
+                0.0,
+            ],
         ]
     }
 
@@ -200,15 +205,70 @@ mod tests {
 
     #[test]
     fn rejects_invalid_projection_parameters() {
-        assert_eq!(Camera3d::new([0.0; 3], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], 0.0, 1.0, 0.1, 10.0), Err(CameraError::InvalidFieldOfView));
-        assert_eq!(Camera3d::new([0.0; 3], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], 1.0, 0.0, 0.1, 10.0), Err(CameraError::InvalidAspectRatio));
-        assert_eq!(Camera3d::new([0.0; 3], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], 1.0, 1.0, 10.0, 1.0), Err(CameraError::InvalidClipPlanes));
+        assert_eq!(
+            Camera3d::new(
+                [0.0; 3],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+                0.0,
+                1.0,
+                0.1,
+                10.0
+            ),
+            Err(CameraError::InvalidFieldOfView)
+        );
+        assert_eq!(
+            Camera3d::new(
+                [0.0; 3],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+                1.0,
+                0.0,
+                0.1,
+                10.0
+            ),
+            Err(CameraError::InvalidAspectRatio)
+        );
+        assert_eq!(
+            Camera3d::new(
+                [0.0; 3],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+                1.0,
+                1.0,
+                10.0,
+                1.0
+            ),
+            Err(CameraError::InvalidClipPlanes)
+        );
     }
 
     #[test]
     fn rejects_degenerate_camera_basis() {
-        assert_eq!(Camera3d::new([0.0; 3], [0.0; 3], [0.0, 1.0, 0.0], 1.0, 1.0, 0.1, 10.0), Err(CameraError::DegenerateViewDirection));
-        assert_eq!(Camera3d::new([0.0; 3], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0], 1.0, 1.0, 0.1, 10.0), Err(CameraError::DegenerateUpDirection));
+        assert_eq!(
+            Camera3d::new(
+                [0.0; 3],
+                [0.0; 3],
+                [0.0, 1.0, 0.0],
+                1.0,
+                1.0,
+                0.1,
+                10.0
+            ),
+            Err(CameraError::DegenerateViewDirection)
+        );
+        assert_eq!(
+            Camera3d::new(
+                [0.0; 3],
+                [0.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                1.0,
+                1.0,
+                0.1,
+                10.0
+            ),
+            Err(CameraError::DegenerateUpDirection)
+        );
     }
 
     #[test]
