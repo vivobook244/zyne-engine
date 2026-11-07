@@ -22,6 +22,7 @@ pub struct GraphicsContext {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
+    surface_suspended: bool,
 }
 
 impl GraphicsContext {
@@ -86,6 +87,7 @@ impl GraphicsContext {
             queue,
             surface,
             surface_config,
+            surface_suspended: false,
         })
     }
 
@@ -119,6 +121,52 @@ impl GraphicsContext {
         (self.surface_config.width, self.surface_config.height)
     }
 
+    /// Updates the configured surface dimensions after a native window resize.
+    ///
+    /// A zero-sized window (for example, while minimized) suspends surface
+    /// configuration. The previous valid dimensions are retained and the
+    /// surface is configured again when a non-zero size is received.
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            if !self.surface_suspended {
+                tracing::debug!(width, height, "graphics surface suspended for zero-sized window");
+            }
+            self.surface_suspended = true;
+            return;
+        }
+
+        if !surface_resize_requires_configuration(
+            self.surface_config.width,
+            self.surface_config.height,
+            self.surface_suspended,
+            width,
+            height,
+        ) {
+            return;
+        }
+
+        self.surface_config.width = width;
+        self.surface_config.height = height;
+        self.surface.configure(&self.device, &self.surface_config);
+        self.surface_suspended = false;
+
+        tracing::info!(width, height, "graphics surface reconfigured");
+    }
+
+    /// Marks the surface unavailable while the native application is suspended.
+    ///
+    /// The next non-zero resize (including a resize with unchanged dimensions)
+    /// reconfigures the surface before it is used again.
+    pub fn suspend(&mut self) {
+        self.surface_suspended = true;
+    }
+
+    /// Returns whether the surface is currently suspended.
+    #[must_use]
+    pub const fn is_surface_suspended(&self) -> bool {
+        self.surface_suspended
+    }
+
     /// Returns the selected adapter.
     #[must_use]
     pub const fn adapter(&self) -> &Adapter {
@@ -133,6 +181,18 @@ impl GraphicsContext {
     pub const fn surface(&self) -> &Surface<'static> {
         &self.surface
     }
+}
+
+fn surface_resize_requires_configuration(
+    current_width: u32,
+    current_height: u32,
+    surface_suspended: bool,
+    width: u32,
+    height: u32,
+) -> bool {
+    width > 0
+        && height > 0
+        && (surface_suspended || current_width != width || current_height != height)
 }
 
 fn build_surface_configuration(
@@ -194,6 +254,27 @@ mod tests {
             present_modes: vec![PresentMode::Immediate, PresentMode::Fifo],
             alpha_modes: vec![CompositeAlphaMode::Opaque, CompositeAlphaMode::Auto],
         }
+    }
+
+    #[test]
+    fn resize_requires_reconfiguration_when_dimensions_change() {
+        assert!(super::surface_resize_requires_configuration(1280, 720, false, 1920, 1080));
+    }
+
+    #[test]
+    fn resize_skips_reconfiguration_when_dimensions_are_unchanged() {
+        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 1280, 720));
+    }
+
+    #[test]
+    fn resize_reconfigures_after_surface_suspension_even_at_same_dimensions() {
+        assert!(super::surface_resize_requires_configuration(1280, 720, true, 1280, 720));
+    }
+
+    #[test]
+    fn resize_does_not_configure_zero_sized_surface() {
+        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 0, 720));
+        assert!(!super::surface_resize_requires_configuration(1280, 720, false, 1280, 0));
     }
 
     #[test]
