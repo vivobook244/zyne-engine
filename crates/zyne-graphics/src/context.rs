@@ -11,9 +11,9 @@ use crate::GraphicsError;
 
 /// Owns the GPU connection and the initial presentation surface for one window.
 ///
-/// This phase initializes the GPU and configures the surface only. Frame
-/// acquisition, resize handling, command encoding, and presentation are added
-/// by later rendering phases.
+/// The context owns the GPU connection and keeps the surface synchronized
+/// with the native window. Frame acquisition, command encoding, and
+/// presentation are added by later rendering phases.
 pub struct GraphicsContext {
     _instance: Instance,
     adapter: Adapter,
@@ -129,7 +129,11 @@ impl GraphicsContext {
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 {
             if !self.surface_suspended {
-                tracing::debug!(width, height, "graphics surface suspended for zero-sized window");
+                tracing::debug!(
+                    width,
+                    height,
+                    "graphics surface suspended for zero-sized window"
+                );
             }
             self.surface_suspended = true;
             return;
