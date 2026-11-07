@@ -1,8 +1,8 @@
 # Phase 2.2 — Surface Resize & Reconfiguration
 
-**Status:** IMPLEMENTATION IN PROGRESS — LOCAL VALIDATION REQUIRED  
+**Status:** DONE — IMPLEMENTED, LOCALLY VALIDATED, AND CI VERIFIED  
 **Branch:** `main`  
-**Scope:** Keep the GPU presentation surface synchronized with native window dimensions and lifecycle events. Frame acquisition and presentation remain out of scope.
+**Scope:** Keep the GPU presentation surface synchronized with native window dimensions and lifecycle events. Frame acquisition and presentation are handled in Phase 2.3.
 
 ## 1. Goal
 
@@ -36,19 +36,19 @@ Handle physical-pixel size changes safely after initial GPU initialization. A mi
 
 ## 5. Acceptance criteria
 
-- [ ] Resize events update surface dimensions in physical pixels.
-- [ ] Zero-sized dimensions never reach `surface.configure`.
-- [ ] Restoring a non-zero size reconfigures the surface.
-- [ ] Suspend/resume reconfigures the surface safely.
-- [ ] DPI changes synchronize using the current physical window size.
-- [ ] Unchanged dimensions do not trigger redundant configuration.
-- [ ] No adapter/device/surface recreation occurs during resize.
-- [ ] `cargo fmt --all -- --check` passes.
-- [ ] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
-- [ ] `cargo test --locked --workspace` passes.
-- [ ] `cargo check --locked --workspace` passes.
-- [ ] Desktop smoke confirms resize, minimize/restore, and DPI behavior on Windows and Linux where available.
+- [x] Resize events update surface dimensions in physical pixels.
+- [x] Zero-sized dimensions never reach `surface.configure`.
+- [x] Restoring a non-zero size reconfigures the surface.
+- [x] Suspend/resume reconfigures the surface safely.
+- [x] DPI changes synchronize using the current physical window size.
+- [x] Unchanged dimensions do not trigger redundant configuration.
+- [x] No adapter/device/surface recreation occurs during resize.
+- [x] `cargo fmt --all -- --check` passes.
+- [x] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
+- [x] `cargo test --locked --workspace` passes.
+- [x] `cargo check --locked --workspace` passes.
+- [x] Desktop smoke confirms resize, minimize/restore, and DPI behavior on Windows and Linux where available.
 
 ## 6. Follow-up
 
-Phase 2.3 introduces frame acquisition, command submission, and surface presentation, including recovery for lost or outdated surfaces.
+Phase 2.3 adds frame acquisition, command submission, surface presentation, and recovery for lost or outdated surfaces.

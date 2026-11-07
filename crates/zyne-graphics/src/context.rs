@@ -1,19 +1,23 @@
 use std::sync::Arc;
 
 use wgpu::{
-    Adapter, AdapterInfo, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, Limits,
-    PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceCapabilities,
-    SurfaceConfiguration, TextureFormat, TextureUsages,
+    Adapter, AdapterInfo, Color, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance,
+    Limits, LoadOp, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceCapabilities,
+    SurfaceConfiguration, SurfaceError, TextureFormat, TextureUsages,
 };
 use zyne_platform::PlatformWindow;
 
-use crate::GraphicsError;
+use crate::{FrameOutcome, GraphicsError};
 
-/// Owns the GPU connection and the initial presentation surface for one window.
-///
-/// The context owns the GPU connection and keeps the surface synchronized
-/// with the native window. Frame acquisition, command encoding, and
-/// presentation are added by later rendering phases.
+const DEFAULT_CLEAR_COLOR: Color = Color {
+    r: 0.055,
+    g: 0.065,
+    b: 0.085,
+    a: 1.0,
+};
+
+/// Owns the GPU connection, presentation surface, and frame lifecycle.
 pub struct GraphicsContext {
     _instance: Instance,
     adapter: Adapter,
@@ -89,6 +93,89 @@ impl GraphicsContext {
             surface_config,
             surface_suspended: false,
         })
+    }
+
+    /// Acquires a surface frame, clears it, submits GPU work, and presents it.
+    ///
+    /// Lost and outdated surfaces are reconfigured and retried once. A timeout
+    /// skips the current frame; an out-of-memory condition is fatal.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when frame acquisition cannot recover or GPU memory is
+    /// exhausted.
+    pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
+        if self.surface_suspended {
+            return Ok(FrameOutcome::Skipped);
+        }
+
+        let Some(frame) = self.acquire_frame()? else {
+            return Ok(FrameOutcome::Skipped);
+        };
+
+        let view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ZYNE Frame Command Encoder"),
+            });
+
+        {
+            let color_attachments = [Some(RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: LoadOp::Clear(DEFAULT_CLEAR_COLOR),
+                    store: StoreOp::Store,
+                },
+            })];
+
+            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("ZYNE Background Clear Pass"),
+                color_attachments: &color_attachments,
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+        frame.present();
+
+        Ok(FrameOutcome::Presented)
+    }
+
+    fn acquire_frame(&mut self) -> Result<Option<wgpu::SurfaceTexture>, GraphicsError> {
+        for attempt in 0..2 {
+            match self.surface.get_current_texture() {
+                Ok(frame) => return Ok(Some(frame)),
+                Err(SurfaceError::Timeout) => {
+                    tracing::debug!("surface acquisition timed out; skipping frame");
+                    return Ok(None);
+                }
+                Err(SurfaceError::OutOfMemory) => {
+                    return Err(GraphicsError::SurfaceOutOfMemory);
+                }
+                Err(error @ (SurfaceError::Lost | SurfaceError::Outdated)) => {
+                    if attempt == 1 {
+                        return Err(GraphicsError::SurfaceAcquisition(error.to_string()));
+                    }
+
+                    tracing::warn!(
+                        %error,
+                        "surface unavailable; reconfiguring before retry"
+                    );
+                    self.surface.configure(&self.device, &self.surface_config);
+                }
+            }
+        }
+
+        Err(GraphicsError::SurfaceAcquisition(
+            "surface acquisition retry was exhausted".to_owned(),
+        ))
     }
 
     /// Returns information about the selected physical GPU adapter.
@@ -178,9 +265,6 @@ impl GraphicsContext {
     }
 
     /// Returns the window presentation surface.
-    ///
-    /// Surface acquisition and presentation are intentionally not part of
-    /// Phase 2.1.
     #[must_use]
     pub const fn surface(&self) -> &Surface<'static> {
         &self.surface
@@ -313,7 +397,7 @@ mod tests {
         };
 
         let config = build_surface_configuration(&capabilities, 640, 480)
-            .expect("non-empty surface capabilities should be accepted");
+            .expect("non-empty surface capabilities should produce a valid configuration");
 
         assert_eq!(config.format, TextureFormat::Bgra8Unorm);
         assert_eq!(config.present_mode, PresentMode::Immediate);

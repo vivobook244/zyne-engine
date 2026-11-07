@@ -36,12 +36,12 @@ impl Application {
     ///
     /// The engine is started after the native window is created. If startup
     /// succeeds, shutdown is attempted exactly once after the event loop exits,
-    /// including when a later update callback fails.
+    /// including when a later update or render operation fails.
     ///
     /// # Errors
     ///
-    /// Returns the first runtime or platform error. A shutdown error is
-    /// returned only when no earlier error occurred.
+    /// Returns the first runtime, graphics, or platform error. A shutdown error
+    /// is returned only when no earlier error occurred.
     pub fn run<E: Engine>(self, engine: E) -> ZyneResult<()> {
         let context = EngineContext::new(self.config.engine().clone())?;
         let fixed_delta = 1.0 / f64::from(self.config.engine().fixed_timestep_hz);
@@ -290,6 +290,13 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         engine.on_update(context, frame_delta_seconds)
     };
     update_result?;
+
+    if let Some(graphics) = state.graphics.as_mut() {
+        graphics
+            .render_frame()
+            .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    }
+
     state.next_frame = Some(now + state.frame_interval);
 
     Ok(())

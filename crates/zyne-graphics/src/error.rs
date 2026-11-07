@@ -1,6 +1,6 @@
 use std::{error::Error, fmt};
 
-/// Errors produced while initializing the graphics device and window surface.
+/// Errors produced while initializing and using the graphics device and surface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphicsError {
     /// The native window could not be converted into a graphics surface.
@@ -17,6 +17,10 @@ pub enum GraphicsError {
     NoAlphaModes,
     /// The native window currently has no drawable physical area.
     ZeroSizedSurface,
+    /// Surface frame acquisition failed after the recovery retry.
+    SurfaceAcquisition(String),
+    /// The GPU ran out of memory while acquiring a surface frame.
+    SurfaceOutOfMemory,
 }
 
 impl fmt::Display for GraphicsError {
@@ -46,6 +50,12 @@ impl fmt::Display for GraphicsError {
             Self::NoAlphaModes => formatter.write_str("the window surface exposes no alpha modes"),
             Self::ZeroSizedSurface => {
                 formatter.write_str("cannot configure a graphics surface with zero dimensions")
+            }
+            Self::SurfaceAcquisition(message) => {
+                write!(formatter, "failed to acquire a surface frame: {message}")
+            }
+            Self::SurfaceOutOfMemory => {
+                formatter.write_str("GPU ran out of memory while acquiring a surface frame")
             }
         }
     }
