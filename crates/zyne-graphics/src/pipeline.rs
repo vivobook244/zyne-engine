@@ -283,8 +283,8 @@ fn perspective_rh_wgpu(fov: f32, aspect: f32, near: f32, far: f32) -> [[f32; 4];
     [
         [f / aspect, 0.0, 0.0, 0.0],
         [0.0, f, 0.0, 0.0],
-        [0.0, 0.0, far / (near - far), -1.0],
-        [0.0, 0.0, (near * far) / (near - far), 0.0],
+        [0.0, 0.0, far / (near - far), (near * far) / (near - far)],
+        [0.0, 0.0, -1.0, 0.0],
     ]
 }
 
@@ -344,8 +344,23 @@ mod tests {
     #[test]
     fn perspective_matrix_has_expected_clip_depth_terms() {
         let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
-        assert!(matrix[3][2] < 0.0);
+        assert!(matrix[2][3] < 0.0);
+        assert_eq!(matrix[3][2], -1.0);
         assert!(matrix[3][3].abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn camera_target_is_inside_wgpu_clip_depth_range() {
+        let projection = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
+        let view = super::look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        let view_projection = multiply(projection, view);
+
+        // The world-space origin is the camera target. For wgpu's 0..1 depth
+        // convention, its projected depth must be between zero and clip W.
+        let clip_z = view_projection[2][3];
+        let clip_w = view_projection[3][3];
+        assert!(clip_w > 0.0);
+        assert!(clip_z >= 0.0 && clip_z <= clip_w);
     }
 
     #[test]
