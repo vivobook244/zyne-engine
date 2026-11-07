@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use wgpu::{
-    Adapter, AdapterInfo, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance,
-    Limits, PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface,
-    SurfaceConfiguration, TextureFormat, TextureUsages,
+    Adapter, AdapterInfo, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, Limits,
+    PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
+    TextureFormat, TextureUsages,
 };
 use zyne_platform::PlatformWindow;
 
