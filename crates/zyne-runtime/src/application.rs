@@ -142,6 +142,23 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
         event: PlatformEvent,
         _window: &PlatformWindow,
     ) -> Result<WindowControl, String> {
+        match &event {
+            PlatformEvent::Window(WindowEvent::Resized { width, height }) => {
+                tracing::info!(
+                    width,
+                    height,
+                    "application window resized"
+                );
+            }
+            PlatformEvent::Window(WindowEvent::ScaleFactorChanged { scale_factor }) => {
+                tracing::info!(
+                    scale_factor,
+                    "application window scale factor changed"
+                );
+            }
+            _ => {}
+        }
+
         let should_exit = matches!(&event, PlatformEvent::Window(WindowEvent::CloseRequested));
         self.state.borrow_mut().events.push(event);
         Ok(if should_exit {
