@@ -1,6 +1,6 @@
 # Phase 2.5 — Depth Buffer & 3D Foundation
 
-**Status:** IMPLEMENTED — LOCAL VALIDATION REQUIRED  
+**Status:** IMPLEMENTED — CI PASSED; LOCAL GPU SMOKE TEST REQUIRED  
 **Branch:** `main`  
 **Scope:** Replace the 2D triangle validation path with a perspective-projected 3D cube and a depth-tested render pass.
 
@@ -30,7 +30,7 @@
 - [ ] `cargo clippy --locked --workspace --all-targets -- -D warnings` passes.
 - [ ] `cargo test --locked --workspace` passes.
 - [ ] `cargo check --locked --workspace` passes.
-- [ ] CI passes on Ubuntu and Windows.
+- [x] CI passes on Ubuntu and Windows.
 - [ ] Desktop smoke test visibly displays the 3D cube.
 
 ## Out of scope
