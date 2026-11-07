@@ -329,6 +329,12 @@ mod tests {
         })
         .expect("test engine configuration should be valid");
         let now = Instant::now();
+        let last_frame = now
+            .checked_sub(Duration::from_millis(500))
+            .expect("500 ms should fit before the current instant");
+        let next_frame = now
+            .checked_sub(Duration::from_millis(1))
+            .expect("1 ms should fit before the current instant");
         let mut state = RuntimeState {
             engine: RecordingEngine {
                 callbacks: Rc::clone(&callbacks),
@@ -339,8 +345,8 @@ mod tests {
             started: true,
             suspended: false,
             failure: None,
-            last_frame: Some(now - Duration::from_millis(500)),
-            next_frame: Some(now - Duration::from_millis(1)),
+            last_frame: Some(last_frame),
+            next_frame: Some(next_frame),
             accumulator: 0.0,
             fixed_delta: 0.01,
             frame_interval: Duration::from_millis(10),
