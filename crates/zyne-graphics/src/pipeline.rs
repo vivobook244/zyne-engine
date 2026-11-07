@@ -293,10 +293,10 @@ fn look_at_rh(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> [[f32; 4]; 4] {
     let s = normalize(cross(f, up));
     let u = cross(s, f);
     [
-        [s[0], u[0], -f[0], 0.0],
-        [s[1], u[1], -f[1], 0.0],
-        [s[2], u[2], -f[2], 0.0],
-        [-dot(s, eye), -dot(u, eye), dot(f, eye), 1.0],
+        [s[0], s[1], s[2], -dot(s, eye)],
+        [u[0], u[1], u[2], -dot(u, eye)],
+        [-f[0], -f[1], -f[2], dot(f, eye)],
+        [0.0, 0.0, 0.0, 1.0],
     ]
 }
 
@@ -346,6 +346,20 @@ mod tests {
         let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
         assert!(matrix[3][2] < 0.0);
         assert!(matrix[3][3].abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn view_matrix_places_the_camera_target_in_front_of_camera() {
+        let view = super::look_at_rh(
+            [2.8, 2.1, 4.2],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+
+        // Row-major view matrices store translation in the final column.
+        // The origin must be in front of the camera (negative view-space Z).
+        assert!(view[2][3] < 0.0);
+        assert_eq!(view[3], [0.0, 0.0, 0.0, 1.0]);
     }
 
     #[test]
