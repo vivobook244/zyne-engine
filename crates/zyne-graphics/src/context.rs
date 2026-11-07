@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use wgpu::{
     Adapter, AdapterInfo, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, Limits,
-    PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration,
-    TextureFormat, TextureUsages,
+    PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceCapabilities,
+    SurfaceConfiguration, TextureFormat, TextureUsages,
 };
 use zyne_platform::PlatformWindow;
 
@@ -35,6 +35,11 @@ impl GraphicsContext {
     /// Returns a descriptive graphics error if surface, adapter, device, or
     /// surface configuration initialization fails.
     pub fn new(window: PlatformWindow) -> Result<Self, GraphicsError> {
+        let size = window.inner_size();
+        if size.width == 0 || size.height == 0 {
+            return Err(GraphicsError::ZeroSizedSurface);
+        }
+
         let instance = Instance::default();
         let surface = instance
             .create_surface(Arc::new(window.clone()))
@@ -57,44 +62,9 @@ impl GraphicsContext {
         let (device, queue) = pollster::block_on(adapter.request_device(&descriptor))
             .map_err(|error| GraphicsError::DeviceRequest(error.to_string()))?;
 
-        let size = window.inner_size();
-        if size.width == 0 || size.height == 0 {
-            return Err(GraphicsError::ZeroSizedSurface);
-        }
-
         let capabilities = surface.get_capabilities(&adapter);
-        let format = capabilities
-            .formats
-            .iter()
-            .copied()
-            .find(TextureFormat::is_srgb)
-            .or_else(|| capabilities.formats.first().copied())
-            .ok_or(GraphicsError::NoSurfaceFormats)?;
-        let present_mode = capabilities
-            .present_modes
-            .iter()
-            .copied()
-            .find(|mode| *mode == PresentMode::Fifo)
-            .or_else(|| capabilities.present_modes.first().copied())
-            .ok_or(GraphicsError::NoPresentModes)?;
-        let alpha_mode = capabilities
-            .alpha_modes
-            .iter()
-            .copied()
-            .find(|mode| *mode == CompositeAlphaMode::Auto)
-            .or_else(|| capabilities.alpha_modes.first().copied())
-            .ok_or(GraphicsError::NoAlphaModes)?;
-
-        let surface_config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format,
-            width: size.width,
-            height: size.height,
-            present_mode,
-            desired_maximum_frame_latency: 2,
-            alpha_mode,
-            view_formats: Vec::new(),
-        };
+        let surface_config =
+            build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
 
         tracing::info!(
@@ -163,5 +133,133 @@ impl GraphicsContext {
     #[must_use]
     pub const fn surface(&self) -> &Surface<'static> {
         &self.surface
+    }
+}
+
+fn build_surface_configuration(
+    capabilities: &SurfaceCapabilities,
+    width: u32,
+    height: u32,
+) -> Result<SurfaceConfiguration, GraphicsError> {
+    if width == 0 || height == 0 {
+        return Err(GraphicsError::ZeroSizedSurface);
+    }
+
+    let format = capabilities
+        .formats
+        .iter()
+        .copied()
+        .find(TextureFormat::is_srgb)
+        .or_else(|| capabilities.formats.first().copied())
+        .ok_or(GraphicsError::NoSurfaceFormats)?;
+    let present_mode = capabilities
+        .present_modes
+        .iter()
+        .copied()
+        .find(|mode| *mode == PresentMode::Fifo)
+        .or_else(|| capabilities.present_modes.first().copied())
+        .ok_or(GraphicsError::NoPresentModes)?;
+    let alpha_mode = capabilities
+        .alpha_modes
+        .iter()
+        .copied()
+        .find(|mode| *mode == CompositeAlphaMode::Auto)
+        .or_else(|| capabilities.alpha_modes.first().copied())
+        .ok_or(GraphicsError::NoAlphaModes)?;
+
+    Ok(SurfaceConfiguration {
+        usage: TextureUsages::RENDER_ATTACHMENT,
+        format,
+        width,
+        height,
+        present_mode,
+        desired_maximum_frame_latency: 2,
+        alpha_mode,
+        view_formats: Vec::new(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use wgpu::{
+        CompositeAlphaMode, PresentMode, SurfaceCapabilities, TextureFormat, TextureUsages,
+    };
+
+    use super::build_surface_configuration;
+    use crate::GraphicsError;
+
+    fn sample_capabilities() -> SurfaceCapabilities {
+        SurfaceCapabilities {
+            usages: TextureUsages::RENDER_ATTACHMENT,
+            formats: vec![TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
+            present_modes: vec![PresentMode::Immediate, PresentMode::Fifo],
+            alpha_modes: vec![CompositeAlphaMode::Opaque, CompositeAlphaMode::Auto],
+        }
+    }
+
+    #[test]
+    fn prefers_srgb_fifo_and_automatic_alpha_when_available() {
+        let config = build_surface_configuration(&sample_capabilities(), 1280, 720)
+            .expect("sample surface capabilities should produce a valid configuration");
+
+        assert_eq!(config.format, TextureFormat::Bgra8UnormSrgb);
+        assert_eq!(config.present_mode, PresentMode::Fifo);
+        assert_eq!(config.alpha_mode, CompositeAlphaMode::Auto);
+        assert_eq!((config.width, config.height), (1280, 720));
+        assert_eq!(config.desired_maximum_frame_latency, 2);
+    }
+
+    #[test]
+    fn falls_back_to_first_supported_surface_capabilities() {
+        let capabilities = SurfaceCapabilities {
+            usages: TextureUsages::RENDER_ATTACHMENT,
+            formats: vec![TextureFormat::Bgra8Unorm],
+            present_modes: vec![PresentMode::Immediate],
+            alpha_modes: vec![CompositeAlphaMode::Opaque],
+        };
+
+        let config = build_surface_configuration(&capabilities, 640, 480)
+            .expect("non-empty surface capabilities should be accepted");
+
+        assert_eq!(config.format, TextureFormat::Bgra8Unorm);
+        assert_eq!(config.present_mode, PresentMode::Immediate);
+        assert_eq!(config.alpha_mode, CompositeAlphaMode::Opaque);
+    }
+
+    #[test]
+    fn rejects_zero_sized_surface() {
+        let result = build_surface_configuration(&sample_capabilities(), 0, 720);
+
+        assert_eq!(result, Err(GraphicsError::ZeroSizedSurface));
+    }
+
+    #[test]
+    fn rejects_empty_surface_formats() {
+        let mut capabilities = sample_capabilities();
+        capabilities.formats.clear();
+
+        let result = build_surface_configuration(&capabilities, 1280, 720);
+
+        assert_eq!(result, Err(GraphicsError::NoSurfaceFormats));
+    }
+
+    #[test]
+    fn rejects_empty_presentation_modes() {
+        let mut capabilities = sample_capabilities();
+        capabilities.present_modes.clear();
+
+        let result = build_surface_configuration(&capabilities, 1280, 720);
+
+        assert_eq!(result, Err(GraphicsError::NoPresentModes));
+    }
+
+    #[test]
+    fn rejects_empty_alpha_modes() {
+        let mut capabilities = sample_capabilities();
+        capabilities.alpha_modes.clear();
+
+        let result = build_surface_configuration(&capabilities, 1280, 720);
+
+        assert_eq!(result, Err(GraphicsError::NoAlphaModes));
     }
 }
