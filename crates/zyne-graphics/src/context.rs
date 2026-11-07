@@ -27,7 +27,8 @@ pub struct GraphicsContext {
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
     cube_pipeline: CubePipeline,
-    _depth_texture: wgpu::Texture,
+    #[allow(dead_code)]
+    depth_texture: wgpu::Texture,
     depth_view: wgpu::TextureView,
     surface_suspended: bool,
 }
@@ -98,7 +99,7 @@ impl GraphicsContext {
             surface,
             surface_config,
             cube_pipeline,
-            _depth_texture: depth_texture,
+            depth_texture,
             depth_view,
             surface_suspended: false,
         })
@@ -273,7 +274,7 @@ impl GraphicsContext {
             self.surface_config.width,
             self.surface_config.height,
         );
-        self._depth_texture = depth_texture;
+        self.depth_texture = depth_texture;
         self.depth_view = depth_view;
         self.surface_suspended = false;
 
