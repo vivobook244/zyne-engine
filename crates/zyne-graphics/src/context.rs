@@ -63,8 +63,7 @@ impl GraphicsContext {
             .map_err(|error| GraphicsError::DeviceRequest(error.to_string()))?;
 
         let capabilities = surface.get_capabilities(&adapter);
-        let surface_config =
-            build_surface_configuration(&capabilities, size.width, size.height)?;
+        let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
 
         tracing::info!(
