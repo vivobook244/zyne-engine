@@ -5,6 +5,7 @@ use std::{
 };
 
 use zyne_core::{Engine, EngineContext, ZyneError, ZyneResult};
+use zyne_graphics::GraphicsContext;
 use zyne_platform::{
     PlatformEvent, PlatformWindow, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
 };
@@ -48,6 +49,7 @@ impl Application {
         let state = Rc::new(RefCell::new(RuntimeState {
             engine,
             context,
+            graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: false,
@@ -96,6 +98,7 @@ impl Application {
 struct RuntimeState<E> {
     engine: E,
     context: EngineContext,
+    graphics: Option<GraphicsContext>,
     events: EventQueue,
     input: InputState,
     started: bool,
@@ -114,8 +117,10 @@ struct ApplicationRunner<E> {
 }
 
 impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
-    fn on_window_created(&mut self, _window: &PlatformWindow) -> Result<(), String> {
+    fn on_window_created(&mut self, window: &PlatformWindow) -> Result<(), String> {
+        let graphics = GraphicsContext::new(window.clone()).map_err(|error| error.to_string())?;
         let mut state = self.state.borrow_mut();
+        state.graphics = Some(graphics);
         let startup_result = {
             let RuntimeState { engine, context, .. } = &mut *state;
             engine.on_start(context)
@@ -357,6 +362,7 @@ mod tests {
                 callbacks: Rc::clone(&callbacks),
             },
             context,
+            graphics: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: true,
