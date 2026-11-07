@@ -47,7 +47,7 @@ impl TrianglePipeline {
     pub(super) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ZYNE Basic Triangle Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/basic_triangle.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic_triangle.wgsl").into()),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

@@ -8,7 +8,7 @@ use wgpu::{
 };
 use zyne_platform::PlatformWindow;
 
-use crate::{FrameOutcome, GraphicsError, pipeline::TrianglePipeline};
+use crate::{pipeline::TrianglePipeline, FrameOutcome, GraphicsError};
 
 const DEFAULT_CLEAR_COLOR: Color = Color {
     r: 0.055,
