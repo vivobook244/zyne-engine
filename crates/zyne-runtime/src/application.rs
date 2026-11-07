@@ -5,7 +5,7 @@ use std::{
 };
 
 use zyne_core::{Engine, EngineContext, ZyneError, ZyneResult};
-use zynegraphics::GraphicsContext;
+use zyne_graphics::GraphicsContext;
 use zyne_platform::{
     PlatformEvent, PlatformWindow, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
 };
