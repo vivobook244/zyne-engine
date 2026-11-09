@@ -129,7 +129,7 @@ impl Camera3d {
             [
                 0.0,
                 0.0,
-                (self.near * self.far) / (self.near - self.far),
+                self.near * (self.far / (self.near - self.far)),
                 0.0,
             ],
         ]
@@ -298,6 +298,82 @@ mod tests {
         let clip_w = matrix[3][3];
         assert!(clip_w > 0.0);
         assert!(clip_z >= 0.0 && clip_z <= clip_w);
+    }
+
+    #[test]
+    fn view_matrix_maps_camera_position_to_origin() {
+        let camera = camera();
+        let view = camera.view_matrix();
+        let position = camera.position();
+        let transformed = transform_point(view, position);
+
+        for component in transformed {
+            assert!(component.abs() < 1.0e-5);
+        }
+    }
+
+    #[test]
+    fn view_matrix_maps_target_to_negative_view_z() {
+        let camera = camera();
+        let view = camera.view_matrix();
+        let target = camera.target();
+        let transformed = transform_point(view, target);
+        let distance = ((camera.position()[0] - target[0]).powi(2)
+            + (camera.position()[1] - target[1]).powi(2)
+            + (camera.position()[2] - target[2]).powi(2))
+        .sqrt();
+
+        assert!(transformed[0].abs() < 1.0e-5);
+        assert!(transformed[1].abs() < 1.0e-5);
+        assert!((transformed[2] + distance).abs() < 1.0e-4);
+    }
+
+    #[test]
+    fn view_projection_maps_near_and_far_points_into_wgpu_depth_range() {
+        let camera = Camera3d::new(
+            [0.0; 3],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+            60.0_f32.to_radians(),
+            1.0,
+            0.5,
+            20.0,
+        )
+        .expect("camera parameters should be valid");
+        let matrix = camera.view_projection_matrix();
+        let near = transform_point(matrix, [0.0, 0.0, -0.5]);
+        let far = transform_point(matrix, [0.0, 0.0, -20.0]);
+
+        assert!((near[2] - 0.0).abs() < 1.0e-5);
+        assert!((far[2] - 1.0).abs() < 1.0e-5);
+    }
+
+    #[test]
+    fn projection_scales_horizontal_axis_by_aspect_ratio() {
+        let wide = Camera3d::new(
+            [0.0; 3], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0],
+            60.0_f32.to_radians(), 2.0, 0.1, 100.0,
+        ).expect("wide camera should be valid");
+        let square = Camera3d::new(
+            [0.0; 3], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0],
+            60.0_f32.to_radians(), 1.0, 0.1, 100.0,
+        ).expect("square camera should be valid");
+
+        assert!((wide.projection_matrix()[0][0] * 2.0
+            - square.projection_matrix()[0][0]).abs() < 1.0e-6);
+    }
+
+    fn transform_point(matrix: [[f32; 4]; 4], point: [f32; 3]) -> [f32; 3] {
+        let vector = [point[0], point[1], point[2], 1.0];
+        let mut clip = [0.0; 4];
+
+        for row in 0..4 {
+            for column in 0..4 {
+                clip[row] += matrix[column][row] * vector[column];
+            }
+        }
+
+        [clip[0] / clip[3], clip[1] / clip[3], clip[2] / clip[3]]
     }
 
     #[test]
