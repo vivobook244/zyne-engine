@@ -245,6 +245,15 @@ impl CubePipeline {
     }
 }
 
+fn identity_matrix() -> [[f32; 4]; 4] {
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
 fn multiply_column_major(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let mut result = [[0.0; 4]; 4];
 
@@ -271,7 +280,7 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{cube_vertices, multiply_column_major, rotation_y};
+    use super::{cube_vertices, multiply_column_major, rotation_y, Camera3d};
 
     #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
