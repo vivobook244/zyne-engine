@@ -56,7 +56,7 @@ impl Camera3d {
         {
             return Err(CameraError::NonFiniteParameter);
         }
-        if !(0.0..std::f32::consts::PI).contains(&vertical_fov_radians) {
+        if vertical_fov_radians <= 0.0 || vertical_fov_radians >= std::f32::consts::PI {
             return Err(CameraError::InvalidFieldOfView);
         }
         if aspect_ratio <= 0.0 {
@@ -216,18 +216,31 @@ mod tests {
 
     #[test]
     fn rejects_invalid_projection_parameters() {
-        assert_eq!(
-            Camera3d::new(
-                [0.0; 3],
-                [0.0, 0.0, 1.0],
-                [0.0, 1.0, 0.0],
-                0.0,
-                1.0,
-                0.1,
-                10.0
-            ),
-            Err(CameraError::InvalidFieldOfView)
-        );
+        for invalid_fov in [
+            0.0,
+            -0.1,
+            std::f32::consts::PI,
+            f32::NAN,
+            f32::INFINITY,
+        ] {
+            let expected_error = if invalid_fov.is_finite() {
+                CameraError::InvalidFieldOfView
+            } else {
+                CameraError::NonFiniteParameter
+            };
+            assert_eq!(
+                Camera3d::new(
+                    [0.0; 3],
+                    [0.0, 0.0, 1.0],
+                    [0.0, 1.0, 0.0],
+                    invalid_fov,
+                    1.0,
+                    0.1,
+                    10.0
+                ),
+                Err(expected_error)
+            );
+        }
         assert_eq!(
             Camera3d::new(
                 [0.0; 3],
