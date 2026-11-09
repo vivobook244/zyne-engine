@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
+use zyne_math::Camera3d;
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
@@ -212,14 +213,22 @@ impl CubePipeline {
 
         #[allow(clippy::cast_precision_loss)]
         let aspect = width as f32 / height as f32;
-        let projection = perspective_rh_wgpu(55.0_f32.to_radians(), aspect, 0.1, 100.0);
-        let view = look_at_rh([4.0, 2.8, 4.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-        // Keep a modest model rotation so the camera reveals three distinct faces.
+        let camera = Camera3d::new(
+            [4.0, 2.8, 4.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            55.0_f32.to_radians(),
+            aspect,
+            0.1,
+            100.0,
+        )
+        .expect("the built-in cube camera configuration must be valid");
+
+        // Camera3d owns view/projection conventions. Keep only the cube's
+        // local model transform in the graphics layer.
         let model = rotation_y(0.15);
-        let view_projection = multiply(projection, multiply(view, model));
-        let uniform = CameraUniform {
-            view_projection: to_columns(view_projection),
-        };
+        let view_projection = multiply_column_major(camera.view_projection_matrix(), model);
+        let uniform = CameraUniform { view_projection };
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 
@@ -236,95 +245,36 @@ impl CubePipeline {
     }
 }
 
-fn identity_matrix() -> [[f32; 4]; 4] {
-    [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-}
+fn multiply_column_major(
+    a: [[f32; 4]; 4],
+    b: [[f32; 4]; 4],
+) -> [[f32; 4]; 4] {
+    let mut result = [[0.0; 4]; 4];
 
-fn to_columns(matrix: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
-    [
-        [matrix[0][0], matrix[1][0], matrix[2][0], matrix[3][0]],
-        [matrix[0][1], matrix[1][1], matrix[2][1], matrix[3][1]],
-        [matrix[0][2], matrix[1][2], matrix[2][2], matrix[3][2]],
-        [matrix[0][3], matrix[1][3], matrix[2][3], matrix[3][3]],
-    ]
-}
-
-#[allow(clippy::many_single_char_names)]
-fn multiply(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
-    let mut out = [[0.0; 4]; 4];
-
-    for (row_index, row) in out.iter_mut().enumerate() {
-        for (column_index, value) in row.iter_mut().enumerate() {
-            for (inner_index, left) in a[row_index].iter().enumerate() {
-                *value += left * b[inner_index][column_index];
+    for column in 0..4 {
+        for row in 0..4 {
+            for inner in 0..4 {
+                result[column][row] += a[inner][row] * b[column][inner];
             }
         }
     }
 
-    out
+    result
 }
 
 fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
-    let (s, c) = angle.sin_cos();
+    let (sine, cosine) = angle.sin_cos();
     [
-        [c, 0.0, s, 0.0],
+        [cosine, 0.0, -sine, 0.0],
         [0.0, 1.0, 0.0, 0.0],
-        [-s, 0.0, c, 0.0],
+        [sine, 0.0, cosine, 0.0],
         [0.0, 0.0, 0.0, 1.0],
     ]
-}
-
-fn perspective_rh_wgpu(fov: f32, aspect: f32, near: f32, far: f32) -> [[f32; 4]; 4] {
-    let f = 1.0 / (fov * 0.5).tan();
-    [
-        [f / aspect, 0.0, 0.0, 0.0],
-        [0.0, f, 0.0, 0.0],
-        [0.0, 0.0, far / (near - far), (near * far) / (near - far)],
-        [0.0, 0.0, -1.0, 0.0],
-    ]
-}
-
-fn look_at_rh(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> [[f32; 4]; 4] {
-    let f = normalize(sub(target, eye));
-    let s = normalize(cross(f, up));
-    let u = cross(s, f);
-    [
-        [s[0], s[1], s[2], -dot(s, eye)],
-        [u[0], u[1], u[2], -dot(u, eye)],
-        [-f[0], -f[1], -f[2], dot(f, eye)],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-}
-
-fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ]
-}
-
-fn normalize(vector: [f32; 3]) -> [f32; 3] {
-    let length = dot(vector, vector).sqrt();
-    [vector[0] / length, vector[1] / length, vector[2] / length]
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{cube_vertices, multiply, perspective_rh_wgpu, rotation_y};
+    use super::{cube_vertices, multiply_column_major, rotation_y};
 
     #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
@@ -343,56 +293,35 @@ mod tests {
     }
 
     #[test]
-    fn perspective_matrix_has_expected_clip_depth_terms() {
-        let matrix = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
-        assert!(matrix[2][3] < 0.0);
-        assert_eq!(matrix[3][2], -1.0);
-        assert!(matrix[3][3].abs() < f32::EPSILON);
+    fn model_transform_composes_after_camera_view_projection() {
+        let camera = Camera3d::new(
+            [4.0, 2.8, 4.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            55.0_f32.to_radians(),
+            16.0 / 9.0,
+            0.1,
+            100.0,
+        )
+        .expect("camera configuration should be valid");
+        let model = rotation_y(0.15);
+        let combined = multiply_column_major(camera.view_projection_matrix(), model);
+
+        assert!(combined.iter().flatten().all(|value| value.is_finite()));
+        assert_ne!(combined, camera.view_projection_matrix());
     }
 
     #[test]
-    fn camera_target_is_inside_wgpu_clip_depth_range() {
-        let projection = perspective_rh_wgpu(55.0_f32.to_radians(), 16.0 / 9.0, 0.1, 100.0);
-        let view = super::look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-        let view_projection = multiply(projection, view);
-
-        // The world-space origin is the camera target. For wgpu's 0..1 depth
-        // convention, its projected depth must be between zero and clip W.
-        let clip_z = view_projection[2][3];
-        let clip_w = view_projection[3][3];
-        assert!(clip_w > 0.0);
-        assert!(clip_z >= 0.0 && clip_z <= clip_w);
-    }
-
-    #[test]
-    fn view_matrix_places_the_camera_target_in_front_of_camera() {
-        let view = super::look_at_rh([2.8, 2.1, 4.2], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-
-        // Row-major view matrices store translation in the final column.
-        // The origin must be in front of the camera (negative view-space Z).
-        assert!(view[2][3] < 0.0);
-        assert_eq!(view[3], [0.0, 0.0, 0.0, 1.0]);
-    }
-
-    #[test]
-    fn matrix_multiplication_preserves_identity() {
-        let identity = identity_for_test();
-        let actual = multiply(identity, rotation_y(0.5));
-        let expected = rotation_y(0.5);
-
-        for row in 0..4 {
-            for column in 0..4 {
-                assert!((actual[row][column] - expected[row][column]).abs() < f32::EPSILON);
-            }
-        }
-    }
-
-    fn identity_for_test() -> [[f32; 4]; 4] {
-        [
+    fn column_major_multiplication_preserves_identity() {
+        let identity = [
             [1.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-        ]
+        ];
+        let model = rotation_y(0.5);
+        let actual = multiply_column_major(identity, model);
+
+        assert_eq!(actual, model);
     }
 }
