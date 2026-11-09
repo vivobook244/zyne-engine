@@ -32,6 +32,12 @@ impl Camera3d {
     ///
     /// The vertical field of view is in radians. All distances use engine
     /// world units; the near plane must be positive and the far plane greater.
+    ///
+    /// # Errors
+    ///
+    /// Returns `CameraError` when any parameter is non-finite, the field of
+    /// view or aspect ratio is invalid, the clip planes are invalid, or the
+    /// view direction/up basis is degenerate.
     pub fn new(
         position: [f32; 3],
         target: [f32; 3],
@@ -77,6 +83,11 @@ impl Camera3d {
     }
 
     /// Changes the viewport aspect ratio after validating it.
+    ///
+    /// # Errors
+    ///
+    /// Returns `CameraError::NonFiniteParameter` for a non-finite value or
+    /// `CameraError::InvalidAspectRatio` when the value is not positive.
     pub fn set_aspect_ratio(&mut self, aspect_ratio: f32) -> Result<(), CameraError> {
         if !aspect_ratio.is_finite() {
             return Err(CameraError::NonFiniteParameter);
