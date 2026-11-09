@@ -216,13 +216,7 @@ mod tests {
 
     #[test]
     fn rejects_invalid_projection_parameters() {
-        for invalid_fov in [
-            0.0,
-            -0.1,
-            std::f32::consts::PI,
-            f32::NAN,
-            f32::INFINITY,
-        ] {
+        for invalid_fov in [0.0, -0.1, std::f32::consts::PI, f32::NAN, f32::INFINITY] {
             let expected_error = if invalid_fov.is_finite() {
                 CameraError::InvalidFieldOfView
             } else {
