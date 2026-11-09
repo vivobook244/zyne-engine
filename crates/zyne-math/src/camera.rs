@@ -351,16 +351,30 @@ mod tests {
     #[test]
     fn projection_scales_horizontal_axis_by_aspect_ratio() {
         let wide = Camera3d::new(
-            [0.0; 3], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0],
-            60.0_f32.to_radians(), 2.0, 0.1, 100.0,
-        ).expect("wide camera should be valid");
+            [0.0; 3],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+            60.0_f32.to_radians(),
+            2.0,
+            0.1,
+            100.0,
+        )
+        .expect("wide camera should be valid");
         let square = Camera3d::new(
-            [0.0; 3], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0],
-            60.0_f32.to_radians(), 1.0, 0.1, 100.0,
-        ).expect("square camera should be valid");
+            [0.0; 3],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+            60.0_f32.to_radians(),
+            1.0,
+            0.1,
+            100.0,
+        )
+        .expect("square camera should be valid");
 
-        assert!((wide.projection_matrix()[0][0] * 2.0
-            - square.projection_matrix()[0][0]).abs() < 1.0e-6);
+        assert!(
+            (wide.projection_matrix()[0][0] * 2.0 - square.projection_matrix()[0][0]).abs()
+                < 1.0e-6
+        );
     }
 
     fn transform_point(matrix: [[f32; 4]; 4], point: [f32; 3]) -> [f32; 3] {
