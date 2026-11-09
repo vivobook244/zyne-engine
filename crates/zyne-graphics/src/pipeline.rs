@@ -245,10 +245,7 @@ impl CubePipeline {
     }
 }
 
-fn multiply_column_major(
-    a: [[f32; 4]; 4],
-    b: [[f32; 4]; 4],
-) -> [[f32; 4]; 4] {
+fn multiply_column_major(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let mut result = [[0.0; 4]; 4];
 
     for column in 0..4 {
