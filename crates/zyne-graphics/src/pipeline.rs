@@ -206,23 +206,35 @@ impl CubePipeline {
         }
     }
 
-    pub(super) fn update_camera(&self, queue: &wgpu::Queue, width: u32, height: u32) {
+    pub(super) fn update_camera(
+        &self,
+        queue: &wgpu::Queue,
+        width: u32,
+        height: u32,
+        camera: Option<&Camera3d>,
+    ) {
         if width == 0 || height == 0 {
             return;
         }
 
-        #[allow(clippy::cast_precision_loss)]
-        let aspect = width as f32 / height as f32;
-        let camera = Camera3d::new(
-            [4.0, 2.8, 4.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            55.0_f32.to_radians(),
-            aspect,
-            0.1,
-            100.0,
-        )
-        .expect("the built-in cube camera configuration must be valid");
+        let default_camera;
+        let camera = if let Some(camera) = camera {
+            camera
+        } else {
+            #[allow(clippy::cast_precision_loss)]
+            let aspect = width as f32 / height as f32;
+            default_camera = Camera3d::new(
+                [4.0, 2.8, 4.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                55.0_f32.to_radians(),
+                aspect,
+                0.1,
+                100.0,
+            )
+            .expect("the built-in cube camera configuration must be valid");
+            &default_camera
+        };
 
         // Camera3d owns view/projection conventions. Keep only the cube's
         // local model transform in the graphics layer.
