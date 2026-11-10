@@ -1,4 +1,6 @@
-use zyne_runtime::{Application, ApplicationConfig, Engine, EngineContext, InputState, KeyCode, ZyneResult};
+use zyne_runtime::{
+    Application, ApplicationConfig, Engine, EngineContext, InputState, KeyCode, ZyneResult,
+};
 
 struct SmokeEngine {
     frames: u64,
