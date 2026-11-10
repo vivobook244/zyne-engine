@@ -30,6 +30,8 @@ A positive rotation follows the right-hand rule around its axis.
 - Matrix multiplication is not commutative. Do not reorder transform factors.
 - Normal vectors must use the appropriate inverse-transpose transform when non-uniform scale is present.
 
+The initial `zyne-math::Transform3d` implementation stores translation, a normalized quaternion, and scale. Quaternion components are ordered `x, y, z, w`. Its constructor and deserializer reject non-finite components and zero-length quaternions. `to_matrix()` returns the column-major local-to-parent matrix using the composition above.
+
 ## Rotations and quaternions
 
 - Rotations are right-handed and active: they rotate vectors in the stated coordinate frame.
