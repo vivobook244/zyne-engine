@@ -228,9 +228,10 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
                 state.next_frame = None;
                 state.accumulator = 0.0;
             }
-            _ => {}
+            PlatformEvent::Window(WindowEvent::Focused(false)) => state.input.reset(),
+            PlatformEvent::Input(input) => state.input.process_event(input),
+            PlatformEvent::Window(_) => {}
         }
-        state.input.process_platform_event(event);
     }
 
     if state.suspended || !state.started {
@@ -263,9 +264,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     while state.accumulator >= fixed_delta && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME {
         let fixed_update_result = {
             let RuntimeState {
-                engine, context, ..
+                engine, context, input, ..
             } = state;
-            engine.on_fixed_update(context, fixed_delta_seconds)
+            engine.on_fixed_update_with_input(context, fixed_delta_seconds, input)
         };
         fixed_update_result?;
         state.accumulator -= fixed_delta;
@@ -285,9 +286,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     let frame_delta_seconds = delta as f32;
     let update_result = {
         let RuntimeState {
-            engine, context, ..
+            engine, context, input, ..
         } = state;
-        engine.on_update(context, frame_delta_seconds)
+        engine.on_update_with_input(context, frame_delta_seconds, input)
     };
     update_result?;
 
