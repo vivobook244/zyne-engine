@@ -18,7 +18,7 @@ const PAN_SENSITIVITY: f32 = 0.0015;
 ///
 /// Hold the right mouse button to orbit, the middle button to pan, and use
 /// the scroll wheel to zoom. The controller is independent of the renderer;
-/// call camera() and pass the result to a rendering pipeline.
+/// call `camera()` and pass the result to a rendering pipeline.
 #[derive(Debug, Clone)]
 pub struct OrbitCameraController {
     target: [f32; 3],
@@ -70,24 +70,22 @@ impl OrbitCameraController {
     pub fn update(&mut self, input: &InputState) -> Result<Camera3d, CameraError> {
         let cursor = input.cursor_position();
         if let Some((x, y)) = cursor.filter(|(x, y)| x.is_finite() && y.is_finite()) {
-            if input.is_mouse_pressed(MouseButton::Right) {
-                if !input.just_mouse_pressed(MouseButton::Right) {
-                    if let Some((last_x, last_y)) = self.last_cursor_position {
-                        let delta_x = (x - last_x) as f32;
-                        let delta_y = (y - last_y) as f32;
-                        self.yaw -= delta_x * ORBIT_SENSITIVITY;
-                        self.pitch =
-                            (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
-                    }
-                }
-            } else if input.is_mouse_pressed(MouseButton::Middle) {
-                if !input.just_mouse_pressed(MouseButton::Middle) {
-                    if let Some((last_x, last_y)) = self.last_cursor_position {
-                        let delta_x = (x - last_x) as f32;
-                        let delta_y = (y - last_y) as f32;
-                        self.pan(delta_x, delta_y);
-                    }
-                }
+            if input.is_mouse_pressed(MouseButton::Right)
+                && !input.just_mouse_pressed(MouseButton::Right)
+                && let Some((last_x, last_y)) = self.last_cursor_position
+            {
+                let delta_x = (x - last_x) as f32;
+                let delta_y = (y - last_y) as f32;
+                self.yaw -= delta_x * ORBIT_SENSITIVITY;
+                self.pitch =
+                    (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
+            } else if input.is_mouse_pressed(MouseButton::Middle)
+                && !input.just_mouse_pressed(MouseButton::Middle)
+                && let Some((last_x, last_y)) = self.last_cursor_position
+            {
+                let delta_x = (x - last_x) as f32;
+                let delta_y = (y - last_y) as f32;
+                self.pan(delta_x, delta_y);
             }
             self.last_cursor_position = Some((x, y));
         } else {
