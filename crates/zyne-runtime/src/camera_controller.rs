@@ -203,6 +203,10 @@ mod tests {
     fn right_drag_orbits_around_the_target() {
         let mut controller =
             OrbitCameraController::new([0.0; 3], 5.0, 1.0).expect("controller should be valid");
+        let initial_position = controller
+            .camera()
+            .expect("initial camera should be valid")
+            .position();
         let mut input = InputState::new();
         input.process_event(InputEvent::CursorMoved { x: 100.0, y: 100.0 });
         input.process_event(InputEvent::MouseButton {
@@ -216,7 +220,7 @@ mod tests {
         let camera = controller.update(&input).expect("orbit should be valid");
 
         assert_eq!(camera.target(), [0.0; 3]);
-        assert_ne!(camera.position(), [5.0, 0.0, 0.0]);
+        assert_ne!(camera.position(), initial_position);
     }
 
     #[test]
