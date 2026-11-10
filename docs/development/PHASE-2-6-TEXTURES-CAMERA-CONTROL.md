@@ -1,6 +1,6 @@
 # Phase 2.6 — Textures & Controllable Camera
 
-**Status:** PLANNED — IMPLEMENTATION NOT STARTED  
+**Status:** IN PROGRESS — CAMERA CONTROLS COMPLETE; CHECKER TEXTURE IMPLEMENTED, GPU VERIFICATION PENDING  
 **Branch:** `main`  
 **Prerequisite:** Phase 2.5 — Depth Buffer & 3D Foundation  
 **Goal:** Complete the original Phase 2 acceptance target: render a textured 3D model and provide a camera that can be controlled through the engine's public runtime API.
@@ -30,10 +30,11 @@
 
 ### 2.6.4 Texture sampling
 
-- Add UVs to the mesh vertex format and a sampled 2D texture with a sampler.
-- Define explicit texture color-space handling and a small embedded checker/test texture for deterministic smoke testing.
-- Keep texture ownership and bind-group construction in `zyne-graphics`.
-- Defer external image loading, asset registries, material authoring, and hot reload to Phase 4/5.
+- [x] Add UVs to the mesh vertex format and a sampled 2D texture with a sampler.
+- [x] Define explicit texture color-space handling (`Rgba8UnormSrgb`) and an embedded procedural checker texture for deterministic smoke testing.
+- [x] Keep texture ownership and bind-group construction in `zyne-graphics`.
+- [x] Defer external image loading, asset registries, material authoring, and hot reload to Phase 4/5.
+- [ ] Verify checker texture sampling on a local desktop GPU.
 
 ### 2.6.5 Acceptance
 

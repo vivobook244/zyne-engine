@@ -3,17 +3,20 @@ use wgpu::util::DeviceExt;
 use zyne_math::Camera3d;
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+const CHECKER_TEXTURE_SIZE: u32 = 64;
+const CHECKER_TILE_SIZE: u32 = 8;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
+    uv: [f32; 2],
 }
 
 impl Vertex {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
+    const ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
 
     const fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -91,7 +94,9 @@ fn cube_vertices() -> [Vertex; 36] {
     let mut vertices = [Vertex {
         position: [0.0; 3],
         color: [0.0; 3],
+        uv: [0.0; 2],
     }; 36];
+    let face_uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
     let triangles = [0, 1, 2, 0, 2, 3];
 
     for (face_index, (color, corners)) in CUBE_FACES.iter().enumerate() {
@@ -99,6 +104,7 @@ fn cube_vertices() -> [Vertex; 36] {
             vertices[face_index * 6 + vertex_index] = Vertex {
                 position: corners[*triangle_corner],
                 color: *color,
+                uv: face_uvs[*triangle_corner],
             };
         }
     }
@@ -112,6 +118,10 @@ pub(super) struct CubePipeline {
     vertex_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    _checker_texture: wgpu::Texture,
+    _checker_texture_view: wgpu::TextureView,
+    _checker_sampler: wgpu::Sampler,
+    texture_bind_group: wgpu::BindGroup,
 }
 
 impl CubePipeline {
@@ -148,9 +158,90 @@ impl CubePipeline {
                 resource: camera_buffer.as_entire_binding(),
             }],
         });
+
+        let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ZYNE Texture Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let checker_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ZYNE Embedded Checker Texture"),
+            size: wgpu::Extent3d {
+                width: CHECKER_TEXTURE_SIZE,
+                height: CHECKER_TEXTURE_SIZE,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let checker_pixels = checker_texture_pixels();
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &checker_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &checker_pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(CHECKER_TEXTURE_SIZE * 4),
+                rows_per_image: Some(CHECKER_TEXTURE_SIZE),
+            },
+            wgpu::Extent3d {
+                width: CHECKER_TEXTURE_SIZE,
+                height: CHECKER_TEXTURE_SIZE,
+                depth_or_array_layers: 1,
+            },
+        );
+        let checker_texture_view = checker_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let checker_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("ZYNE Checker Texture Sampler"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ZYNE Checker Texture Bind Group"),
+            layout: &texture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&checker_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&checker_sampler),
+                },
+            ],
+        });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
-            bind_group_layouts: &[&camera_layout],
+            bind_group_layouts: &[&camera_layout, &texture_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -203,6 +294,10 @@ impl CubePipeline {
             vertex_buffer,
             camera_buffer,
             camera_bind_group,
+            _checker_texture: checker_texture,
+            _checker_texture_view: checker_texture_view,
+            _checker_sampler: checker_sampler,
+            texture_bind_group,
         }
     }
 
@@ -255,6 +350,24 @@ impl CubePipeline {
     pub(super) const fn camera_bind_group(&self) -> &wgpu::BindGroup {
         &self.camera_bind_group
     }
+
+    pub(super) const fn texture_bind_group(&self) -> &wgpu::BindGroup {
+        &self.texture_bind_group
+    }
+}
+
+fn checker_texture_pixels() -> Vec<u8> {
+    let mut pixels = Vec::with_capacity((CHECKER_TEXTURE_SIZE * CHECKER_TEXTURE_SIZE * 4) as usize);
+
+    for y in 0..CHECKER_TEXTURE_SIZE {
+        for x in 0..CHECKER_TEXTURE_SIZE {
+            let is_light = (x / CHECKER_TILE_SIZE + y / CHECKER_TILE_SIZE) % 2 == 0;
+            let value = if is_light { 235 } else { 42 };
+            pixels.extend_from_slice(&[value, value, value, 255]);
+        }
+    }
+
+    pixels
 }
 
 fn identity_matrix() -> [[f32; 4]; 4] {
@@ -292,7 +405,10 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{Camera3d, cube_vertices, multiply_column_major, rotation_y};
+    use super::{
+        Camera3d, CHECKER_TEXTURE_SIZE, cube_vertices, checker_texture_pixels,
+        multiply_column_major, rotation_y,
+    };
 
     #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
@@ -308,6 +424,29 @@ mod tests {
                 .iter()
                 .all(|vertex| vertex.color.iter().all(|n| (0.0..=1.0).contains(n)))
         );
+    }
+
+    #[test]
+    fn cube_vertices_include_face_uv_coordinates() {
+        let vertices = cube_vertices();
+
+        assert_eq!(vertices.len(), 36);
+        assert!(vertices.iter().all(|vertex| {
+            vertex.uv.iter().all(|coordinate| (0.0..=1.0).contains(coordinate))
+        }));
+        assert_eq!(vertices[0].uv, [0.0, 0.0]);
+        assert_eq!(vertices[2].uv, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn checker_texture_has_expected_rgba_size_and_alternating_tiles() {
+        let pixels = checker_texture_pixels();
+        let expected_bytes = (CHECKER_TEXTURE_SIZE * CHECKER_TEXTURE_SIZE * 4) as usize;
+
+        assert_eq!(pixels.len(), expected_bytes);
+        assert_eq!(&pixels[0..4], &[235, 235, 235, 255]);
+        assert_eq!(&pixels[(8 * 4)..(8 * 4 + 4)], &[42, 42, 42, 255]);
+        assert_eq!(&pixels[(64 * 4)..(64 * 4 + 4)], &[42, 42, 42, 255]);
     }
 
     #[test]
