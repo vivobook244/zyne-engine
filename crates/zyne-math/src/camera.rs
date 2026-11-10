@@ -11,6 +11,7 @@ pub enum CameraError {
     InvalidFieldOfView,
     InvalidAspectRatio,
     InvalidClipPlanes,
+    InvalidCameraDistance,
     DegenerateViewDirection,
     DegenerateUpDirection,
 }
