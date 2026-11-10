@@ -10,6 +10,7 @@ serde.workspace = true
 thiserror = "2"
 uuid.workspace = true
 toml.workspace = true
+zyne-math = { path = "../zyne-math" }
 
 [lints]
 workspace = true
