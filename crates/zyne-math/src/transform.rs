@@ -57,15 +57,19 @@ impl Transform3d {
             return Err(TransformError::NonFiniteComponent);
         }
 
-        let length_squared = rotation
+        let largest_component = rotation
             .iter()
-            .map(|component| component * component)
-            .sum::<f32>();
-        if length_squared <= f32::EPSILON {
+            .fold(0.0_f32, |largest, component| largest.max(component.abs()));
+        if largest_component == 0.0 {
             return Err(TransformError::DegenerateRotation);
         }
-        let inverse_length = length_squared.sqrt().recip();
-        let rotation = rotation.map(|component| component * inverse_length);
+        let scaled_rotation = rotation.map(|component| component / largest_component);
+        let rotation_length = scaled_rotation
+            .iter()
+            .map(|component| component * component)
+            .sum::<f32>()
+            .sqrt();
+        let rotation = scaled_rotation.map(|component| component / rotation_length);
 
         Ok(Self {
             translation,
@@ -165,8 +169,7 @@ impl<'de> Deserialize<'de> for Transform3d {
         }
 
         let document = TransformDocument::deserialize(deserializer)?;
-        Self::new(document.translation, document.rotation, document.scale)
-            .map_err(D::Error::custom)
+        Self::new(document.translation, document.rotation, document.scale).map_err(D::Error::custom)
     }
 }
 
@@ -190,12 +193,8 @@ mod tests {
 
     #[test]
     fn transform_matrix_applies_scale_then_translation() {
-        let transform = Transform3d::new(
-            [3.0, 4.0, 5.0],
-            [0.0, 0.0, 0.0, 1.0],
-            [2.0, 3.0, 4.0],
-        )
-        .expect("transform values should be valid");
+        let transform = Transform3d::new([3.0, 4.0, 5.0], [0.0, 0.0, 0.0, 1.0], [2.0, 3.0, 4.0])
+            .expect("transform values should be valid");
         let matrix = transform.to_matrix();
 
         assert_eq!(matrix[0][0], 2.0);
@@ -222,14 +221,14 @@ mod tests {
 
     #[test]
     fn normalizes_rotation_quaternion() {
-        let transform = Transform3d::new(
-            [0.0; 3],
-            [0.0, 0.0, 0.0, 2.0],
-            [1.0; 3],
-        )
-        .expect("non-zero quaternion should be valid");
+        let transform = Transform3d::new([0.0; 3], [0.0, 0.0, 0.0, 2.0], [1.0; 3])
+            .expect("non-zero quaternion should be valid");
 
         assert_eq!(transform.rotation(), [0.0, 0.0, 0.0, 1.0]);
+
+        let large = Transform3d::new([0.0; 3], [f32::MAX; 4], [1.0; 3])
+            .expect("large finite quaternion should normalize safely");
+        assert!(large.rotation().iter().all(|component| (component - 0.5).abs() < 1.0e-6));
     }
 
     #[test]
