@@ -3,11 +3,13 @@
 
 mod application;
 mod application_config;
+mod camera_controller;
 pub mod diagnostics;
 mod event_queue;
 
 pub use application::Application;
 pub use application_config::ApplicationConfig;
+pub use camera_controller::OrbitCameraController;
 pub use event_queue::EventQueue;
 
 pub use zyne_core::{
