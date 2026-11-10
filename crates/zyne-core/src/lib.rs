@@ -17,3 +17,4 @@ pub use error::{ZyneError, ZyneResult};
 pub use input::{ButtonState, InputEvent, InputState, KeyCode, MouseButton, ScrollDelta};
 pub use resource::{Handle, ResourceId};
 pub use version::EngineVersion;
+pub use zyne_math::Camera3d;
