@@ -218,7 +218,8 @@ impl CubePipeline {
                 depth_or_array_layers: 1,
             },
         );
-        let checker_texture_view = checker_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let checker_texture_view =
+            checker_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let checker_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ZYNE Checker Texture Sampler"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -410,7 +411,7 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 #[cfg(test)]
 mod tests {
     use super::{
-        Camera3d, CHECKER_TEXTURE_SIZE, cube_vertices, checker_texture_pixels,
+        CHECKER_TEXTURE_SIZE, Camera3d, checker_texture_pixels, cube_vertices,
         multiply_column_major, rotation_y,
     };
 
@@ -436,7 +437,10 @@ mod tests {
 
         assert_eq!(vertices.len(), 36);
         assert!(vertices.iter().all(|vertex| {
-            vertex.uv.iter().all(|coordinate| (0.0..=1.0).contains(coordinate))
+            vertex
+                .uv
+                .iter()
+                .all(|coordinate| (0.0..=1.0).contains(coordinate))
         }));
         assert_eq!(vertices[0].uv, [0.0, 0.0]);
         assert_eq!(vertices[2].uv, [1.0, 1.0]);
