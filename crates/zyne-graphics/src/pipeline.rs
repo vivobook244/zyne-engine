@@ -125,7 +125,11 @@ pub(super) struct CubePipeline {
 }
 
 impl CubePipeline {
-    pub(super) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
+    pub(super) fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        surface_format: wgpu::TextureFormat,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ZYNE 3D Cube Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic_3d.wgsl").into()),
