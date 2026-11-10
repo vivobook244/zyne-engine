@@ -1,4 +1,4 @@
-use zyne_runtime::{Application, ApplicationConfig, Engine, EngineContext, ZyneResult};
+use zyne_runtime::{Application, ApplicationConfig, Engine, EngineContext, InputState, KeyCode, ZyneResult};
 
 struct SmokeEngine {
     frames: u64,
@@ -33,6 +33,20 @@ impl Engine for SmokeEngine {
 
     fn on_update(&mut self, _context: &EngineContext, delta_seconds: f32) -> ZyneResult<()> {
         self.frames += 1;
+        tracing::info!(frame = self.frames, delta_seconds, "application frame");
+        Ok(())
+    }
+
+    fn on_update_with_input(
+        &mut self,
+        _context: &EngineContext,
+        delta_seconds: f32,
+        input: &InputState,
+    ) -> ZyneResult<()> {
+        self.frames += 1;
+        if input.just_key_pressed(KeyCode::Escape) {
+            tracing::info!("escape key pressed");
+        }
         tracing::info!(frame = self.frames, delta_seconds, "application frame");
         Ok(())
     }
