@@ -1,8 +1,10 @@
 use zyne_runtime::{
-    Application, ApplicationConfig, Engine, EngineContext, InputState, KeyCode, ZyneResult,
+    Application, ApplicationConfig, Camera3d, Engine, EngineContext, InputState, KeyCode,
+    OrbitCameraController, ZyneError, ZyneResult,
 };
 
 struct SmokeEngine {
+    camera_controller: OrbitCameraController,
     frames: u64,
     fixed_updates: u64,
 }
@@ -49,8 +51,17 @@ impl Engine for SmokeEngine {
         if input.just_key_pressed(KeyCode::Escape) {
             tracing::info!("escape key pressed");
         }
+        self.camera_controller
+            .update(input)
+            .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
         tracing::info!(frame = self.frames, delta_seconds, "application frame");
         Ok(())
+    }
+
+    fn camera(&self, _context: &EngineContext, aspect_ratio: f32) -> Option<Camera3d> {
+        self.camera_controller
+            .camera_with_aspect_ratio(aspect_ratio)
+            .ok()
     }
 
     fn on_shutdown(&mut self, _context: &EngineContext) -> ZyneResult<()> {
@@ -66,7 +77,10 @@ impl Engine for SmokeEngine {
 fn main() -> ZyneResult<()> {
     zyne_runtime::diagnostics::init_logging()?;
     let application = Application::new(ApplicationConfig::default())?;
+    let camera_controller = OrbitCameraController::new([0.0; 3], 4.0, 16.0 / 9.0)
+        .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     application.run(SmokeEngine {
+        camera_controller,
         frames: 0,
         fixed_updates: 0,
     })
