@@ -350,7 +350,7 @@ mod tests {
             _delta_seconds: f32,
             input: &InputState,
         ) -> ZyneResult<()> {
-            let callback = if input.is_key_pressed(KeyCode::W) {
+            let callback = if input.just_key_pressed(KeyCode::W) {
                 "input-w"
             } else {
                 "variable"
@@ -426,6 +426,10 @@ mod tests {
             repeat: false,
         }));
 
+        state.next_frame = Some(now + Duration::from_secs(1));
+        update_runtime(&mut state).expect("waiting runtime update should succeed");
+
+        state.next_frame = Some(now);
         update_runtime(&mut state).expect("runtime update should succeed");
 
         let callbacks = callbacks.borrow();
