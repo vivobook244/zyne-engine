@@ -296,10 +296,31 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     };
     update_result?;
 
+    let camera = {
+        let RuntimeState {
+            engine,
+            context,
+            graphics,
+            ..
+        } = state;
+        graphics.as_ref().and_then(|graphics| {
+            let (width, height) = graphics.surface_size();
+            if height == 0 {
+                return None;
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let aspect_ratio = width as f32 / height as f32;
+            engine.camera(context, aspect_ratio)
+        })
+    };
+
     if let Some(graphics) = state.graphics.as_mut() {
-        graphics
-            .render_frame()
-            .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+        let render_result = if let Some(camera) = camera.as_ref() {
+            graphics.render_frame_with_camera(camera)
+        } else {
+            graphics.render_frame()
+        };
+        render_result.map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     }
 
     // Keep transient input available while the runtime waits for the next frame.
