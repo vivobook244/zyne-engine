@@ -1,4 +1,5 @@
 use crate::{EngineContext, ZyneResult};
+use zyne_math::Camera3d;
 
 /// Lifecycle contract implemented by a game or engine host.
 ///
@@ -69,6 +70,16 @@ pub trait Engine {
         _input: &crate::InputState,
     ) -> ZyneResult<()> {
         self.on_update(context, delta_seconds)
+    }
+
+    /// Returns an optional camera for the current viewport.
+    ///
+    /// The runtime supplies the current surface aspect ratio so cameras can
+    /// update their projection after window resizes. Returning None keeps the
+    /// renderer's built-in default camera.
+    #[must_use]
+    fn camera(&self, _context: &EngineContext, _aspect_ratio: f32) -> Option<Camera3d> {
+        None
     }
 
     /// Called once during graceful shutdown, but only if startup succeeded.
