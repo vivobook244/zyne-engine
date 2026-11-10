@@ -111,10 +111,7 @@ impl OrbitCameraController {
     ///
     /// Returns a camera validation error when the aspect ratio or controller
     /// parameters are invalid.
-    pub fn camera_with_aspect_ratio(
-        &self,
-        aspect_ratio: f32,
-    ) -> Result<Camera3d, CameraError> {
+    pub fn camera_with_aspect_ratio(&self, aspect_ratio: f32) -> Result<Camera3d, CameraError> {
         let cos_pitch = self.pitch.cos();
         let offset = [
             self.distance * cos_pitch * self.yaw.sin(),
