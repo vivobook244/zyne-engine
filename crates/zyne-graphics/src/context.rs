@@ -186,6 +186,7 @@ impl GraphicsContext {
             });
             render_pass.set_pipeline(self.cube_pipeline.pipeline());
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
+            render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
             render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
             render_pass.draw(0..36, 0..1);
         }
