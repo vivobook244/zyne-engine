@@ -70,21 +70,15 @@ impl OrbitCameraController {
     pub fn update(&mut self, input: &InputState) -> Result<Camera3d, CameraError> {
         let cursor = input.cursor_position();
         if let Some((x, y)) = cursor.filter(|(x, y)| x.is_finite() && y.is_finite()) {
-            if input.is_mouse_pressed(MouseButton::Right)
-                && !input.just_mouse_pressed(MouseButton::Right)
-                && let Some((last_x, last_y)) = self.last_cursor_position
+            if let Some((delta_x, delta_y)) =
+                self.drag_delta(input, MouseButton::Right, (x, y))
             {
-                let delta_x = (x - last_x) as f32;
-                let delta_y = (y - last_y) as f32;
                 self.yaw -= delta_x * ORBIT_SENSITIVITY;
                 self.pitch =
                     (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
-            } else if input.is_mouse_pressed(MouseButton::Middle)
-                && !input.just_mouse_pressed(MouseButton::Middle)
-                && let Some((last_x, last_y)) = self.last_cursor_position
+            } else if let Some((delta_x, delta_y)) =
+                self.drag_delta(input, MouseButton::Middle, (x, y))
             {
-                let delta_x = (x - last_x) as f32;
-                let delta_y = (y - last_y) as f32;
                 self.pan(delta_x, delta_y);
             }
             self.last_cursor_position = Some((x, y));
@@ -157,6 +151,22 @@ impl OrbitCameraController {
     #[must_use]
     pub const fn distance(&self) -> f32 {
         self.distance
+    }
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+    fn drag_delta(
+        &self,
+        input: &InputState,
+        button: MouseButton,
+        cursor: (f64, f64),
+    ) -> Option<(f32, f32)> {
+        if input.is_mouse_pressed(button) && !input.just_mouse_pressed(button) {
+            self.last_cursor_position.map(|(last_x, last_y)| {
+                ((cursor.0 - last_x) as f32, (cursor.1 - last_y) as f32)
+            })
+        } else {
+            None
+        }
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
