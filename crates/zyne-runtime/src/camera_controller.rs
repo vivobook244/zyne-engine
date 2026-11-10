@@ -70,12 +70,9 @@ impl OrbitCameraController {
     pub fn update(&mut self, input: &InputState) -> Result<Camera3d, CameraError> {
         let cursor = input.cursor_position();
         if let Some((x, y)) = cursor.filter(|(x, y)| x.is_finite() && y.is_finite()) {
-            if let Some((delta_x, delta_y)) =
-                self.drag_delta(input, MouseButton::Right, (x, y))
-            {
+            if let Some((delta_x, delta_y)) = self.drag_delta(input, MouseButton::Right, (x, y)) {
                 self.yaw -= delta_x * ORBIT_SENSITIVITY;
-                self.pitch =
-                    (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
+                self.pitch = (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
             } else if let Some((delta_x, delta_y)) =
                 self.drag_delta(input, MouseButton::Middle, (x, y))
             {
@@ -161,9 +158,8 @@ impl OrbitCameraController {
         cursor: (f64, f64),
     ) -> Option<(f32, f32)> {
         if input.is_mouse_pressed(button) && !input.just_mouse_pressed(button) {
-            self.last_cursor_position.map(|(last_x, last_y)| {
-                ((cursor.0 - last_x) as f32, (cursor.1 - last_y) as f32)
-            })
+            self.last_cursor_position
+                .map(|(last_x, last_y)| ((cursor.0 - last_x) as f32, (cursor.1 - last_y) as f32))
         } else {
             None
         }
