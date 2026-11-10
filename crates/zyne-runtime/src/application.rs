@@ -315,8 +315,10 @@ mod tests {
         Application, ApplicationConfig, MAX_FIXED_UPDATES_PER_FRAME, RuntimeState, update_runtime,
     };
     use crate::{EventQueue, InputState};
-    use zyne_core::{Engine, EngineConfig, EngineContext, ZyneError, ZyneResult};
-    use zyne_platform::{WindowConfig, WindowSize};
+    use zyne_core::{
+        ButtonState, Engine, EngineConfig, EngineContext, InputEvent, KeyCode, ZyneError, ZyneResult,
+    };
+    use zyne_platform::{PlatformEvent, WindowConfig, WindowSize};
 
     struct RecordingEngine {
         callbacks: Rc<RefCell<Vec<&'static str>>>,
@@ -338,6 +340,20 @@ mod tests {
 
         fn on_update(&mut self, _context: &EngineContext, _delta_seconds: f32) -> ZyneResult<()> {
             self.callbacks.borrow_mut().push("variable");
+            Ok(())
+        }
+
+        fn on_update_with_input(
+            &mut self,
+            _context: &EngineContext,
+            _delta_seconds: f32,
+            input: &InputState,
+        ) -> ZyneResult<()> {
+            self.callbacks.borrow_mut().push(if input.is_key_pressed(KeyCode::W) {
+                "input-w"
+            } else {
+                "variable"
+            });
             Ok(())
         }
 
@@ -368,7 +384,7 @@ mod tests {
     }
 
     #[test]
-    fn fixed_updates_are_bounded_and_run_before_variable_update() {
+    fn fixed_updates_are_bounded_and_input_reaches_frame_callback() {
         let callbacks = Rc::new(RefCell::new(Vec::new()));
         let context = EngineContext::new(EngineConfig {
             fixed_timestep_hz: 100,
@@ -402,11 +418,17 @@ mod tests {
             max_frame_delta: 0.5,
         };
 
+        state.events.push(PlatformEvent::Input(InputEvent::Key {
+            code: KeyCode::W,
+            state: ButtonState::Pressed,
+            repeat: false,
+        }));
+
         update_runtime(&mut state).expect("runtime update should succeed");
 
         let callbacks = callbacks.borrow();
         let fixed_count = callbacks.iter().filter(|&&name| name == "fixed").count();
         assert_eq!(fixed_count, MAX_FIXED_UPDATES_PER_FRAME as usize);
-        assert_eq!(callbacks.last(), Some(&"variable"));
+        assert_eq!(callbacks.last(), Some(&"input-w"));
     }
 }
