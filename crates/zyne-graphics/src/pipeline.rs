@@ -467,7 +467,7 @@ mod tests {
         assert_eq!(pixels.len(), expected_bytes);
         assert_eq!(&pixels[0..4], &[235, 235, 235, 255]);
         assert_eq!(&pixels[(8 * 4)..(8 * 4 + 4)], &[42, 42, 42, 255]);
-        assert_eq!(&pixels[(64 * 4)..(64 * 4 + 4)], &[42, 42, 42, 255]);
+        assert_eq!(&pixels[(8 * 64 * 4)..(8 * 64 * 4 + 4)], &[42, 42, 42, 255]);
     }
 
     #[test]
