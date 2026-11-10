@@ -40,11 +40,7 @@ impl OrbitCameraController {
     ///
     /// Returns a camera validation error when the target, distance, or aspect
     /// ratio is invalid.
-    pub fn new(
-        target: [f32; 3],
-        distance: f32,
-        aspect_ratio: f32,
-    ) -> Result<Self, CameraError> {
+    pub fn new(target: [f32; 3], distance: f32, aspect_ratio: f32) -> Result<Self, CameraError> {
         if !distance.is_finite() {
             return Err(CameraError::NonFiniteParameter);
         }
@@ -80,8 +76,8 @@ impl OrbitCameraController {
                         let delta_x = (x - last_x) as f32;
                         let delta_y = (y - last_y) as f32;
                         self.yaw -= delta_x * ORBIT_SENSITIVITY;
-                        self.pitch = (self.pitch + delta_y * ORBIT_SENSITIVITY)
-                            .clamp(MIN_PITCH, MAX_PITCH);
+                        self.pitch =
+                            (self.pitch + delta_y * ORBIT_SENSITIVITY).clamp(MIN_PITCH, MAX_PITCH);
                     }
                 }
             } else if input.is_mouse_pressed(MouseButton::Middle) {
@@ -173,8 +169,7 @@ impl OrbitCameraController {
         let up = [-sin_yaw * sin_pitch, cos_pitch, -cos_yaw * sin_pitch];
         let scale = self.distance * PAN_SENSITIVITY;
         for axis in 0..3 {
-            self.target[axis] +=
-                (-delta_x * right[axis] + delta_y * up[axis]) * scale;
+            self.target[axis] += (-delta_x * right[axis] + delta_y * up[axis]) * scale;
         }
     }
 }
@@ -213,7 +208,9 @@ mod tests {
             button: MouseButton::Right,
             state: ButtonState::Pressed,
         });
-        controller.update(&input).expect("initial drag should be valid");
+        controller
+            .update(&input)
+            .expect("initial drag should be valid");
 
         input.begin_frame();
         input.process_event(InputEvent::CursorMoved { x: 140.0, y: 80.0 });
@@ -254,7 +251,9 @@ mod tests {
             button: MouseButton::Middle,
             state: ButtonState::Pressed,
         });
-        controller.update(&input).expect("initial pan should be valid");
+        controller
+            .update(&input)
+            .expect("initial pan should be valid");
 
         input.begin_frame();
         input.process_event(InputEvent::CursorMoved { x: 20.0, y: 0.0 });
