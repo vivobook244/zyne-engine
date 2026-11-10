@@ -296,6 +296,17 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     };
     update_result?;
 
+    render_runtime_frame(state)?;
+
+    // Keep transient input available while the runtime waits for the next frame.
+    // Clear it only after callbacks have observed the current frame's events.
+    state.input.begin_frame();
+    state.next_frame = Some(now + state.frame_interval);
+
+    Ok(())
+}
+
+fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     let camera = {
         let RuntimeState {
             engine,
@@ -323,11 +334,6 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         };
         render_result.map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     }
-
-    // Keep transient input available while the runtime waits for the next frame.
-    // Clear it only after callbacks have observed the current frame's events.
-    state.input.begin_frame();
-    state.next_frame = Some(now + state.frame_interval);
 
     Ok(())
 }
