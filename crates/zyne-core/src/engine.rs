@@ -77,7 +77,6 @@ pub trait Engine {
     /// The runtime supplies the current surface aspect ratio so cameras can
     /// update their projection after window resizes. Returning None keeps the
     /// renderer's built-in default camera.
-    #[must_use]
     fn camera(&self, _context: &EngineContext, _aspect_ratio: f32) -> Option<Camera3d> {
         None
     }
