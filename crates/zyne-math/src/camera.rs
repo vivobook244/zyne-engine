@@ -25,7 +25,9 @@ impl std::fmt::Display for CameraError {
             Self::InvalidClipPlanes => "camera clip planes must be positive and ordered",
             Self::InvalidCameraDistance => "camera distance must be positive",
             Self::DegenerateViewDirection => "camera position and target must differ",
-            Self::DegenerateUpDirection => "camera up direction must not be parallel to view direction",
+            Self::DegenerateUpDirection => {
+                "camera up direction must not be parallel to view direction"
+            }
         };
         formatter.write_str(message)
     }
