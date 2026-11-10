@@ -211,8 +211,6 @@ impl<E: Engine> WindowEventHandler for ApplicationRunner<E> {
 }
 
 fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
-    state.input.begin_frame();
-
     for event in state.events.drain() {
         match event {
             PlatformEvent::Resumed => {
@@ -298,6 +296,9 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
             .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     }
 
+    // Keep transient input available while the runtime waits for the next frame.
+    // Clear it only after callbacks have observed the current frame's events.
+    state.input.begin_frame();
     state.next_frame = Some(now + state.frame_interval);
 
     Ok(())
@@ -349,11 +350,12 @@ mod tests {
             _delta_seconds: f32,
             input: &InputState,
         ) -> ZyneResult<()> {
-            self.callbacks.borrow_mut().push(if input.is_key_pressed(KeyCode::W) {
+            let callback = if input.is_key_pressed(KeyCode::W) {
                 "input-w"
             } else {
                 "variable"
-            });
+            };
+            self.callbacks.borrow_mut().push(callback);
             Ok(())
         }
 
