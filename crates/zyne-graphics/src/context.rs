@@ -6,6 +6,7 @@ use wgpu::{
     RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceCapabilities,
     SurfaceConfiguration, SurfaceError, TextureFormat, TextureUsages,
 };
+use zyne_math::Camera3d;
 use zyne_platform::PlatformWindow;
 
 use crate::{FrameOutcome, GraphicsError, pipeline::CubePipeline};
@@ -115,6 +116,25 @@ impl GraphicsContext {
     /// Returns an error when frame acquisition cannot recover or GPU memory is
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(None)
+    }
+
+    /// Renders a frame using a caller-supplied camera.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when frame acquisition or GPU presentation fails.
+    pub fn render_frame_with_camera(
+        &mut self,
+        camera: &Camera3d,
+    ) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(Some(camera))
+    }
+
+    fn render_frame_internal(
+        &mut self,
+        camera: Option<&Camera3d>,
+    ) -> Result<FrameOutcome, GraphicsError> {
         if self.surface_suspended {
             return Ok(FrameOutcome::Skipped);
         }
@@ -130,6 +150,7 @@ impl GraphicsContext {
             &self.queue,
             self.surface_config.width,
             self.surface_config.height,
+            camera,
         );
 
         let mut encoder = self
