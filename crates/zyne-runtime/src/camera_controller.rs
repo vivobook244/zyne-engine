@@ -33,7 +33,7 @@ impl OrbitCameraController {
     /// Creates an orbit controller focused on target.
     ///
     /// The initial orbit uses a 45-degree yaw and 30-degree pitch. The camera
-    /// uses a 55-degree vertical field of view and 0.1–1000 world-unit clip
+    /// uses a 55-degree vertical field of view and 0.1–2000 world-unit clip
     /// planes.
     ///
     /// # Errors
