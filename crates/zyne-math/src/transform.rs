@@ -228,7 +228,12 @@ mod tests {
 
         let large = Transform3d::new([0.0; 3], [f32::MAX; 4], [1.0; 3])
             .expect("large finite quaternion should normalize safely");
-        assert!(large.rotation().iter().all(|component| (component - 0.5).abs() < 1.0e-6));
+        assert!(
+            large
+                .rotation()
+                .iter()
+                .all(|component| (component - 0.5).abs() < 1.0e-6)
+        );
     }
 
     #[test]
