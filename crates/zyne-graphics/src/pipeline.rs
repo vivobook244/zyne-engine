@@ -280,7 +280,7 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{cube_vertices, multiply_column_major, rotation_y, Camera3d};
+    use super::{Camera3d, cube_vertices, multiply_column_major, rotation_y};
 
     #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
