@@ -9,6 +9,7 @@ Each phase must produce a verifiable result before the next phase expands the ar
 | 2 | Rendering foundation | 2–3 weeks | Textured 3D model with controllable camera |
 
 Phase 2 implementation sequence: 2.1 GPU initialization, 2.2 surface resize/suspension, 2.3 frame acquisition/presentation, 2.4 shader pipeline, 2.5 depth-tested 3D foundation, 2.6 textures and controllable camera. See [Phase 2.6](development/PHASE-2-6-TEXTURES-CAMERA-CONTROL.md).
+
 | 3 | World, ECS & scene | 1–2 weeks | Multi-entity scene saves/reloads with transforms |
 | 4 | Asset & resource pipeline | 1–2 weeks | Textured GLB imports with stable references |
 | 5 | Materials, lighting & environment | 2–3 weeks | Multiple materials/lights and directional shadows |
@@ -18,6 +19,8 @@ Phase 2 implementation sequence: 2.1 GPU initialization, 2.2 surface resize/susp
 | 9 | Audio & visual effects | 1–2 weeks | Audio and basic effects without renderer instability |
 | 10 | ZYNE Studio | 4–6 weeks | Create, edit, save, and run a simple level |
 | 11 | Build, optimization & release | 3–5 weeks | Sample project builds/runs without Studio |
+
+Phase 3 implementation sequence and acceptance checks: [Phase 3 — World, ECS & Scene](development/PHASE-3-WORLD-ECS-SCENE.md).
 
 Estimates are planning ranges, not guarantees. A tightly scoped first release is roughly 5–8 months depending on integration and debugging.
 
