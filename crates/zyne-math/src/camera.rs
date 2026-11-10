@@ -16,6 +16,23 @@ pub enum CameraError {
     DegenerateUpDirection,
 }
 
+impl std::fmt::Display for CameraError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NonFiniteParameter => "camera parameters must be finite",
+            Self::InvalidFieldOfView => "camera field of view must be between zero and pi radians",
+            Self::InvalidAspectRatio => "camera aspect ratio must be positive",
+            Self::InvalidClipPlanes => "camera clip planes must be positive and ordered",
+            Self::InvalidCameraDistance => "camera distance must be positive",
+            Self::DegenerateViewDirection => "camera position and target must differ",
+            Self::DegenerateUpDirection => "camera up direction must not be parallel to view direction",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for CameraError {}
+
 /// A right-handed perspective camera using wgpu's [0, 1] clip-depth range.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Camera3d {
