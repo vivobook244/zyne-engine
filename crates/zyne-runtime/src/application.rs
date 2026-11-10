@@ -262,7 +262,10 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     while state.accumulator >= fixed_delta && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME {
         let fixed_update_result = {
             let RuntimeState {
-                engine, context, input, ..
+                engine,
+                context,
+                input,
+                ..
             } = state;
             engine.on_fixed_update_with_input(context, fixed_delta_seconds, input)
         };
@@ -284,7 +287,10 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     let frame_delta_seconds = delta as f32;
     let update_result = {
         let RuntimeState {
-            engine, context, input, ..
+            engine,
+            context,
+            input,
+            ..
         } = state;
         engine.on_update_with_input(context, frame_delta_seconds, input)
     };
@@ -317,7 +323,8 @@ mod tests {
     };
     use crate::{EventQueue, InputState};
     use zyne_core::{
-        ButtonState, Engine, EngineConfig, EngineContext, InputEvent, KeyCode, ZyneError, ZyneResult,
+        ButtonState, Engine, EngineConfig, EngineContext, InputEvent, KeyCode, ZyneError,
+        ZyneResult,
     };
     use zyne_platform::{PlatformEvent, WindowConfig, WindowSize};
 
