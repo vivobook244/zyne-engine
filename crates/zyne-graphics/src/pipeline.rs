@@ -118,10 +118,7 @@ pub(super) struct CubePipeline {
     vertex_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    _checker_texture: wgpu::Texture,
-    _checker_texture_view: wgpu::TextureView,
-    _checker_sampler: wgpu::Sampler,
-    texture_bind_group: wgpu::BindGroup,
+    checker_texture: CheckerTexture,
 }
 
 impl CubePipeline {
@@ -163,90 +160,10 @@ impl CubePipeline {
             }],
         });
 
-        let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ZYNE Texture Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
-        let checker_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ZYNE Embedded Checker Texture"),
-            size: wgpu::Extent3d {
-                width: CHECKER_TEXTURE_SIZE,
-                height: CHECKER_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        let checker_pixels = checker_texture_pixels();
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &checker_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &checker_pixels,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(CHECKER_TEXTURE_SIZE * 4),
-                rows_per_image: Some(CHECKER_TEXTURE_SIZE),
-            },
-            wgpu::Extent3d {
-                width: CHECKER_TEXTURE_SIZE,
-                height: CHECKER_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-        );
-        let checker_texture_view =
-            checker_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let checker_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("ZYNE Checker Texture Sampler"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ZYNE Checker Texture Bind Group"),
-            layout: &texture_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&checker_texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&checker_sampler),
-                },
-            ],
-        });
+        let checker_texture = create_checker_texture(device, queue);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
-            bind_group_layouts: &[&camera_layout, &texture_layout],
+            bind_group_layouts: &[&camera_layout, &checker_texture.layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -299,10 +216,7 @@ impl CubePipeline {
             vertex_buffer,
             camera_buffer,
             camera_bind_group,
-            _checker_texture: checker_texture,
-            _checker_texture_view: checker_texture_view,
-            _checker_sampler: checker_sampler,
-            texture_bind_group,
+            checker_texture,
         }
     }
 
@@ -357,7 +271,106 @@ impl CubePipeline {
     }
 
     pub(super) const fn texture_bind_group(&self) -> &wgpu::BindGroup {
-        &self.texture_bind_group
+        &self.checker_texture.bind_group
+    }
+}
+
+struct CheckerTexture {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    layout: wgpu::BindGroupLayout,
+    bind_group: wgpu::BindGroup,
+}
+
+fn create_checker_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> CheckerTexture {
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ZYNE Texture Bind Group Layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    });
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ZYNE Embedded Checker Texture"),
+        size: wgpu::Extent3d {
+            width: CHECKER_TEXTURE_SIZE,
+            height: CHECKER_TEXTURE_SIZE,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let pixels = checker_texture_pixels();
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &pixels,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(CHECKER_TEXTURE_SIZE * 4),
+            rows_per_image: Some(CHECKER_TEXTURE_SIZE),
+        },
+        wgpu::Extent3d {
+            width: CHECKER_TEXTURE_SIZE,
+            height: CHECKER_TEXTURE_SIZE,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("ZYNE Checker Texture Sampler"),
+        address_mode_u: wgpu::AddressMode::Repeat,
+        address_mode_v: wgpu::AddressMode::Repeat,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ZYNE Checker Texture Bind Group"),
+        layout: &layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    CheckerTexture {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        layout,
+        bind_group,
     }
 }
 
