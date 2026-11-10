@@ -305,12 +305,13 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         } = state;
         graphics.as_ref().and_then(|graphics| {
             let (width, height) = graphics.surface_size();
-            if height == 0 {
-                return None;
+            if height > 0 {
+                #[allow(clippy::cast_precision_loss)]
+                let aspect_ratio = width as f32 / height as f32;
+                engine.camera(context, aspect_ratio)
+            } else {
+                None
             }
-            #[allow(clippy::cast_precision_loss)]
-            let aspect_ratio = width as f32 / height as f32;
-            engine.camera(context, aspect_ratio)
         })
     };
 
