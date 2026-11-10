@@ -1,6 +1,6 @@
 # Phase 2.6 — Textures & Controllable Camera
 
-**Status:** IN PROGRESS — CAMERA CONTROLS COMPLETE; CHECKER TEXTURE IMPLEMENTED, GPU VERIFICATION PENDING  
+**Status:** COMPLETE — CAMERA CONTROLS AND CHECKER TEXTURE VERIFIED ON LOCAL GPU  
 **Branch:** `main`  
 **Prerequisite:** Phase 2.5 — Depth Buffer & 3D Foundation  
 **Goal:** Complete the original Phase 2 acceptance target: render a textured 3D model and provide a camera that can be controlled through the engine's public runtime API.
@@ -34,17 +34,17 @@
 - [x] Define explicit texture color-space handling (`Rgba8UnormSrgb`) and an embedded procedural checker texture for deterministic smoke testing.
 - [x] Keep texture ownership and bind-group construction in `zyne-graphics`.
 - [x] Defer external image loading, asset registries, material authoring, and hot reload to Phase 4/5.
-- [ ] Verify checker texture sampling on a local desktop GPU.
+- [x] Verify checker texture sampling on a local desktop GPU.
 
 ### 2.6.5 Acceptance
 
-- A textured 3D test model is visible on the supported desktop GPU path.
-- Camera can be moved/rotated/zoomed using the public input contract.
-- Resize updates camera aspect ratio without recreating unrelated GPU resources.
-- Focus loss releases held controls; minimized/suspended windows do not advance camera movement.
-- Tests cover camera math, input frame semantics, and texture/vertex layout contracts.
-- `cargo fmt`, strict Clippy, workspace tests/check, and CI pass on Ubuntu and Windows.
-- Local GPU smoke test confirms texture sampling and interactive camera behavior.
+- [x] A textured 3D test model is visible on the supported desktop GPU path.
+- [x] Camera can be moved/rotated/zoomed using the public input contract.
+- [x] Resize updates camera aspect ratio without recreating unrelated GPU resources.
+- [x] Focus loss releases held controls; minimized/suspended windows do not advance camera movement.
+- [x] Tests cover camera math, input frame semantics, and texture/vertex layout contracts.
+- [x] `cargo fmt`, strict Clippy, workspace tests/check, and CI pass on Ubuntu and Windows.
+- [x] Local GPU smoke test confirms texture sampling and interactive camera behavior.
 
 ## Architecture guardrails
 
