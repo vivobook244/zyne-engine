@@ -1,0 +1,15 @@
+[package]
+name = "zyne-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+zyne-core = { path = "../zyne-core" }
+raw-window-handle = "0.6.2"
+winit = "0.30.13"
+tracing.workspace = true
+
+[lints]
+workspace = true

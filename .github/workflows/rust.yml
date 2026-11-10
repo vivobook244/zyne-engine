@@ -1,0 +1,47 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate:
+    name: Validate workspace (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Validate workspace metadata
+        run: cargo metadata --locked --no-deps --format-version 1
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Run tests
+        run: cargo test --locked --workspace
+      - name: Check workspace
+        run: cargo check --locked --workspace
+      - name: Run headless lifecycle smoke example
+        run: cargo run --locked -p zyne-runtime --example headless_smoke

@@ -1,0 +1,17 @@
+[package]
+name = "zyne-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zyne-core = { path = "../zyne-core" }
+zyne-platform = { path = "../zyne-platform" }
+zyne-graphics = { path = "../zyne-graphics" }
+zyne-math = { path = "../zyne-math" }
+
+[lints]
+workspace = true
