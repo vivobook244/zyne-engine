@@ -29,12 +29,47 @@ pub trait Engine {
         Ok(())
     }
 
+    /// Called at the fixed simulation frequency with read-only per-frame input.
+    ///
+    /// Override this callback when simulation logic needs keyboard or mouse
+    /// state. The default delegates to `on_fixed_update` for compatibility.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the fixed update cannot complete.
+    fn on_fixed_update_with_input(
+        &mut self,
+        context: &EngineContext,
+        fixed_delta_seconds: f32,
+        _input: &crate::InputState,
+    ) -> ZyneResult<()> {
+        self.on_fixed_update(context, fixed_delta_seconds)
+    }
+
     /// Called once for each runtime frame with the clamped elapsed frame time.
     ///
     /// # Errors
     ///
     /// Returns an error if the update cannot complete.
     fn on_update(&mut self, context: &EngineContext, delta_seconds: f32) -> ZyneResult<()>;
+
+    /// Called once per runtime frame with read-only keyboard and mouse state.
+    ///
+    /// Override this callback to consume input without depending on the
+    /// platform crate. The default delegates to `on_update`, preserving
+    /// existing engine implementations.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the update cannot complete.
+    fn on_update_with_input(
+        &mut self,
+        context: &EngineContext,
+        delta_seconds: f32,
+        _input: &crate::InputState,
+    ) -> ZyneResult<()> {
+        self.on_update(context, delta_seconds)
+    }
 
     /// Called once during graceful shutdown, but only if startup succeeded.
     ///
