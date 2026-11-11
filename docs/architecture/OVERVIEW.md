@@ -14,9 +14,7 @@ zyne-runtime -> zyne-core
              -> zyne-graphics -> zyne-core
                               -> zyne-math
              -> zyne-scene
-             -> zyne-assets
 
-zyne-assets -> gltf + image (external format/import dependencies)
 zyne-scene -> zyne-math
 zyne-math has no workspace-crate dependencies.
 zyne-core has no workspace-crate dependencies.
