@@ -271,6 +271,7 @@ impl std::error::Error for SceneError {}
 #[cfg(test)]
 mod tests {
     use super::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError};
+    use uuid::Uuid;
     use zyne_math::Transform3d;
 
     #[test]

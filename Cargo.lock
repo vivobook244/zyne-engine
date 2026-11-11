@@ -2491,16 +2491,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "zyne-scene"
-version = "0.1.0"
-dependencies = [
- "serde",
- "toml",
- "uuid",
- "zyne-math",
-]
-
-[[package]]
 name = "zyne-runtime"
 version = "0.1.0"
 dependencies = [
@@ -2511,3 +2501,13 @@ dependencies = [
  "zyne-math",
  "zyne-platform",
 ]
+[[package]]
+name = "zyne-scene"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml",
+ "uuid",
+ "zyne-math",
+]
+
