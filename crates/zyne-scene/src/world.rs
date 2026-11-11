@@ -201,7 +201,7 @@ impl std::error::Error for SceneLoadError {}
 #[derive(Debug)]
 pub enum SceneSaveError {
     Scene(SceneError),
-    Ron(ron::ser::Error),
+    Ron(ron::Error),
 }
 
 impl std::fmt::Display for SceneSaveError {
