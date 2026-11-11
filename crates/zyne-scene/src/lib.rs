@@ -90,7 +90,7 @@ impl SceneEntityDocument {
     ///
     /// # Errors
     ///
-    /// Returns EmptyEntityName when the name is blank.
+    /// Returns `EmptyEntityName` when the name is blank.
     pub fn new(name: impl Into<String>, transform: Transform3d) -> Result<Self, SceneError> {
         Self::with_id(SceneEntityId::new(), name, transform)
     }
@@ -101,7 +101,7 @@ impl SceneEntityDocument {
     ///
     /// # Errors
     ///
-    /// Returns EmptyEntityName when the name is blank.
+    /// Returns `EmptyEntityName` when the name is blank.
     pub fn with_id(
         id: SceneEntityId,
         name: impl Into<String>,
@@ -152,7 +152,7 @@ impl SceneDocument {
     ///
     /// # Errors
     ///
-    /// Returns EmptySceneName when the name is blank.
+    /// Returns `EmptySceneName` when the name is blank.
     pub fn new(name: impl Into<String>) -> Result<Self, SceneError> {
         let name = name.into();
         if name.trim().is_empty() {
@@ -195,7 +195,7 @@ impl SceneDocument {
     ///
     /// # Errors
     ///
-    /// Returns DuplicateEntityId if the document already contains the identity.
+    /// Returns `DuplicateEntityId` if the document already contains the identity.
     pub fn add_entity(&mut self, entity: SceneEntityDocument) -> Result<(), SceneError> {
         if self
             .entities
@@ -285,7 +285,7 @@ mod tests {
 
         assert_eq!(scene.name(), "Main Level");
         assert_eq!(scene.schema_version(), 1);
-        assert!(scene.entities().is_empty());
+        assert_eq!(scene.entities(), &[]);
         assert_eq!(scene.validate(), Ok(()));
     }
 
