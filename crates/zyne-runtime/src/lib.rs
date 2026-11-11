@@ -18,3 +18,7 @@ pub use zyne_core::{
 };
 pub use zyne_math::{Camera3d, CameraError};
 pub use zyne_platform::PlatformEvent;
+pub use zyne_scene::{
+    Scene, SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId, SceneLoadError,
+    SceneSaveError,
+};

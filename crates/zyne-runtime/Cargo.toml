@@ -12,6 +12,7 @@ zyne-core = { path = "../zyne-core" }
 zyne-platform = { path = "../zyne-platform" }
 zyne-graphics = { path = "../zyne-graphics" }
 zyne-math = { path = "../zyne-math" }
+zyne-scene = { path = "../zyne-scene" }
 
 [lints]
 workspace = true

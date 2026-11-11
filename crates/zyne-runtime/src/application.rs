@@ -307,14 +307,14 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
 }
 
 fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
-    let camera = {
+    let (camera, render_transforms) = {
         let RuntimeState {
             engine,
             context,
             graphics,
             ..
         } = state;
-        graphics.as_ref().and_then(|graphics| {
+        let camera = graphics.as_ref().and_then(|graphics| {
             let (width, height) = graphics.surface_size();
             if height > 0 {
                 #[allow(clippy::cast_precision_loss)]
@@ -323,11 +323,14 @@ fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()
             } else {
                 None
             }
-        })
+        });
+        (camera, engine.render_transforms())
     };
 
     if let Some(graphics) = state.graphics.as_mut() {
-        let render_result = if let Some(camera) = camera.as_ref() {
+        let render_result = if let Some(transforms) = render_transforms.as_ref() {
+            graphics.render_frame_with_transforms(camera.as_ref(), transforms)
+        } else if let Some(camera) = camera.as_ref() {
             graphics.render_frame_with_camera(camera)
         } else {
             graphics.render_frame()
