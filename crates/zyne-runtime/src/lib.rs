@@ -16,7 +16,7 @@ pub use zyne_core::{
     ButtonState, Engine, EngineConfig, EngineContext, EngineVersion, InputEvent, InputState,
     KeyCode, MouseButton, ScrollDelta, ZyneError, ZyneResult,
 };
-pub use zyne_math::{Camera3d, CameraError};
+pub use zyne_math::{Camera3d, CameraError, Transform3d};
 pub use zyne_platform::PlatformEvent;
 pub use zyne_scene::{
     Scene, SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId, SceneLoadError,
