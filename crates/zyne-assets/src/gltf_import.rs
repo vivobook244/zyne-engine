@@ -309,7 +309,7 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
                 });
             }
             for &index in &indices {
-                if usize::try_from(index).is_none_or(|value| value >= positions.len()) {
+                if !usize::try_from(index).is_ok_and(|value| value < positions.len()) {
                     return Err(ImportError::IndexOutOfBounds {
                         mesh_index,
                         primitive_index,
@@ -525,14 +525,14 @@ mod tests {
                 .expect("JSON chunk length should fit u32")
                 .to_le_bytes(),
         );
-        glb.extend_from_slice(&0x4E4F534A_u32.to_le_bytes());
+        glb.extend_from_slice(&0x4E4F_534A_u32.to_le_bytes());
         glb.extend_from_slice(&json_chunk);
         glb.extend_from_slice(
             &u32::try_from(binary_chunk.len())
                 .expect("BIN chunk length should fit u32")
                 .to_le_bytes(),
         );
-        glb.extend_from_slice(&0x004E4942_u32.to_le_bytes());
+        glb.extend_from_slice(&0x004E_4942_u32.to_le_bytes());
         glb.extend_from_slice(&binary_chunk);
         fs::write(directory.path("triangle.glb"), glb).expect("GLB fixture should be written");
 
