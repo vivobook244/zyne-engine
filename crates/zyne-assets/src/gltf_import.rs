@@ -29,6 +29,8 @@ pub struct ImportedMesh {
 /// A triangle primitive with validated vertex and index data.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ImportedPrimitive {
+    /// Source primitive index within its mesh.
+    pub index: usize,
     /// Source material index, if the primitive references a material.
     pub material_index: Option<usize>,
     /// Required local-space positions.
@@ -198,7 +200,7 @@ impl std::error::Error for ImportError {
 
 impl From<gltf::Error> for ImportError {
     fn from(error: gltf::Error) -> Self {
-        Self::Gltf(error)
+        Self::Gltf(Box::new(error))
     }
 }
 
@@ -318,6 +320,7 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
             }
 
             imported_mesh.primitives.push(ImportedPrimitive {
+                index: primitive_index,
                 material_index: primitive.material().index(),
                 positions,
                 normals,
@@ -473,6 +476,7 @@ mod tests {
         assert_eq!(imported.meshes[0].name.as_deref(), Some("Triangle"));
         assert_eq!(imported.meshes[0].primitives.len(), 1);
         let primitive = &imported.meshes[0].primitives[0];
+        assert_eq!(primitive.index, 0);
         assert_eq!(primitive.positions.len(), 3);
         assert_eq!(primitive.indices, [0, 1, 2]);
         assert!(primitive.normals.is_none());
