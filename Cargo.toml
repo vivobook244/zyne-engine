@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["crates/zyne-core", "crates/zyne-math", "crates/zyne-platform", "crates/zyne-graphics", "crates/zyne-runtime"]
+members = [
+    "crates/zyne-core",
+    "crates/zyne-math",
+    "crates/zyne-platform",
+    "crates/zyne-graphics",
+    "crates/zyne-runtime",
+    "crates/zyne-scene",
+]
 
 [workspace.package]
 version = "0.1.0"

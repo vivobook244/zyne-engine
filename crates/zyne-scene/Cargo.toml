@@ -1,0 +1,17 @@
+[package]
+name = "zyne-scene"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+uuid.workspace = true
+zyne-math = { path = "../zyne-math" }
+
+[dev-dependencies]
+toml.workspace = true
+
+[lints]
+workspace = true
