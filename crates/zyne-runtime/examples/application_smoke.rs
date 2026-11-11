@@ -90,7 +90,7 @@ fn main() -> ZyneResult<()> {
         .spawn_entity(
             "Left Cube",
             Transform3d::new([-1.5, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3])
-            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
         )
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     scene
@@ -104,7 +104,7 @@ fn main() -> ZyneResult<()> {
                 [0.0, 0.258_819_04, 0.0, 0.965_925_8],
                 [0.8; 3],
             )
-                .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
         )
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     application.run(SmokeEngine {
