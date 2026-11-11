@@ -1,10 +1,16 @@
-//! Asset import and validated CPU-side asset representations for ZYNE.
+//! Asset import, persistent metadata, and validated CPU-side representations for ZYNE.
 //!
-//! This crate deliberately does not depend on ECS, runtime, or graphics APIs.
-//! Imported data is owned by the engine and can later be uploaded by zyne-graphics.
+//! This crate does not depend on ECS or graphics APIs. Importers produce owned
+//! CPU data, while the registry persists stable metadata independently of
+//! runtime handles and GPU allocations.
 
 mod gltf_import;
+mod registry;
 
 pub use gltf_import::{
     ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
+};
+pub use registry::{
+    AssetMetadata, AssetRegistry, ImporterSettings, ProjectRelativePath, RegistryError,
+    RegistryLoadError, ResourceKind,
 };

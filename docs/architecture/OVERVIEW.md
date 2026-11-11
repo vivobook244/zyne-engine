@@ -16,6 +16,7 @@ zyne-runtime -> zyne-core
              -> zyne-scene
 
 zyne-scene -> zyne-math
+zyne-assets -> zyne-core
 zyne-math has no workspace-crate dependencies.
 zyne-core has no workspace-crate dependencies.
 ~~~
@@ -40,7 +41,7 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 - Math provides shared mathematical conventions and types and remains independent of other workspace crates.
 - Platform may depend on core contracts, but not graphics or gameplay.
 - Graphics may depend on core and math, but not platform, assets, or gameplay.
-- Assets owns source decoding and CPU-side representations. It must not create GPU objects or query ECS.
+- Assets owns source decoding, validated CPU-side representations, and persistent resource metadata. It may depend on core identity contracts, but must not create GPU objects or query ECS.
 - Scene/world data may persist ResourceId values, but must not depend on runtime handles or GPU allocations.
 - Runtime composes core, platform, graphics, assets, and scene; it owns engine lifecycle policy and update/frame scheduling, but delegates subsystem implementation to owning crates.
 - Platform owns backend integration (planned: winit); runtime decides what platform events mean for engine lifecycle. Core remains independent of windows and OS event loops.
