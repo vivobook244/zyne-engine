@@ -1,6 +1,6 @@
 # Phase 4 — Asset & Resource Pipeline
 
-**Status:** IN PROGRESS — PHASE 4.1 IMPLEMENTED; LOCKFILE AND CI VALIDATION PENDING  
+**Status:** PHASE 4.1 COMPLETE — LOCAL VALIDATION AND WINDOWS/UBUNTU CI PASSED; EXPLICIT RUST 1.85 TOOLCHAIN CHECK REMAINS A FOLLOW-UP  
 **Branch:** main  
 **Prerequisite:** Phase 3 — World, ECS & Scene  
 **Goal:** Import source assets into validated CPU-side engine data, then resolve persistent resource identities into safe runtime handles.
@@ -26,8 +26,8 @@
 - [x] Preserve source mesh, primitive material, and image indices/names where available.
 - [x] Validate required position data, index bounds, attribute lengths, finite values, triangle index counts, and image dimensions/byte lengths.
 - [x] Return explicit errors for malformed documents, unsupported required extensions, and unsupported primitive topology.
-- [ ] Add fixture coverage and verify importer behavior on Windows/Linux CI.
-- [ ] Verify dependency resolution and Cargo.lock with Rust 1.85.
+- [x] Add fixture coverage and verify importer behavior on Windows/Linux CI.
+- [x] Verify dependency resolution and Cargo.lock with `--locked` on the local environment and Windows/Linux CI.
 
 ### 4.2 Persistent resource registry
 
@@ -66,7 +66,9 @@
 - Invalid indices, non-finite values, malformed files, and unsupported required extensions fail explicitly.
 - Image width, height, pixel format, and bytes are available without creating GPU resources.
 - Unit tests, formatting, strict Clippy, locked workspace checks, and Windows/Ubuntu CI pass.
-- No change to the Rust 1.85 MSRV.
+- No change to the Rust 1.85 MSRV; the workspace still declares `rust-version = "1.85"`.
+
+**Validation note:** The current GitHub Actions workflow uses the stable Rust toolchain. Local and CI `--locked` checks passed, and dependencies are pinned according to the Rust 1.85 compatibility policy. A dedicated CI run using the exact Rust 1.85 toolchain is still recommended to verify the MSRV explicitly.
 
 ## Dependency policy
 
