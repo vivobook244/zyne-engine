@@ -6,5 +6,5 @@
 mod gltf_import;
 
 pub use gltf_import::{
-    ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, ImportError, import_gltf,
+    ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
 };
