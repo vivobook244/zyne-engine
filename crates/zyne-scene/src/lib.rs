@@ -91,10 +91,7 @@ impl SceneEntityDocument {
     /// # Errors
     ///
     /// Returns EmptyEntityName when the name is blank.
-    pub fn new(
-        name: impl Into<String>,
-        transform: Transform3d,
-    ) -> Result<Self, SceneError> {
+    pub fn new(name: impl Into<String>, transform: Transform3d) -> Result<Self, SceneError> {
         Self::with_id(SceneEntityId::new(), name, transform)
     }
 
@@ -115,7 +112,11 @@ impl SceneEntityDocument {
             return Err(SceneError::EmptyEntityName { id });
         }
 
-        Ok(Self { id, name, transform })
+        Ok(Self {
+            id,
+            name,
+            transform,
+        })
     }
 
     /// Returns the persistent scene-entity identity.
@@ -196,7 +197,11 @@ impl SceneDocument {
     ///
     /// Returns DuplicateEntityId if the document already contains the identity.
     pub fn add_entity(&mut self, entity: SceneEntityDocument) -> Result<(), SceneError> {
-        if self.entities.iter().any(|existing| existing.id == entity.id) {
+        if self
+            .entities
+            .iter()
+            .any(|existing| existing.id == entity.id)
+        {
             return Err(SceneError::DuplicateEntityId { id: entity.id });
         }
 
@@ -297,7 +302,9 @@ mod tests {
         .expect("entity name should be valid");
 
         scene.add_entity(first).expect("first ID should be unique");
-        scene.add_entity(second).expect("second ID should be unique");
+        scene
+            .add_entity(second)
+            .expect("second ID should be unique");
 
         assert_eq!(scene.entities().len(), 2);
         assert_ne!(scene.entities()[0].id(), scene.entities()[1].id());
@@ -322,10 +329,7 @@ mod tests {
 
     #[test]
     fn rejects_blank_scene_and_entity_names() {
-        assert_eq!(
-            SceneDocument::new("   "),
-            Err(SceneError::EmptySceneName)
-        );
+        assert_eq!(SceneDocument::new("   "), Err(SceneError::EmptySceneName));
         let nil_id = SceneEntityId::from_uuid(Uuid::nil());
         assert_eq!(
             SceneEntityDocument::with_id(nil_id, "  ", Transform3d::identity()),
@@ -344,8 +348,7 @@ mod tests {
             .expect("entity ID should be unique");
 
         let encoded = toml::to_string(&scene).expect("scene should serialize");
-        let decoded: SceneDocument =
-            toml::from_str(&encoded).expect("scene should deserialize");
+        let decoded: SceneDocument = toml::from_str(&encoded).expect("scene should deserialize");
 
         assert_eq!(decoded, scene);
         assert_eq!(decoded.validate(), Ok(()));
