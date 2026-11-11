@@ -1,10 +1,11 @@
 use zyne_runtime::{
     Application, ApplicationConfig, Camera3d, Engine, EngineContext, InputState, KeyCode,
-    OrbitCameraController, ZyneError, ZyneResult,
+    OrbitCameraController, Scene, Transform3d, ZyneError, ZyneResult,
 };
 
 struct SmokeEngine {
     camera_controller: OrbitCameraController,
+    scene: Scene,
     frames: u64,
     fixed_updates: u64,
 }
@@ -58,6 +59,10 @@ impl Engine for SmokeEngine {
         Ok(())
     }
 
+    fn render_transforms(&self) -> Option<Vec<Transform3d>> {
+        Some(self.scene.entity_transforms())
+    }
+
     fn camera(&self, _context: &EngineContext, aspect_ratio: f32) -> Option<Camera3d> {
         self.camera_controller
             .camera_with_aspect_ratio(aspect_ratio)
@@ -77,10 +82,27 @@ impl Engine for SmokeEngine {
 fn main() -> ZyneResult<()> {
     zyne_runtime::diagnostics::init_logging()?;
     let application = Application::new(ApplicationConfig::default())?;
-    let camera_controller = OrbitCameraController::new([0.0; 3], 4.0, 16.0 / 9.0)
+    let camera_controller = OrbitCameraController::new([0.0; 3], 6.0, 16.0 / 9.0)
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    let mut scene = Scene::new("ZYNE Multi-Entity Smoke Scene")
+        .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene.spawn_entity(
+        "Left Cube",
+        Transform3d::new([-1.5, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3])
+            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene.spawn_entity(
+        "Center Cube",
+        Transform3d::identity(),
+    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene.spawn_entity(
+        "Right Cube",
+        Transform3d::new([1.5, 0.0, 0.0], [0.0, 0.25881904, 0.0, 0.9659258], [0.8; 3])
+            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     application.run(SmokeEngine {
         camera_controller,
+        scene,
         frames: 0,
         fixed_updates: 0,
     })

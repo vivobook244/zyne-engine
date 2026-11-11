@@ -31,6 +31,7 @@ fn runtime_exposes_a_usable_engine_lifecycle_contract() {
     let mut engine = LifecycleProbe::default();
     let delta_seconds = 1.0 / 60.0;
 
+    assert_eq!(engine.render_transforms(), None);
     assert!(engine.on_start(&context).is_ok());
     assert!(engine.on_update(&context, delta_seconds).is_ok());
     assert!(engine.on_shutdown(&context).is_ok());
