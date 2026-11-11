@@ -28,15 +28,19 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 | zyne-math | Shared math types and coordinate conventions | Windowing, rendering policy, gameplay |
 | zyne-platform | OS integration, native windows, OS event acquisition/translation, platform input acquisition | GPU rendering, engine lifecycle policy, and game rules |
 | zyne-graphics | GPU resources, render pipeline, materials, render-facing data | Gameplay policy and editor workflows |
+| zyne-assets | Asset format importers and validated CPU-side asset representations; later resource registry/cache | GPU allocation, ECS world ownership, editor UI |
+| zyne-scene | Scene document, ECS world, scene validation and persistent scene data | GPU resources, editor implementation |
 | zyne-runtime | Public host facade, diagnostics setup, engine lifecycle policy, update scheduling, frame-time policy, subsystem orchestration | Native OS implementation and subsystem implementation details that belong in their owning crates |
 
 ## Boundary rules
 
-- Core must not depend on renderer, editor, platform, or gameplay.
+- Core must not depend on renderer, editor, platform, assets, or gameplay.
 - Math provides shared mathematical conventions and types and remains independent of other workspace crates.
 - Platform may depend on core contracts, but not graphics or gameplay.
-- Graphics may depend on core and math, but not platform or gameplay.
-- Runtime composes core, platform, and graphics; it owns engine lifecycle policy and update/frame scheduling, but delegates native event-loop mechanics and OS event translation to platform.
+- Graphics may depend on core and math, but not platform, assets, or gameplay.
+- Assets owns source decoding and CPU-side representations. It must not create GPU objects or query ECS.
+- Scene/world data may persist `ResourceId` values, but must not depend on runtime handles or GPU allocations.
+- Runtime composes core, platform, graphics, assets, and scene; it owns engine lifecycle policy and update/frame scheduling, but delegates subsystem implementation to owning crates.
 - Platform owns backend integration (planned: winit); runtime decides what platform events mean for engine lifecycle. Core remains independent of windows and OS event loops.
 - See [Platform Architecture](PLATFORM.md) for event-loop ownership, public API/backend separation, error boundaries, timing ownership, and deferred implementation decisions.
 - Physics does not directly control animation.
