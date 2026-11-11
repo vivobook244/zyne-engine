@@ -49,7 +49,7 @@ impl InstanceRaw {
         }
     }
 
-    const fn from_transform(transform: Transform3d) -> Self {
+    fn from_transform(transform: Transform3d) -> Self {
         Self {
             model: transform.to_matrix(),
         }
