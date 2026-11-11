@@ -222,135 +222,169 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
         ));
     }
 
-    let mut imported = ImportedAsset::default();
+    Ok(ImportedAsset {
+        meshes: import_meshes(&document, &buffers)?,
+        images: import_images(&document, images)?,
+    })
+}
 
-    for mesh in document.meshes() {
-        let mesh_index = mesh.index();
-        let mut imported_mesh = ImportedMesh {
-            index: mesh_index,
-            name: mesh.name().map(str::to_owned),
-            primitives: Vec::new(),
-        };
+fn import_meshes(
+    document: &gltf::Document,
+    buffers: &[gltf::buffer::Data],
+) -> Result<Vec<ImportedMesh>, ImportError> {
+    document
+        .meshes()
+        .map(|mesh| import_mesh(mesh, buffers))
+        .collect()
+}
 
-        for (primitive_index, primitive) in mesh.primitives().enumerate() {
-            let mode = primitive.mode();
-            if mode != Mode::Triangles {
-                return Err(ImportError::UnsupportedPrimitiveMode {
-                    mesh_index,
-                    primitive_index,
-                    mode,
-                });
-            }
+fn import_mesh(
+    mesh: gltf::Mesh<'_>,
+    buffers: &[gltf::buffer::Data],
+) -> Result<ImportedMesh, ImportError> {
+    let mesh_index = mesh.index();
+    let primitives = mesh
+        .primitives()
+        .enumerate()
+        .map(|(primitive_index, primitive)| {
+            import_primitive(primitive, mesh_index, primitive_index, buffers)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-            let reader = primitive
-                .reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
-            let positions = reader
-                .read_positions()
-                .ok_or(ImportError::MissingPositions {
-                    mesh_index,
-                    primitive_index,
-                })?
-                .collect::<Vec<_>>();
-            validate_finite_vectors3(&positions, "POSITION", mesh_index, primitive_index)?;
+    Ok(ImportedMesh {
+        index: mesh_index,
+        name: mesh.name().map(str::to_owned),
+        primitives,
+    })
+}
 
-            let normals = reader
-                .read_normals()
-                .map(|values| values.collect::<Vec<_>>());
-            validate_attribute_count(
-                "NORMAL",
-                normals.as_ref().map(Vec::len),
-                positions.len(),
-                mesh_index,
-                primitive_index,
-            )?;
-            if let Some(values) = &normals {
-                validate_finite_vectors3(values, "NORMAL", mesh_index, primitive_index)?;
-            }
-
-            let tex_coords_0 = reader
-                .read_tex_coords(0)
-                .map(|coordinates| coordinates.into_f32().collect::<Vec<_>>());
-            validate_attribute_count(
-                "TEXCOORD_0",
-                tex_coords_0.as_ref().map(Vec::len),
-                positions.len(),
-                mesh_index,
-                primitive_index,
-            )?;
-            if let Some(values) = &tex_coords_0 {
-                for (element_index, coordinate) in values.iter().enumerate() {
-                    if coordinate.iter().any(|component| !component.is_finite()) {
-                        return Err(ImportError::NonFiniteAttribute {
-                            attribute: "TEXCOORD_0",
-                            mesh_index,
-                            primitive_index,
-                            element_index,
-                        });
-                    }
-                }
-            }
-
-            let indices = if let Some(source_indices) = reader.read_indices() {
-                source_indices.into_u32().collect::<Vec<_>>()
-            } else {
-                let vertex_count =
-                    u32::try_from(positions.len()).map_err(|_| ImportError::TooManyVertices {
-                        mesh_index,
-                        primitive_index,
-                    })?;
-                (0..vertex_count).collect()
-            };
-
-            if indices.len() % 3 != 0 {
-                return Err(ImportError::InvalidTriangleIndexCount {
-                    mesh_index,
-                    primitive_index,
-                    index_count: indices.len(),
-                });
-            }
-            for &index in &indices {
-                if !usize::try_from(index).is_ok_and(|value| value < positions.len()) {
-                    return Err(ImportError::IndexOutOfBounds {
-                        mesh_index,
-                        primitive_index,
-                        index,
-                        vertex_count: positions.len(),
-                    });
-                }
-            }
-
-            imported_mesh.primitives.push(ImportedPrimitive {
-                index: primitive_index,
-                material_index: primitive.material().index(),
-                positions,
-                normals,
-                tex_coords_0,
-                indices,
-            });
-        }
-        imported.meshes.push(imported_mesh);
-    }
-
-    for (source_image, image) in document.images().zip(images) {
-        if image.width == 0
-            || image.height == 0
-            || image_byte_len(image.width, image.height, image.format) != Some(image.pixels.len())
-        {
-            return Err(ImportError::InvalidImageData {
-                image_index: source_image.index(),
-            });
-        }
-        imported.images.push(ImportedImage {
-            index: source_image.index(),
-            name: source_image.name().map(str::to_owned),
-            width: image.width,
-            height: image.height,
-            format: image.format,
-            pixels: image.pixels,
+fn import_primitive(
+    primitive: gltf::Primitive<'_>,
+    mesh_index: usize,
+    primitive_index: usize,
+    buffers: &[gltf::buffer::Data],
+) -> Result<ImportedPrimitive, ImportError> {
+    let mode = primitive.mode();
+    if mode != Mode::Triangles {
+        return Err(ImportError::UnsupportedPrimitiveMode {
+            mesh_index,
+            primitive_index,
+            mode,
         });
     }
 
-    Ok(imported)
+    let reader =
+        primitive.reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
+    let positions = reader
+        .read_positions()
+        .ok_or(ImportError::MissingPositions {
+            mesh_index,
+            primitive_index,
+        })?
+        .collect::<Vec<_>>();
+    validate_finite_vectors3(&positions, "POSITION", mesh_index, primitive_index)?;
+
+    let normals = reader.read_normals().map(Iterator::collect::<Vec<_>>);
+    validate_attribute_count(
+        "NORMAL",
+        normals.as_ref().map(Vec::len),
+        positions.len(),
+        mesh_index,
+        primitive_index,
+    )?;
+    if let Some(values) = &normals {
+        validate_finite_vectors3(values, "NORMAL", mesh_index, primitive_index)?;
+    }
+
+    let tex_coords_0 = reader
+        .read_tex_coords(0)
+        .map(|coordinates| coordinates.into_f32().collect::<Vec<_>>());
+    validate_attribute_count(
+        "TEXCOORD_0",
+        tex_coords_0.as_ref().map(Vec::len),
+        positions.len(),
+        mesh_index,
+        primitive_index,
+    )?;
+    if let Some(values) = &tex_coords_0 {
+        for (element_index, coordinate) in values.iter().enumerate() {
+            if coordinate.iter().any(|component| !component.is_finite()) {
+                return Err(ImportError::NonFiniteAttribute {
+                    attribute: "TEXCOORD_0",
+                    mesh_index,
+                    primitive_index,
+                    element_index,
+                });
+            }
+        }
+    }
+
+    let indices = if let Some(source_indices) = reader.read_indices() {
+        source_indices.into_u32().collect::<Vec<_>>()
+    } else {
+        let vertex_count =
+            u32::try_from(positions.len()).map_err(|_| ImportError::TooManyVertices {
+                mesh_index,
+                primitive_index,
+            })?;
+        (0..vertex_count).collect()
+    };
+
+    if indices.len() % 3 != 0 {
+        return Err(ImportError::InvalidTriangleIndexCount {
+            mesh_index,
+            primitive_index,
+            index_count: indices.len(),
+        });
+    }
+    for &index in &indices {
+        if !usize::try_from(index).is_ok_and(|value| value < positions.len()) {
+            return Err(ImportError::IndexOutOfBounds {
+                mesh_index,
+                primitive_index,
+                index,
+                vertex_count: positions.len(),
+            });
+        }
+    }
+
+    Ok(ImportedPrimitive {
+        index: primitive_index,
+        material_index: primitive.material().index(),
+        positions,
+        normals,
+        tex_coords_0,
+        indices,
+    })
+}
+
+fn import_images(
+    document: &gltf::Document,
+    images: Vec<gltf::image::Data>,
+) -> Result<Vec<ImportedImage>, ImportError> {
+    document
+        .images()
+        .zip(images)
+        .map(|(source_image, image)| {
+            if image.width == 0
+                || image.height == 0
+                || image_byte_len(image.width, image.height, image.format)
+                    != Some(image.pixels.len())
+            {
+                return Err(ImportError::InvalidImageData {
+                    image_index: source_image.index(),
+                });
+            }
+            Ok(ImportedImage {
+                index: source_image.index(),
+                name: source_image.name().map(str::to_owned),
+                width: image.width,
+                height: image.height,
+                format: image.format,
+                pixels: image.pixels,
+            })
+        })
+        .collect()
 }
 
 fn validate_attribute_count(
@@ -396,11 +430,9 @@ fn validate_finite_vectors3(
 fn image_byte_len(width: u32, height: u32, format: ImageFormat) -> Option<usize> {
     let bytes_per_pixel = match format {
         ImageFormat::R8 => 1,
-        ImageFormat::R8G8 => 2,
+        ImageFormat::R8G8 | ImageFormat::R16 => 2,
         ImageFormat::R8G8B8 => 3,
-        ImageFormat::R8G8B8A8 => 4,
-        ImageFormat::R16 => 2,
-        ImageFormat::R16G16 => 4,
+        ImageFormat::R8G8B8A8 | ImageFormat::R16G16 => 4,
         ImageFormat::R16G16B16 => 6,
         ImageFormat::R16G16B16A16 => 8,
         ImageFormat::R32G32B32FLOAT => 12,
