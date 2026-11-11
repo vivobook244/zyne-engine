@@ -320,6 +320,25 @@ mod tests {
     }
 
     #[test]
+    fn extracts_entity_transforms_in_persistent_id_order() {
+        let mut scene = Scene::new("Render Extraction").unwrap();
+        let second_id = SceneEntityId::from_uuid(Uuid::from_u128(2));
+        let first_id = SceneEntityId::from_uuid(Uuid::from_u128(1));
+        let second_transform =
+            Transform3d::new([2.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3]).unwrap();
+        let first_transform =
+            Transform3d::new([1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3]).unwrap();
+        scene
+            .spawn_entity_with_id(second_id, "Second", second_transform)
+            .unwrap();
+        scene
+            .spawn_entity_with_id(first_id, "First", first_transform)
+            .unwrap();
+
+        assert_eq!(scene.entity_transforms(), vec![first_transform, second_transform]);
+    }
+
+    #[test]
     fn document_conversion_preserves_scene_and_entity_data() {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(10));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(20));

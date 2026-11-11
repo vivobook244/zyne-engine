@@ -1,6 +1,6 @@
 # Phase 3 — World, ECS & Scene
 
-**Status:** IN PROGRESS — ECS WORLD AND RON PERSISTENCE IMPLEMENTED  
+**Status:** IN PROGRESS — PHASE 3.4 IMPLEMENTED; LOCAL GPU VALIDATION PENDING  
 **Branch:** \`main\`  
 **Prerequisite:** Phase 2.6 — textured 3D rendering and controllable camera  
 **Goal:** Introduce a small, serializable scene world that can contain multiple entities with stable identities and local transforms.
@@ -44,20 +44,21 @@ Parent/child hierarchies, prefab instances, asset references, component reflecti
 
 ### 3.4 Runtime/render vertical slice
 
-- [ ] Expose scene functionality through the public runtime facade without leaking platform types.
-- [ ] Define a renderer-neutral extraction boundary; do not let the renderer query ECS directly.
-- [ ] Update the sample to create more than one transformed entity.
-- [ ] Render extracted entities using per-entity transforms while preserving camera and texture behavior.
-- [ ] Keep the headless smoke test independent of a physical GPU.
+- [x] Expose scene functionality through the public runtime facade without leaking platform types.
+- [x] Define a renderer-neutral extraction boundary; do not let the renderer query ECS directly.
+- [x] Update the sample to create more than one transformed entity.
+- [x] Render extracted entities using per-entity transforms while preserving camera and texture behavior.
+- [x] Keep the headless smoke test independent of a physical GPU.
 
 ## Acceptance checklist
 
 - [x] A scene can contain multiple entities with distinct persistent IDs and transforms.
 - [x] Saving and loading preserves scene ID, entity IDs, names, and transforms.
 - [x] Invalid or duplicate persisted data fails explicitly.
-- [ ] Runtime/render path consumes multiple scene entities without depending on ECS internals.
+- [x] Runtime/render path consumes multiple scene entities without depending on ECS internals.
 - [ ] Existing orbit, pan, zoom, resize, texture, and depth behavior remains intact.
-- [ ] Unit tests, formatting, strict Clippy, workspace checks, and Windows/Ubuntu CI pass.
+- [x] Unit tests, formatting, strict Clippy, workspace checks, and Windows/Ubuntu CI pass.
+- [ ] Local GPU validation confirms multi-entity rendering, camera controls, texture sampling, resize, and depth behavior.
 
 ## Dependency and lockfile policy
 
