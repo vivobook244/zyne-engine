@@ -204,7 +204,7 @@ impl Scene {
     /// Returns a decoding error or a scene validation error.
     pub fn from_ron(source: &str) -> Result<Self, SceneLoadError> {
         let document: SceneDocument = ron::de::from_str(source).map_err(SceneLoadError::Ron)?;
-        Self::from_document(document).map_err(SceneLoadError::Scene)
+        Self::from_document(&document).map_err(SceneLoadError::Scene)
     }
 
     fn from_validated_document(document: &SceneDocument) -> Self {
