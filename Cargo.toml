@@ -7,6 +7,7 @@ members = [
     "crates/zyne-graphics",
     "crates/zyne-runtime",
     "crates/zyne-scene",
+    "crates/zyne-assets",
 ]
 
 [workspace.package]
@@ -19,6 +20,8 @@ repository = "https://github.com/vivobook244/zyne-engine"
 
 [workspace.dependencies]
 bevy_ecs = { version = "=0.16.1", default-features = false, features = ["std"] }
+gltf = { version = "=1.4.1", default-features = false, features = ["import", "utils", "names"] }
+image = { version = "=0.25.9", default-features = false }
 ron = "=0.12.2"
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "1", features = ["v4", "serde"] }

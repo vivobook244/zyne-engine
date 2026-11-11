@@ -6,14 +6,18 @@ ZYNE is a modular monolith implemented as one Rust Cargo workspace. Crates are s
 
 ## Current workspace dependency graph
 
-An arrow `A -> B` means crate A directly depends on crate B.
+An arrow A -> B means crate A directly depends on crate B.
 
 ~~~text
 zyne-runtime -> zyne-core
              -> zyne-platform -> zyne-core
              -> zyne-graphics -> zyne-core
                               -> zyne-math
+             -> zyne-scene
+             -> zyne-assets
 
+zyne-assets -> gltf + image (external format/import dependencies)
+zyne-scene -> zyne-math
 zyne-math has no workspace-crate dependencies.
 zyne-core has no workspace-crate dependencies.
 ~~~
@@ -30,7 +34,7 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 | zyne-graphics | GPU resources, render pipeline, materials, render-facing data | Gameplay policy and editor workflows |
 | zyne-assets | Asset format importers and validated CPU-side asset representations; later resource registry/cache | GPU allocation, ECS world ownership, editor UI |
 | zyne-scene | Scene document, ECS world, scene validation and persistent scene data | GPU resources, editor implementation |
-| zyne-runtime | Public host facade, diagnostics setup, engine lifecycle policy, update scheduling, frame-time policy, subsystem orchestration | Native OS implementation and subsystem implementation details that belong in their owning crates |
+| zyne-runtime | Public host facade, diagnostics setup, engine lifecycle policy, update scheduling, frame-time policy, subsystem orchestration | Native OS implementation and subsystem implementation details that belong in their owning crate |
 
 ## Boundary rules
 
@@ -39,10 +43,10 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 - Platform may depend on core contracts, but not graphics or gameplay.
 - Graphics may depend on core and math, but not platform, assets, or gameplay.
 - Assets owns source decoding and CPU-side representations. It must not create GPU objects or query ECS.
-- Scene/world data may persist `ResourceId` values, but must not depend on runtime handles or GPU allocations.
+- Scene/world data may persist ResourceId values, but must not depend on runtime handles or GPU allocations.
 - Runtime composes core, platform, graphics, assets, and scene; it owns engine lifecycle policy and update/frame scheduling, but delegates subsystem implementation to owning crates.
 - Platform owns backend integration (planned: winit); runtime decides what platform events mean for engine lifecycle. Core remains independent of windows and OS event loops.
-- See [Platform Architecture](PLATFORM.md) for event-loop ownership, public API/backend separation, error boundaries, timing ownership, and deferred implementation decisions.
+- See Platform Architecture for event-loop ownership, public API/backend separation, error boundaries, timing ownership, and deferred implementation decisions.
 - Physics does not directly control animation.
 - Asset loading does not depend on editor UI.
 - Scene/world data does not depend on editor implementation.
@@ -51,9 +55,9 @@ This is the graph currently declared by the crate manifests. Cargo metadata and 
 
 ## Engine contracts and configuration
 
-The `zyne-core` crate owns engine-wide contracts: `Engine` lifecycle callbacks, validated `EngineConfig`, immutable `EngineContext`, `EngineVersion`, and `ZyneError`/`ZyneResult`. Project configuration is TOML; subsystem-specific settings stay with their owning crate. See [configuration](../CONFIGURATION.md) and [engine conventions](CONVENTIONS.md).
+The zyne-core crate owns engine-wide contracts: Engine lifecycle callbacks, validated EngineConfig, immutable EngineContext, EngineVersion, and ZyneError/ZyneResult. Project configuration is TOML; subsystem-specific settings stay with their owning crate. See configuration and engine conventions.
 
-The `zyne-runtime` crate exposes `init_logging()` as the host-level tracing subscriber setup. Library crates must not initialize a global subscriber.
+The zyne-runtime crate exposes init_logging() as the host-level tracing subscriber setup. Library crates must not initialize a global subscriber.
 
 ## Planned building blocks
 
@@ -77,7 +81,7 @@ Initial renderer: forward rendering with Blinn–Phong lighting. Intended pass s
 
 ## Coordinate conventions
 
-The authoritative contract is [Math and Coordinate Conventions](MATH.md): right-handed world, +Y up, +Z engine forward, column-vector algebra, and a [0, 1] projection depth range. Import conversion belongs at explicit asset boundaries.
+The authoritative contract is Math and Coordinate Conventions: right-handed world, +Y up, +Z engine forward, column-vector algebra, and a [0, 1] projection depth range. Import conversion belongs at explicit asset boundaries.
 
 ## Quality strategy
 

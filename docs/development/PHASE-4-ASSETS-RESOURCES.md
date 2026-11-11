@@ -1,16 +1,16 @@
 # Phase 4 — Asset & Resource Pipeline
 
-**Status:** PLANNED — RESOURCE CONTRACT AUDITED; PHASE 4.1 NEXT  
-**Branch:** `main`  
+**Status:** IN PROGRESS — PHASE 4.1 IMPLEMENTED; LOCKFILE AND CI VALIDATION PENDING  
+**Branch:** main  
 **Prerequisite:** Phase 3 — World, ECS & Scene  
 **Goal:** Import source assets into validated CPU-side engine data, then resolve persistent resource identities into safe runtime handles.
 
 ## Architecture decisions
 
-- Introduce a dedicated `zyne-assets` crate for asset import and CPU-side asset representations.
-- Keep `zyne-core` limited to stable `ResourceId` and typed `Handle<T>` contracts. Do not add filesystem, format, registry, or GPU dependencies to core.
-- Keep importers independent from ECS and GPU APIs. Importers produce validated CPU data; `zyne-graphics` remains responsible for GPU allocation and upload.
-- Persist `ResourceId`, resource kind, project-relative source path, and importer settings. Never persist runtime handles, slot indices, GPU objects, or pointers.
+- Introduce a dedicated zyne-assets crate for asset import and CPU-side asset representations.
+- Keep zyne-core limited to stable ResourceId and typed Handle<T> contracts. Do not add filesystem, format, registry, or GPU dependencies to core.
+- Keep importers independent from ECS and GPU APIs. Importers produce validated CPU data; zyne-graphics remains responsible for GPU allocation and upload.
+- Persist ResourceId, resource kind, project-relative source path, and importer settings. Never persist runtime handles, slot indices, GPU objects, or pointers.
 - A registry owns loaded runtime resources and validates handle index plus generation.
 - Preserve the workspace MSRV at Rust 1.85. Pin dependencies where necessary; do not upgrade MSRV implicitly through a transitive dependency.
 - Start with glTF 2.0 / GLB 2.0. Keep unsupported features explicit rather than silently dropping data.
@@ -19,25 +19,26 @@
 
 ### 4.1 Asset import foundation
 
-- [ ] Add `zyne-assets` crate with CPU-side asset data types.
-- [ ] Import glTF 2.0 JSON and GLB 2.0 containers from local paths.
-- [ ] Extract mesh primitives into engine-owned vertex attributes and normalized indices.
-- [ ] Decode embedded and referenced images into engine-owned pixel buffers.
-- [ ] Preserve source mesh, primitive, material, and image indices/names where available.
-- [ ] Validate required position data, index bounds, attribute lengths, finite numeric values, and image dimensions.
-- [ ] Return explicit errors for malformed documents and unsupported required features.
-- [ ] Keep scene instantiation, hierarchy, animation, skinning, morph targets, PBR runtime materials, GPU upload, registry, and cache out of this slice.
+- [x] Add zyne-assets crate with CPU-side asset data types and glTF importer.
+- [x] Import glTF 2.0 JSON and GLB 2.0 containers from local paths.
+- [x] Extract triangle mesh primitives into engine-owned positions, optional normals/UV0, and normalized u32 indices.
+- [x] Decode embedded and referenced images into engine-owned pixel buffers.
+- [x] Preserve source mesh, primitive material, and image indices/names where available.
+- [x] Validate required position data, index bounds, attribute lengths, finite values, triangle index counts, and image dimensions/byte lengths.
+- [x] Return explicit errors for malformed documents, unsupported required extensions, and unsupported primitive topology.
+- [ ] Add fixture coverage and verify importer behavior on Windows/Linux CI.
+- [ ] Verify dependency resolution and Cargo.lock with Rust 1.85.
 
 ### 4.2 Persistent resource registry
 
-- [ ] Define resource metadata using `ResourceId`, resource kind, normalized project-relative source path, and importer settings.
+- [ ] Define resource metadata using ResourceId, resource kind, normalized project-relative source path, and importer settings.
 - [ ] Register, find, rename, move, and remove metadata without changing identity on rename/move.
 - [ ] Reject duplicate IDs and conflicting source ownership according to an explicit policy.
 - [ ] Persist registry metadata independently of runtime objects.
 
 ### 4.3 Typed runtime resource resolution
 
-- [ ] Implement registry-owned typed slots using `Handle<T>`.
+- [ ] Implement registry-owned typed slots using Handle<T>.
 - [ ] Validate both slot index and generation on lookup.
 - [ ] Increment generation on release and reject stale handles.
 - [ ] Keep handle construction and slot mutation inside the registry implementation.
@@ -51,7 +52,7 @@
 
 ### 4.5 Scene resource references
 
-- [ ] Add persistent `ResourceId` references to scene document contracts.
+- [ ] Add persistent ResourceId references to scene document contracts.
 - [ ] Resolve references through the registry after scene load.
 - [ ] Report missing or failed resources explicitly; never resolve to unrelated assets.
 - [ ] Keep runtime handles out of RON scene documents.
@@ -69,14 +70,14 @@
 
 ## Dependency policy
 
-- Use the stable `gltf` 1.4.1 API with only the features required by the importer.
-- The glTF import feature depends on the `image` 0.25 series. Keep `image` pinned to a release compatible with Rust 1.85; do not allow a newer MSRV-incompatible patch release to enter the lockfile.
-- Commit Cargo.lock updates generated by Cargo and verify with `--locked` in CI.
+- Use the stable gltf 1.4.1 API with only the features required by the importer.
+- The glTF import feature depends on the image 0.25 series. Pin image to 0.25.9 to keep the Rust 1.85 compatibility policy; do not allow image 0.25.10 (Rust 1.88) to enter the lockfile.
+- Commit Cargo.lock updates generated by Cargo and verify with --locked in CI.
 
 ## Deferred
 
 - Material authoring and PBR rendering: Phase 5.
 - Scene hierarchy and prefab instantiation: later scene/editor phases.
 - Animation and skinning runtime: later animation phase.
-- GPU resource upload and device lifecycle: `zyne-graphics`.
+- GPU resource upload and device lifecycle: zyne-graphics.
 - Hot reload and advanced cache eviction: only after the basic pipeline is stable.
