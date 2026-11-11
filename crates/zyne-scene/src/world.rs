@@ -335,7 +335,10 @@ mod tests {
             .spawn_entity_with_id(first_id, "First", first_transform)
             .unwrap();
 
-        assert_eq!(scene.entity_transforms(), vec![first_transform, second_transform]);
+        assert_eq!(
+            scene.entity_transforms(),
+            vec![first_transform, second_transform]
+        );
     }
 
     #[test]
