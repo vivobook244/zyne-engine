@@ -234,12 +234,12 @@ fn import_meshes(
 ) -> Result<Vec<ImportedMesh>, ImportError> {
     document
         .meshes()
-        .map(|mesh| import_mesh(mesh, buffers))
+        .map(|mesh| import_mesh(&mesh, buffers))
         .collect()
 }
 
 fn import_mesh(
-    mesh: gltf::Mesh<'_>,
+    mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
 ) -> Result<ImportedMesh, ImportError> {
     let mesh_index = mesh.index();
@@ -247,7 +247,7 @@ fn import_mesh(
         .primitives()
         .enumerate()
         .map(|(primitive_index, primitive)| {
-            import_primitive(primitive, mesh_index, primitive_index, buffers)
+            import_primitive(&primitive, mesh_index, primitive_index, buffers)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -259,7 +259,7 @@ fn import_mesh(
 }
 
 fn import_primitive(
-    primitive: gltf::Primitive<'_>,
+    primitive: &gltf::Primitive<'_>,
     mesh_index: usize,
     primitive_index: usize,
     buffers: &[gltf::buffer::Data],
