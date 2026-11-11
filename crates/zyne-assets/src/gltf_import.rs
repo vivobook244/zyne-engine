@@ -568,8 +568,7 @@ mod tests {
             if bits >= 8 {
                 bits -= 8;
                 output.push(
-                    u8::try_from((accumulator >> bits) & 0xff)
-                        .expect("decoded byte should fit u8"),
+                    u8::try_from((accumulator >> bits) & 0xff).expect("decoded byte should fit u8"),
                 );
             }
         }
