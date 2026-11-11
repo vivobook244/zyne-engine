@@ -50,7 +50,9 @@ impl InstanceRaw {
     }
 
     const fn from_transform(transform: Transform3d) -> Self {
-        Self { model: transform.to_matrix() }
+        Self {
+            model: transform.to_matrix(),
+        }
     }
 }
 
@@ -300,21 +302,28 @@ impl CubePipeline {
         transforms: Option<&[Transform3d]>,
     ) -> Result<u32, crate::GraphicsError> {
         let instances: Vec<InstanceRaw> = match transforms {
-            Some(transforms) => transforms.iter().copied().map(InstanceRaw::from_transform).collect(),
-            None => vec![InstanceRaw { model: rotation_y(0.15) }],
+            Some(transforms) => transforms
+                .iter()
+                .copied()
+                .map(InstanceRaw::from_transform)
+                .collect(),
+            None => vec![InstanceRaw {
+                model: rotation_y(0.15),
+            }],
         };
-        let instance_count = u32::try_from(instances.len())
-            .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+        let instance_count =
+            u32::try_from(instances.len()).map_err(|_| crate::GraphicsError::TooManyInstances)?;
         if instances.is_empty() {
             return Ok(0);
         }
 
         if instances.len() > self.instance_capacity {
-            let capacity = instances.len()
+            let capacity = instances
+                .len()
                 .checked_next_power_of_two()
                 .ok_or(crate::GraphicsError::TooManyInstances)?;
-            let capacity = u64::try_from(capacity)
-                .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+            let capacity =
+                u64::try_from(capacity).map_err(|_| crate::GraphicsError::TooManyInstances)?;
             let buffer_size = capacity
                 .checked_mul(std::mem::size_of::<InstanceRaw>() as u64)
                 .ok_or(crate::GraphicsError::TooManyInstances)?;
@@ -327,8 +336,8 @@ impl CubePipeline {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
-            self.instance_capacity = usize::try_from(capacity)
-                .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+            self.instance_capacity =
+                usize::try_from(capacity).map_err(|_| crate::GraphicsError::TooManyInstances)?;
         }
 
         queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instances));
@@ -505,8 +514,8 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 #[cfg(test)]
 mod tests {
     use super::{
-        CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels, cube_vertices,
-        multiply_column_major, rotation_y,
+        CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels,
+        cube_vertices, multiply_column_major, rotation_y,
     };
 
     #[test]

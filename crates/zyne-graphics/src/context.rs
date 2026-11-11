@@ -171,11 +171,9 @@ impl GraphicsContext {
             camera,
         );
 
-        let instance_count = self.cube_pipeline.update_instances(
-            &self.device,
-            &self.queue,
-            transforms,
-        )?;
+        let instance_count =
+            self.cube_pipeline
+                .update_instances(&self.device, &self.queue, transforms)?;
 
         let mut encoder = self
             .device

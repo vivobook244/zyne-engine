@@ -86,20 +86,23 @@ fn main() -> ZyneResult<()> {
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     let mut scene = Scene::new("ZYNE Multi-Entity Smoke Scene")
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
-    scene.spawn_entity(
-        "Left Cube",
-        Transform3d::new([-1.5, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3])
-            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
-    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
-    scene.spawn_entity(
-        "Center Cube",
-        Transform3d::identity(),
-    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
-    scene.spawn_entity(
-        "Right Cube",
-        Transform3d::new([1.5, 0.0, 0.0], [0.0, 0.25881904, 0.0, 0.9659258], [0.8; 3])
-            .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
-    ).map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene
+        .spawn_entity(
+            "Left Cube",
+            Transform3d::new([-1.5, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3])
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+        )
+        .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene
+        .spawn_entity("Center Cube", Transform3d::identity())
+        .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+    scene
+        .spawn_entity(
+            "Right Cube",
+            Transform3d::new([1.5, 0.0, 0.0], [0.0, 0.25881904, 0.0, 0.9659258], [0.8; 3])
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
+        )
+        .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
     application.run(SmokeEngine {
         camera_controller,
         scene,
