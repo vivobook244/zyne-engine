@@ -313,8 +313,7 @@ mod tests {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(10));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(20));
         let document = crate::SceneDocument::with_id(scene_id, "Persistent Scene").unwrap();
-        let mut scene = Scene::from_document(&document)
-        .unwrap();
+        let mut scene = Scene::from_document(&document).unwrap();
         let transform =
             Transform3d::new([3.0, 4.0, 5.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0]).unwrap();
         scene
