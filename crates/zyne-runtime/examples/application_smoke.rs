@@ -99,7 +99,7 @@ fn main() -> ZyneResult<()> {
     scene
         .spawn_entity(
             "Right Cube",
-            Transform3d::new([1.5, 0.0, 0.0], [0.0, 0.25881904, 0.0, 0.9659258], [0.8; 3])
+            Transform3d::new([1.5, 0.0, 0.0], [0.0, 0.258_819_04, 0.0, 0.965_925_8], [0.8; 3])
                 .map_err(|error| ZyneError::Subsystem(error.to_string()))?,
         )
         .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
