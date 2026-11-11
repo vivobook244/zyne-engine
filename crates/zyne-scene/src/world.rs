@@ -25,9 +25,14 @@ pub struct Scene {
 }
 
 impl Scene {
+    /// Creates an empty scene with a new persistent identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptySceneName` when the name is blank.
     pub fn new(name: impl Into<String>) -> Result<Self, SceneError> {
         let document = SceneDocument::new(name)?;
-        Ok(Self::from_validated_document(document))
+        Ok(Self::from_validated_document(&document))
     }
 
     #[must_use]
@@ -57,6 +62,11 @@ impl Scene {
         ids
     }
 
+    /// Spawns an entity with a generated persistent identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptyEntityName` when the name is blank.
     pub fn spawn_entity(
         &mut self,
         name: impl Into<String>,
@@ -65,6 +75,12 @@ impl Scene {
         self.spawn_entity_with_id(SceneEntityId::new(), name, transform)
     }
 
+    /// Spawns an entity using a caller-provided persistent identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptyEntityName` for a blank name or `DuplicateEntityId` when
+    /// the ID is already present in this scene.
     pub fn spawn_entity_with_id(
         &mut self,
         id: SceneEntityId,
@@ -135,6 +151,11 @@ impl Scene {
         true
     }
 
+    /// Extracts a validated, ECS-independent scene document.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the in-memory scene violates document invariants.
     pub fn to_document(&self) -> Result<SceneDocument, SceneError> {
         let mut document = SceneDocument::with_id(self.id, self.name.clone())?;
         for id in self.entity_ids() {
@@ -150,28 +171,43 @@ impl Scene {
         Ok(document)
     }
 
-    pub fn from_document(document: SceneDocument) -> Result<Self, SceneError> {
+    /// Reconstructs an ECS scene from a validated scene document.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the document contains invalid names, duplicate
+    /// IDs, or an unsupported schema version.
+    pub fn from_document(document: &SceneDocument) -> Result<Self, SceneError> {
         document.validate()?;
-        let mut scene =
-            Self::from_validated_document(SceneDocument::with_id(document.id(), document.name())?);
+        let mut scene = Self::from_validated_document(document);
         for entity in document.entities() {
             scene.spawn_entity_with_id(entity.id(), entity.name(), *entity.transform())?;
         }
         Ok(scene)
     }
 
+    /// Serializes the scene to a pretty-printed RON document.
+    ///
+    /// # Errors
+    ///
+    /// Returns a scene validation or RON serialization error.
     pub fn to_ron(&self) -> Result<String, SceneSaveError> {
         let document = self.to_document().map_err(SceneSaveError::Scene)?;
         ron::ser::to_string_pretty(&document, ron::ser::PrettyConfig::default())
             .map_err(SceneSaveError::Ron)
     }
 
+    /// Loads a scene from a RON document.
+    ///
+    /// # Errors
+    ///
+    /// Returns a decoding error or a scene validation error.
     pub fn from_ron(source: &str) -> Result<Self, SceneLoadError> {
         let document: SceneDocument = ron::de::from_str(source).map_err(SceneLoadError::Ron)?;
         Self::from_document(document).map_err(SceneLoadError::Scene)
     }
 
-    fn from_validated_document(document: SceneDocument) -> Self {
+    fn from_validated_document(document: &SceneDocument) -> Self {
         Self {
             id: document.id(),
             name: document.name().to_owned(),
@@ -276,9 +312,8 @@ mod tests {
     fn document_conversion_preserves_scene_and_entity_data() {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(10));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(20));
-        let mut scene = Scene::from_document(
-            crate::SceneDocument::with_id(scene_id, "Persistent Scene").unwrap(),
-        )
+        let document = crate::SceneDocument::with_id(scene_id, "Persistent Scene").unwrap();
+        let mut scene = Scene::from_document(&document)
         .unwrap();
         let transform =
             Transform3d::new([3.0, 4.0, 5.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0]).unwrap();
@@ -299,7 +334,7 @@ mod tests {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(100));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(200));
         let mut scene =
-            Scene::from_document(crate::SceneDocument::with_id(scene_id, "RON Scene").unwrap())
+            Scene::from_document(&crate::SceneDocument::with_id(scene_id, "RON Scene").unwrap())
                 .unwrap();
         let transform =
             Transform3d::new([5.0, 1.0, -2.0], [0.0, 0.0, 0.0, 1.0], [1.5, 1.0, 0.5]).unwrap();

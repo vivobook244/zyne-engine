@@ -74,10 +74,20 @@ pub struct SceneEntityDocument {
 }
 
 impl SceneEntityDocument {
+    /// Creates an entity document with a newly generated persistent ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptyEntityName` when the name is blank.
     pub fn new(name: impl Into<String>, transform: Transform3d) -> Result<Self, SceneError> {
         Self::with_id(SceneEntityId::new(), name, transform)
     }
 
+    /// Creates an entity document using an explicit persistent ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptyEntityName` when the name is blank.
     pub fn with_id(
         id: SceneEntityId,
         name: impl Into<String>,
@@ -119,10 +129,20 @@ pub struct SceneDocument {
 }
 
 impl SceneDocument {
+    /// Creates an empty scene document with a generated persistent ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptySceneName` when the name is blank.
     pub fn new(name: impl Into<String>) -> Result<Self, SceneError> {
         Self::with_id(SceneId::new(), name)
     }
 
+    /// Creates an empty scene document with an explicit persistent ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EmptySceneName` when the name is blank.
     pub fn with_id(id: SceneId, name: impl Into<String>) -> Result<Self, SceneError> {
         let name = name.into();
         if name.trim().is_empty() {
@@ -156,6 +176,11 @@ impl SceneDocument {
         &self.entities
     }
 
+    /// Adds an entity document while enforcing persistent-ID uniqueness.
+    ///
+    /// # Errors
+    ///
+    /// Returns `DuplicateEntityId` when the document already contains the ID.
     pub fn add_entity(&mut self, entity: SceneEntityDocument) -> Result<(), SceneError> {
         if self
             .entities
@@ -168,6 +193,12 @@ impl SceneDocument {
         Ok(())
     }
 
+    /// Validates schema version, names, and persistent entity identities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a name is blank, an ID is duplicated, or the
+    /// schema version is unsupported.
     pub fn validate(&self) -> Result<(), SceneError> {
         if self.schema_version != CURRENT_SCENE_SCHEMA_VERSION {
             return Err(SceneError::UnsupportedSchemaVersion {
@@ -230,7 +261,7 @@ mod tests {
         let scene = SceneDocument::new("Main Level").expect("scene name should be valid");
         assert_eq!(scene.name(), "Main Level");
         assert_eq!(scene.schema_version(), 1);
-        assert!(scene.entities().is_empty());
+        assert_eq!(scene.entities(), []);
         assert_eq!(scene.validate(), Ok(()));
     }
 
