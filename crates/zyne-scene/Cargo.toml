@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+bevy_ecs.workspace = true
+ron.workspace = true
 serde.workspace = true
 uuid.workspace = true
 zyne-math = { path = "../zyne-math" }
