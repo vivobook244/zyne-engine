@@ -487,6 +487,7 @@ fn identity_matrix() -> [[f32; 4]; 4] {
     ]
 }
 
+#[cfg(test)]
 fn multiply_column_major(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let mut result = [[0.0; 4]; 4];
 
