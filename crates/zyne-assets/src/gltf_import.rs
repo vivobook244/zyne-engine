@@ -121,31 +121,61 @@ impl fmt::Display for ImportError {
                 formatter,
                 "required glTF extension is unsupported: {extension}"
             ),
-            Self::UnsupportedPrimitiveMode { mesh_index, primitive_index, mode } => write!(
+            Self::UnsupportedPrimitiveMode {
+                mesh_index,
+                primitive_index,
+                mode,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} uses unsupported topology {mode:?}"
             ),
-            Self::MissingPositions { mesh_index, primitive_index } => write!(
+            Self::MissingPositions {
+                mesh_index,
+                primitive_index,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} has no POSITION attribute"
             ),
-            Self::NonFiniteAttribute { attribute, mesh_index, primitive_index, element_index } => write!(
+            Self::NonFiniteAttribute {
+                attribute,
+                mesh_index,
+                primitive_index,
+                element_index,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} {attribute} element {element_index} contains a non-finite value"
             ),
-            Self::AttributeCountMismatch { attribute, mesh_index, primitive_index, expected, actual } => write!(
+            Self::AttributeCountMismatch {
+                attribute,
+                mesh_index,
+                primitive_index,
+                expected,
+                actual,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} {attribute} count is {actual}, expected {expected}"
             ),
-            Self::IndexOutOfBounds { mesh_index, primitive_index, index, vertex_count } => write!(
+            Self::IndexOutOfBounds {
+                mesh_index,
+                primitive_index,
+                index,
+                vertex_count,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} index {index} exceeds vertex count {vertex_count}"
             ),
-            Self::InvalidTriangleIndexCount { mesh_index, primitive_index, index_count } => write!(
+            Self::InvalidTriangleIndexCount {
+                mesh_index,
+                primitive_index,
+                index_count,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} has {index_count} indices; triangle lists require a multiple of three"
             ),
-            Self::TooManyVertices { mesh_index, primitive_index } => write!(
+            Self::TooManyVertices {
+                mesh_index,
+                primitive_index,
+            } => write!(
                 formatter,
                 "mesh {mesh_index} primitive {primitive_index} exceeds the u32 vertex index limit"
             ),
@@ -221,7 +251,9 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
                 .collect::<Vec<_>>();
             validate_finite_vectors3(&positions, "POSITION", mesh_index, primitive_index)?;
 
-            let normals = reader.read_normals().map(|values| values.collect::<Vec<_>>());
+            let normals = reader
+                .read_normals()
+                .map(|values| values.collect::<Vec<_>>());
             validate_attribute_count(
                 "NORMAL",
                 normals.as_ref().map(Vec::len),
@@ -385,8 +417,8 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const POSITIONS: [u8; 36] = [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 128, 63, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 128, 63, 0, 0, 0, 0,
     ];
     const PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==";
 
@@ -479,11 +511,23 @@ mod tests {
         let mut glb = Vec::with_capacity(total_length);
         glb.extend_from_slice(b"glTF");
         glb.extend_from_slice(&2_u32.to_le_bytes());
-        glb.extend_from_slice(&u32::try_from(total_length).expect("GLB fixture length should fit u32").to_le_bytes());
-        glb.extend_from_slice(&u32::try_from(json_chunk.len()).expect("JSON chunk length should fit u32").to_le_bytes());
+        glb.extend_from_slice(
+            &u32::try_from(total_length)
+                .expect("GLB fixture length should fit u32")
+                .to_le_bytes(),
+        );
+        glb.extend_from_slice(
+            &u32::try_from(json_chunk.len())
+                .expect("JSON chunk length should fit u32")
+                .to_le_bytes(),
+        );
         glb.extend_from_slice(&0x4E4F534A_u32.to_le_bytes());
         glb.extend_from_slice(&json_chunk);
-        glb.extend_from_slice(&u32::try_from(binary_chunk.len()).expect("BIN chunk length should fit u32").to_le_bytes());
+        glb.extend_from_slice(
+            &u32::try_from(binary_chunk.len())
+                .expect("BIN chunk length should fit u32")
+                .to_le_bytes(),
+        );
         glb.extend_from_slice(&0x004E4942_u32.to_le_bytes());
         glb.extend_from_slice(&binary_chunk);
         fs::write(directory.path("triangle.glb"), glb).expect("GLB fixture should be written");
@@ -512,12 +556,21 @@ mod tests {
         let mut accumulator = 0_u32;
         let mut bits = 0_u8;
         for byte in encoded.bytes().filter(|byte| *byte != b'=') {
-            let value = u32::try_from(TABLE.iter().position(|candidate| *candidate == byte).expect("fixture base64 should be valid")).expect("base64 digit should fit u32");
+            let value = u32::try_from(
+                TABLE
+                    .iter()
+                    .position(|candidate| *candidate == byte)
+                    .expect("fixture base64 should be valid"),
+            )
+            .expect("base64 digit should fit u32");
             accumulator = (accumulator << 6) | value;
             bits += 6;
             if bits >= 8 {
                 bits -= 8;
-                output.push(u8::try_from((accumulator >> bits) & 0xff).expect("decoded byte should fit u8"));
+                output.push(
+                    u8::try_from((accumulator >> bits) & 0xff)
+                        .expect("decoded byte should fit u8"),
+                );
             }
         }
         output
