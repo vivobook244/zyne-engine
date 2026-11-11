@@ -1,5 +1,5 @@
 //! Persistent asset metadata registry.
- //!
+//!
  //! The registry owns stable metadata only. It does not load source files,
  //! allocate GPU resources, or create runtime handles.
 
@@ -300,11 +300,7 @@ impl AssetRegistry {
     /// # Errors
     ///
     /// Returns an error for a blank name or an unknown resource ID.
-    pub fn rename(
-        &mut self,
-        id: ResourceId,
-        name: impl Into<String>,
-    ) -> Result<(), RegistryError> {
+    pub fn rename(&mut self, id: ResourceId, name: impl Into<String>) -> Result<(), RegistryError> {
         let name = name.into();
         if name.trim().is_empty() {
             return Err(RegistryError::EmptyAssetName);
@@ -426,15 +422,32 @@ impl std::fmt::Display for RegistryError {
         match self {
             Self::EmptyAssetName => formatter.write_str("asset name must not be empty"),
             Self::EmptyImporterName => formatter.write_str("importer name must not be empty"),
-            Self::InvalidImporterVersion => formatter.write_str("importer version must be greater than zero"),
-            Self::EmptyImporterOptionKey => formatter.write_str("importer option key must not be empty"),
+            Self::InvalidImporterVersion => {
+                formatter.write_str("importer version must be greater than zero")
+            }
+            Self::EmptyImporterOptionKey => {
+                formatter.write_str("importer option key must not be empty")
+            }
             Self::EmptySourcePath => formatter.write_str("asset source path must not be empty"),
-            Self::AbsoluteSourcePath => formatter.write_str("asset source path must be project-relative"),
-            Self::ParentDirectoryTraversal => formatter.write_str("asset source path must not traverse parent directories"),
-            Self::InvalidSourcePath => formatter.write_str("asset source path contains invalid characters or is not normalized"),
-            Self::DuplicateResourceId { id } => write!(formatter, "duplicate asset resource ID {id}"),
-            Self::SourcePathInUse { path } => write!(formatter, "asset source path is already registered: {}", path.as_str()),
-            Self::ResourceNotFound { id } => write!(formatter, "asset resource ID was not found: {id}"),
+            Self::AbsoluteSourcePath => {
+                formatter.write_str("asset source path must be project-relative")
+            }
+            Self::ParentDirectoryTraversal => {
+                formatter.write_str("asset source path must not traverse parent directories")
+            }
+            Self::InvalidSourcePath => formatter
+                .write_str("asset source path contains invalid characters or is not normalized"),
+            Self::DuplicateResourceId { id } => {
+                write!(formatter, "duplicate asset resource ID {id}")
+            }
+            Self::SourcePathInUse { path } => write!(
+                formatter,
+                "asset source path is already registered: {}",
+                path.as_str()
+            ),
+            Self::ResourceNotFound { id } => {
+                write!(formatter, "asset resource ID was not found: {id}")
+            }
             Self::UnsupportedSchemaVersion { found, expected } => write!(
                 formatter,
                 "unsupported asset registry schema version {found}; expected {expected}"
@@ -582,9 +595,11 @@ mod tests {
         assert_eq!(metadata.id(), id);
         assert_eq!(metadata.name(), "Wooden Crate");
         assert_eq!(metadata.source_path(), &new_path);
-        assert!(registry
-            .find_by_source_path(&ProjectRelativePath::new("models/crate.glb").unwrap())
-            .is_none());
+        assert!(
+            registry
+                .find_by_source_path(&ProjectRelativePath::new("models/crate.glb").unwrap())
+                .is_none()
+        );
         assert_eq!(registry.find_by_source_path(&new_path).unwrap().id(), id);
     }
 
