@@ -18,17 +18,25 @@ pub struct SceneId(Uuid);
 
 impl SceneId {
     #[must_use]
-    pub fn new() -> Self { Self(Uuid::new_v4()) }
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
 
     #[must_use]
-    pub const fn from_uuid(value: Uuid) -> Self { Self(value) }
+    pub const fn from_uuid(value: Uuid) -> Self {
+        Self(value)
+    }
 
     #[must_use]
-    pub const fn as_uuid(self) -> Uuid { self.0 }
+    pub const fn as_uuid(self) -> Uuid {
+        self.0
+    }
 }
 
 impl Default for SceneId {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -37,17 +45,25 @@ pub struct SceneEntityId(Uuid);
 
 impl SceneEntityId {
     #[must_use]
-    pub fn new() -> Self { Self(Uuid::new_v4()) }
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
 
     #[must_use]
-    pub const fn from_uuid(value: Uuid) -> Self { Self(value) }
+    pub const fn from_uuid(value: Uuid) -> Self {
+        Self(value)
+    }
 
     #[must_use]
-    pub const fn as_uuid(self) -> Uuid { self.0 }
+    pub const fn as_uuid(self) -> Uuid {
+        self.0
+    }
 }
 
 impl Default for SceneEntityId {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -71,17 +87,27 @@ impl SceneEntityDocument {
         if name.trim().is_empty() {
             return Err(SceneError::EmptyEntityName { id });
         }
-        Ok(Self { id, name, transform })
+        Ok(Self {
+            id,
+            name,
+            transform,
+        })
     }
 
     #[must_use]
-    pub const fn id(&self) -> SceneEntityId { self.id }
+    pub const fn id(&self) -> SceneEntityId {
+        self.id
+    }
 
     #[must_use]
-    pub fn name(&self) -> &str { &self.name }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
     #[must_use]
-    pub const fn transform(&self) -> &Transform3d { &self.transform }
+    pub const fn transform(&self) -> &Transform3d {
+        &self.transform
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -111,19 +137,31 @@ impl SceneDocument {
     }
 
     #[must_use]
-    pub const fn id(&self) -> SceneId { self.id }
+    pub const fn id(&self) -> SceneId {
+        self.id
+    }
 
     #[must_use]
-    pub fn name(&self) -> &str { &self.name }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
     #[must_use]
-    pub const fn schema_version(&self) -> u32 { self.schema_version }
+    pub const fn schema_version(&self) -> u32 {
+        self.schema_version
+    }
 
     #[must_use]
-    pub fn entities(&self) -> &[SceneEntityDocument] { &self.entities }
+    pub fn entities(&self) -> &[SceneEntityDocument] {
+        &self.entities
+    }
 
     pub fn add_entity(&mut self, entity: SceneEntityDocument) -> Result<(), SceneError> {
-        if self.entities.iter().any(|existing| existing.id == entity.id) {
+        if self
+            .entities
+            .iter()
+            .any(|existing| existing.id == entity.id)
+        {
             return Err(SceneError::DuplicateEntityId { id: entity.id });
         }
         self.entities.push(entity);
@@ -165,8 +203,12 @@ impl std::fmt::Display for SceneError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptySceneName => formatter.write_str("scene name must not be empty"),
-            Self::EmptyEntityName { id } => write!(formatter, "scene entity {id:?} name must not be empty"),
-            Self::DuplicateEntityId { id } => write!(formatter, "duplicate scene entity identity {id:?}"),
+            Self::EmptyEntityName { id } => {
+                write!(formatter, "scene entity {id:?} name must not be empty")
+            }
+            Self::DuplicateEntityId { id } => {
+                write!(formatter, "duplicate scene entity identity {id:?}")
+            }
             Self::UnsupportedSchemaVersion { found, expected } => write!(
                 formatter,
                 "unsupported scene schema version {found}; expected {expected}"
@@ -199,7 +241,8 @@ mod tests {
         let second = SceneEntityDocument::new(
             "Prop",
             Transform3d::new([2.0, 0.0, 4.0], [0.0, 0.0, 0.0, 1.0], [2.0; 3]).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         scene.add_entity(first).unwrap();
         scene.add_entity(second).unwrap();
         assert_eq!(scene.entities().len(), 2);
@@ -214,7 +257,10 @@ mod tests {
         let first = SceneEntityDocument::with_id(id, "First", Transform3d::identity()).unwrap();
         let second = SceneEntityDocument::with_id(id, "Second", Transform3d::identity()).unwrap();
         scene.add_entity(first).unwrap();
-        assert_eq!(scene.add_entity(second), Err(SceneError::DuplicateEntityId { id }));
+        assert_eq!(
+            scene.add_entity(second),
+            Err(SceneError::DuplicateEntityId { id })
+        );
     }
 
     #[test]
@@ -230,7 +276,9 @@ mod tests {
     #[test]
     fn document_round_trips_through_serde_format_for_contract_testing() {
         let mut scene = SceneDocument::new("Round Trip").unwrap();
-        scene.add_entity(SceneEntityDocument::new("Camera Marker", Transform3d::identity()).unwrap()).unwrap();
+        scene
+            .add_entity(SceneEntityDocument::new("Camera Marker", Transform3d::identity()).unwrap())
+            .unwrap();
         let encoded = toml::to_string(&scene).unwrap();
         let decoded: SceneDocument = toml::from_str(&encoded).unwrap();
         assert_eq!(decoded, scene);
@@ -240,7 +288,9 @@ mod tests {
     #[test]
     fn deserialization_rejects_invalid_transform_rotation() {
         let mut scene = SceneDocument::new("Invalid Transform").unwrap();
-        scene.add_entity(SceneEntityDocument::new("Object", Transform3d::identity()).unwrap()).unwrap();
+        scene
+            .add_entity(SceneEntityDocument::new("Object", Transform3d::identity()).unwrap())
+            .unwrap();
         let encoded = toml::to_string(&scene).unwrap();
         let invalid = encoded.replace(
             "rotation = [0.0, 0.0, 0.0, 1.0]",

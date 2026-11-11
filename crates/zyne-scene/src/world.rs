@@ -31,13 +31,19 @@ impl Scene {
     }
 
     #[must_use]
-    pub const fn id(&self) -> SceneId { self.id }
+    pub const fn id(&self) -> SceneId {
+        self.id
+    }
 
     #[must_use]
-    pub fn name(&self) -> &str { &self.name }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
     #[must_use]
-    pub fn entity_count(&self) -> usize { self.entities.len() }
+    pub fn entity_count(&self) -> usize {
+        self.entities.len()
+    }
 
     #[must_use]
     pub fn contains_entity(&self, id: SceneEntityId) -> bool {
@@ -69,17 +75,22 @@ impl Scene {
         if self.entities.contains_key(&id) {
             return Err(SceneError::DuplicateEntityId { id });
         }
-        let handle = self.world.spawn((
-            PersistentEntityId(document.id()),
-            EntityName(document.name().to_owned()),
-            LocalTransform(*document.transform()),
-        )).id();
+        let handle = self
+            .world
+            .spawn((
+                PersistentEntityId(document.id()),
+                EntityName(document.name().to_owned()),
+                LocalTransform(*document.transform()),
+            ))
+            .id();
         self.entities.insert(id, handle);
         Ok(id)
     }
 
     pub fn despawn_entity(&mut self, id: SceneEntityId) -> bool {
-        let Some(handle) = self.entities.remove(&id) else { return false; };
+        let Some(handle) = self.entities.remove(&id) else {
+            return false;
+        };
         self.world.despawn(handle)
     }
 
@@ -87,23 +98,39 @@ impl Scene {
     pub fn entity_name(&self, id: SceneEntityId) -> Option<&str> {
         let handle = *self.entities.get(&id)?;
         let persistent_id = self.world.get::<PersistentEntityId>(handle)?;
-        if persistent_id.0 != id { return None; }
-        self.world.get::<EntityName>(handle).map(|name| name.0.as_str())
+        if persistent_id.0 != id {
+            return None;
+        }
+        self.world
+            .get::<EntityName>(handle)
+            .map(|name| name.0.as_str())
     }
 
     #[must_use]
     pub fn entity_transform(&self, id: SceneEntityId) -> Option<Transform3d> {
         let handle = *self.entities.get(&id)?;
         let persistent_id = self.world.get::<PersistentEntityId>(handle)?;
-        if persistent_id.0 != id { return None; }
-        self.world.get::<LocalTransform>(handle).map(|value| value.0)
+        if persistent_id.0 != id {
+            return None;
+        }
+        self.world
+            .get::<LocalTransform>(handle)
+            .map(|value| value.0)
     }
 
     pub fn set_entity_transform(&mut self, id: SceneEntityId, transform: Transform3d) -> bool {
-        let Some(&handle) = self.entities.get(&id) else { return false; };
-        let Some(persistent_id) = self.world.get::<PersistentEntityId>(handle) else { return false; };
-        if persistent_id.0 != id { return false; }
-        let Some(mut local_transform) = self.world.get_mut::<LocalTransform>(handle) else { return false; };
+        let Some(&handle) = self.entities.get(&id) else {
+            return false;
+        };
+        let Some(persistent_id) = self.world.get::<PersistentEntityId>(handle) else {
+            return false;
+        };
+        if persistent_id.0 != id {
+            return false;
+        }
+        let Some(mut local_transform) = self.world.get_mut::<LocalTransform>(handle) else {
+            return false;
+        };
         local_transform.0 = transform;
         true
     }
@@ -111,8 +138,12 @@ impl Scene {
     pub fn to_document(&self) -> Result<SceneDocument, SceneError> {
         let mut document = SceneDocument::with_id(self.id, self.name.clone())?;
         for id in self.entity_ids() {
-            let name = self.entity_name(id).ok_or(SceneError::DuplicateEntityId { id })?;
-            let transform = self.entity_transform(id).ok_or(SceneError::DuplicateEntityId { id })?;
+            let name = self
+                .entity_name(id)
+                .ok_or(SceneError::DuplicateEntityId { id })?;
+            let transform = self
+                .entity_transform(id)
+                .ok_or(SceneError::DuplicateEntityId { id })?;
             document.add_entity(SceneEntityDocument::with_id(id, name, transform)?)?;
         }
         document.validate()?;
@@ -121,9 +152,8 @@ impl Scene {
 
     pub fn from_document(document: SceneDocument) -> Result<Self, SceneError> {
         document.validate()?;
-        let mut scene = Self::from_validated_document(
-            SceneDocument::with_id(document.id(), document.name())?
-        );
+        let mut scene =
+            Self::from_validated_document(SceneDocument::with_id(document.id(), document.name())?);
         for entity in document.entities() {
             scene.spawn_entity_with_id(entity.id(), entity.name(), *entity.transform())?;
         }
@@ -195,7 +225,9 @@ mod tests {
     #[test]
     fn creates_scene_and_manages_entity_lifecycle() {
         let mut scene = Scene::new("Main").unwrap();
-        let id = scene.spawn_entity("Player", Transform3d::identity()).unwrap();
+        let id = scene
+            .spawn_entity("Player", Transform3d::identity())
+            .unwrap();
         assert_eq!(scene.entity_count(), 1);
         assert!(scene.contains_entity(id));
         assert_eq!(scene.entity_name(id), Some("Player"));
@@ -213,7 +245,9 @@ mod tests {
     fn rejects_duplicate_ids_and_blank_entity_names() {
         let mut scene = Scene::new("Main").unwrap();
         let id = SceneEntityId::new();
-        scene.spawn_entity_with_id(id, "First", Transform3d::identity()).unwrap();
+        scene
+            .spawn_entity_with_id(id, "First", Transform3d::identity())
+            .unwrap();
         assert_eq!(
             scene.spawn_entity_with_id(id, "Second", Transform3d::identity()),
             Err(SceneError::DuplicateEntityId { id })
@@ -229,8 +263,12 @@ mod tests {
         let mut scene = Scene::new("Main").unwrap();
         let second = SceneEntityId::from_uuid(Uuid::from_u128(2));
         let first = SceneEntityId::from_uuid(Uuid::from_u128(1));
-        scene.spawn_entity_with_id(second, "Second", Transform3d::identity()).unwrap();
-        scene.spawn_entity_with_id(first, "First", Transform3d::identity()).unwrap();
+        scene
+            .spawn_entity_with_id(second, "Second", Transform3d::identity())
+            .unwrap();
+        scene
+            .spawn_entity_with_id(first, "First", Transform3d::identity())
+            .unwrap();
         assert_eq!(scene.entity_ids(), vec![first, second]);
     }
 
@@ -239,10 +277,14 @@ mod tests {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(10));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(20));
         let mut scene = Scene::from_document(
-            crate::SceneDocument::with_id(scene_id, "Persistent Scene").unwrap()
-        ).unwrap();
-        let transform = Transform3d::new([3.0, 4.0, 5.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0]).unwrap();
-        scene.spawn_entity_with_id(entity_id, "Prop", transform).unwrap();
+            crate::SceneDocument::with_id(scene_id, "Persistent Scene").unwrap(),
+        )
+        .unwrap();
+        let transform =
+            Transform3d::new([3.0, 4.0, 5.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0]).unwrap();
+        scene
+            .spawn_entity_with_id(entity_id, "Prop", transform)
+            .unwrap();
 
         let document = scene.to_document().unwrap();
         assert_eq!(document.id(), scene_id);
@@ -256,11 +298,14 @@ mod tests {
     fn ron_round_trip_preserves_scene_and_entity_identity() {
         let scene_id = SceneId::from_uuid(Uuid::from_u128(100));
         let entity_id = SceneEntityId::from_uuid(Uuid::from_u128(200));
-        let mut scene = Scene::from_document(
-            crate::SceneDocument::with_id(scene_id, "RON Scene").unwrap()
-        ).unwrap();
-        let transform = Transform3d::new([5.0, 1.0, -2.0], [0.0, 0.0, 0.0, 1.0], [1.5, 1.0, 0.5]).unwrap();
-        scene.spawn_entity_with_id(entity_id, "Crate", transform).unwrap();
+        let mut scene =
+            Scene::from_document(crate::SceneDocument::with_id(scene_id, "RON Scene").unwrap())
+                .unwrap();
+        let transform =
+            Transform3d::new([5.0, 1.0, -2.0], [0.0, 0.0, 0.0, 1.0], [1.5, 1.0, 0.5]).unwrap();
+        scene
+            .spawn_entity_with_id(entity_id, "Crate", transform)
+            .unwrap();
 
         let encoded = scene.to_ron().unwrap();
         let decoded = Scene::from_ron(&encoded).unwrap();
@@ -281,7 +326,10 @@ mod tests {
 
     #[test]
     fn rejects_malformed_ron() {
-        assert!(matches!(Scene::from_ron("not a scene"), Err(SceneLoadError::Ron(_))));
+        assert!(matches!(
+            Scene::from_ron("not a scene"),
+            Err(SceneLoadError::Ron(_))
+        ));
     }
 
     #[test]
@@ -291,10 +339,12 @@ mod tests {
         let encoded = ron::ser::to_string(&document).unwrap();
         assert!(matches!(
             Scene::from_ron(&encoded),
-            Err(SceneLoadError::Scene(SceneError::UnsupportedSchemaVersion {
-                found: 999,
-                expected: 1
-            }))
+            Err(SceneLoadError::Scene(
+                SceneError::UnsupportedSchemaVersion {
+                    found: 999,
+                    expected: 1
+                }
+            ))
         ));
     }
 }
