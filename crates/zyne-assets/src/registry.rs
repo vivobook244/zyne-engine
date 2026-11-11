@@ -55,7 +55,7 @@ impl ProjectRelativePath {
                 "" | "." => {}
                 ".." => return Err(RegistryError::ParentDirectoryTraversal),
                 value => {
-                    if value.contains(['\0', ':']) {
+                    if value.contains('\0') || value.contains(':') {
                         return Err(RegistryError::InvalidSourcePath);
                     }
                     components.push(value);

@@ -1,6 +1,6 @@
 # Phase 4 — Asset & Resource Pipeline
 
-**Status:** PHASE 4.1 COMPLETE — LOCAL VALIDATION AND WINDOWS/UBUNTU CI PASSED; EXPLICIT RUST 1.85 TOOLCHAIN CHECK REMAINS A FOLLOW-UP  
+**Status:** PHASE 4.1 COMPLETE; PHASE 4.2 IMPLEMENTED — CI VALIDATION PENDING  
 **Branch:** main  
 **Prerequisite:** Phase 3 — World, ECS & Scene  
 **Goal:** Import source assets into validated CPU-side engine data, then resolve persistent resource identities into safe runtime handles.
@@ -11,7 +11,7 @@
 - Keep zyne-core limited to stable ResourceId and typed Handle<T> contracts. Do not add filesystem, format, registry, or GPU dependencies to core.
 - Keep importers independent from ECS and GPU APIs. Importers produce validated CPU data; zyne-graphics remains responsible for GPU allocation and upload.
 - Persist ResourceId, resource kind, project-relative source path, and importer settings. Never persist runtime handles, slot indices, GPU objects, or pointers.
-- A registry owns loaded runtime resources and validates handle index plus generation.
+- AssetRegistry owns persistent metadata; typed runtime resource storage is introduced in Phase 4.3 and validates handle index plus generation.
 - Preserve the workspace MSRV at Rust 1.85. Pin dependencies where necessary; do not upgrade MSRV implicitly through a transitive dependency.
 - Start with glTF 2.0 / GLB 2.0. Keep unsupported features explicit rather than silently dropping data.
 
@@ -31,10 +31,10 @@
 
 ### 4.2 Persistent resource registry
 
-- [ ] Define resource metadata using ResourceId, resource kind, normalized project-relative source path, and importer settings.
-- [ ] Register, find, rename, move, and remove metadata without changing identity on rename/move.
-- [ ] Reject duplicate IDs and conflicting source ownership according to an explicit policy.
-- [ ] Persist registry metadata independently of runtime objects.
+- [x] Define resource metadata using ResourceId, resource kind, normalized project-relative source path, and importer settings.
+- [x] Register, find, rename, move, and remove metadata without changing identity on rename/move.
+- [x] Reject duplicate IDs and conflicting source ownership according to an explicit policy.
+- [x] Persist registry metadata independently of runtime objects using versioned RON documents.
 
 ### 4.3 Typed runtime resource resolution
 
