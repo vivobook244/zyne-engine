@@ -1,5 +1,5 @@
 use crate::{EngineContext, ZyneResult};
-use zyne_math::Camera3d;
+use zyne_math::{Camera3d, Transform3d};
 
 /// Lifecycle contract implemented by a game or engine host.
 ///
@@ -78,6 +78,15 @@ pub trait Engine {
     /// update their projection after window resizes. Returning `None` keeps the
     /// renderer's built-in default camera.
     fn camera(&self, _context: &EngineContext, _aspect_ratio: f32) -> Option<Camera3d> {
+        None
+    }
+
+    /// Returns optional local transforms for the current scene render pass.
+    ///
+    /// These are renderer-neutral math values. ECS handles and components are
+    /// never exposed to the graphics crate. `None` keeps built-in sample geometry;
+    /// `Some(empty)` clears the frame without rendering entities.
+    fn render_transforms(&self) -> Option<Vec<Transform3d>> {
         None
     }
 

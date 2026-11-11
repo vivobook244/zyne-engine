@@ -62,6 +62,17 @@ impl Scene {
         ids
     }
 
+    /// Extracts live local transforms in deterministic persistent-ID order.
+    ///
+    /// The returned data contains no ECS handles or component references.
+    #[must_use]
+    pub fn entity_transforms(&self) -> Vec<Transform3d> {
+        self.entity_ids()
+            .into_iter()
+            .filter_map(|id| self.entity_transform(id))
+            .collect()
+    }
+
     /// Spawns an entity with a generated persistent identity.
     ///
     /// # Errors
