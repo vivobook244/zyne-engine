@@ -1,7 +1,7 @@
 # Phase 3 — World, ECS & Scene
 
-**Status:** IN PROGRESS — PHASE 3.4 IMPLEMENTED; LOCAL GPU VALIDATION PENDING  
-**Branch:** \`main\`  
+**Status:** COMPLETE — IMPLEMENTATION, CI, AND LOCAL GPU VALIDATION PASSED  
+**Branch:** `main`  
 **Prerequisite:** Phase 2.6 — textured 3D rendering and controllable camera  
 **Goal:** Introduce a small, serializable scene world that can contain multiple entities with stable identities and local transforms.
 
@@ -9,11 +9,11 @@
 
 ### Ownership
 
-- Add a dedicated \`zyne-scene\` crate. It owns the ECS world, scene-level components, scene document format, and scene validation.
-- Use \`bevy_ecs\` as the ECS implementation. Keep its types behind the \`zyne-scene\` public API where practical.
-- Keep \`zyne-core\` independent of ECS, gameplay, renderer, and editor dependencies.
-- Keep \`zyne-math\` responsible for engine coordinate and transform conventions.
-- Keep \`zyne-graphics\` independent of ECS. Rendering must consume extracted render-facing data rather than query a live ECS world.
+- Add a dedicated `zyne-scene` crate. It owns the ECS world, scene-level components, scene document format, and scene validation.
+- Use `bevy_ecs` as the ECS implementation. Keep its types behind the `zyne-scene` public API where practical.
+- Keep `zyne-core` independent of ECS, gameplay, renderer, and editor dependencies.
+- Keep `zyne-math` responsible for engine coordinate and transform conventions.
+- Keep `zyne-graphics` independent of ECS. Rendering must consume extracted render-facing data rather than query a live ECS world.
 - Runtime integration must not make platform or graphics code own gameplay state.
 - Scene entity IDs are persistent document identities, not ECS entity handles or runtime slot handles.
 - Initial persistence uses a versioned RON document. Runtime handles, pointers, GPU objects, and ECS entity coordinates must never be serialized.
@@ -56,9 +56,15 @@ Parent/child hierarchies, prefab instances, asset references, component reflecti
 - [x] Saving and loading preserves scene ID, entity IDs, names, and transforms.
 - [x] Invalid or duplicate persisted data fails explicitly.
 - [x] Runtime/render path consumes multiple scene entities without depending on ECS internals.
-- [ ] Existing orbit, pan, zoom, resize, texture, and depth behavior remains intact.
+- [x] Existing orbit, pan, zoom, resize, texture, and depth behavior remains intact — confirmed by local GPU validation.
 - [x] Unit tests, formatting, strict Clippy, workspace checks, and Windows/Ubuntu CI pass.
-- [ ] Local GPU validation confirms multi-entity rendering, camera controls, texture sampling, resize, and depth behavior.
+- [x] Local GPU validation confirms multi-entity rendering, camera controls, texture sampling, resize, and depth behavior.
+
+## Validation record
+
+- CI run #276 passed on Windows and Ubuntu: https://github.com/vivobook244/zyne-engine/actions/runs/42957780461
+- Local GPU validation completed successfully. The three transformed cubes render correctly; checker textures, orbit, pan, zoom, resize, and depth behavior all passed.
+- Final implementation commit: `c92b2ccad8f43b03ae10e86a85db52187017bf7f`
 
 ## Dependency and lockfile policy
 
