@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
-use zyne_math::Camera3d;
+use zyne_math::{Camera3d, Transform3d};
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const CHECKER_TEXTURE_SIZE: u32 = 64;
@@ -24,6 +24,33 @@ impl Vertex {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBUTES,
         }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct InstanceRaw {
+    model: [[f32; 4]; 4],
+}
+
+impl InstanceRaw {
+    const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
+        3 => Float32x4,
+        4 => Float32x4,
+        5 => Float32x4,
+        6 => Float32x4
+    ];
+
+    const fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &Self::ATTRIBUTES,
+        }
+    }
+
+    const fn from_transform(transform: Transform3d) -> Self {
+        Self { model: transform.to_matrix() }
     }
 }
 
@@ -119,6 +146,8 @@ pub(super) struct CubePipeline {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     checker_texture: CheckerTexture,
+    instance_buffer: wgpu::Buffer,
+    instance_capacity: usize,
 }
 
 impl CubePipeline {
@@ -173,7 +202,7 @@ impl CubePipeline {
                 module: &shader,
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[Vertex::layout()],
+                buffers: &[Vertex::layout(), InstanceRaw::layout()],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -210,6 +239,12 @@ impl CubePipeline {
             contents: bytemuck::cast_slice(&cube_vertices()),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ZYNE Scene Instance Buffer"),
+            size: std::mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         Self {
             pipeline,
@@ -217,6 +252,8 @@ impl CubePipeline {
             camera_buffer,
             camera_bind_group,
             checker_texture,
+            instance_buffer,
+            instance_capacity: 1,
         }
     }
 
@@ -250,12 +287,52 @@ impl CubePipeline {
             &default_camera
         };
 
-        // Camera3d owns view/projection conventions. Keep only the cube's
-        // local model transform in the graphics layer.
-        let model = rotation_y(0.15);
-        let view_projection = multiply_column_major(camera.view_projection_matrix(), model);
-        let uniform = CameraUniform { view_projection };
+        let uniform = CameraUniform {
+            view_projection: camera.view_projection_matrix(),
+        };
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    pub(super) fn update_instances(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        transforms: Option<&[Transform3d]>,
+    ) -> Result<u32, crate::GraphicsError> {
+        let instances: Vec<InstanceRaw> = match transforms {
+            Some(transforms) => transforms.iter().copied().map(InstanceRaw::from_transform).collect(),
+            None => vec![InstanceRaw { model: rotation_y(0.15) }],
+        };
+        let instance_count = u32::try_from(instances.len())
+            .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+        if instances.is_empty() {
+            return Ok(0);
+        }
+
+        if instances.len() > self.instance_capacity {
+            let capacity = instances.len()
+                .checked_next_power_of_two()
+                .ok_or(crate::GraphicsError::TooManyInstances)?;
+            let capacity = u64::try_from(capacity)
+                .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+            let buffer_size = capacity
+                .checked_mul(std::mem::size_of::<InstanceRaw>() as u64)
+                .ok_or(crate::GraphicsError::TooManyInstances)?;
+            if buffer_size > device.limits().max_buffer_size {
+                return Err(crate::GraphicsError::TooManyInstances);
+            }
+            self.instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ZYNE Scene Instance Buffer"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.instance_capacity = usize::try_from(capacity)
+                .map_err(|_| crate::GraphicsError::TooManyInstances)?;
+        }
+
+        queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instances));
+        Ok(instance_count)
     }
 
     pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline {
@@ -272,6 +349,10 @@ impl CubePipeline {
 
     pub(super) const fn texture_bind_group(&self) -> &wgpu::BindGroup {
         &self.checker_texture.bind_group
+    }
+
+    pub(super) const fn instance_buffer(&self) -> &wgpu::Buffer {
+        &self.instance_buffer
     }
 }
 
@@ -424,7 +505,7 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 #[cfg(test)]
 mod tests {
     use super::{
-        CHECKER_TEXTURE_SIZE, Camera3d, checker_texture_pixels, cube_vertices,
+        CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels, cube_vertices,
         multiply_column_major, rotation_y,
     };
 
@@ -487,6 +568,9 @@ mod tests {
 
         assert!(combined.iter().flatten().all(|value| value.is_finite()));
         assert_ne!(combined, camera.view_projection_matrix());
+
+        let instance = InstanceRaw::from_transform(Transform3d::identity());
+        assert_eq!(instance.model, Transform3d::identity().to_matrix());
     }
 
     #[test]
