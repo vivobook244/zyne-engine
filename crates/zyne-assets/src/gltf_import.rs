@@ -62,7 +62,7 @@ pub struct ImportedImage {
 #[derive(Debug)]
 pub enum ImportError {
     /// The glTF parser, validator, buffer loader, or image decoder failed.
-    Gltf(gltf::Error),
+    Gltf(Box<gltf::Error>),
     /// A required extension is not implemented by this importer.
     UnsupportedRequiredExtension(String),
     /// A primitive uses a topology other than triangles.
@@ -103,7 +103,7 @@ impl fmt::Display for ImportError {
 impl std::error::Error for ImportError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Gltf(error) => Some(error),
+            Self::Gltf(error) => Some(error.as_ref()),
             _ => None,
         }
     }
@@ -154,7 +154,7 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
             })?.collect::<Vec<_>>();
             validate_finite_vectors3(&positions, "POSITION", mesh_index, primitive_index)?;
 
-            let normals = reader.read_normals().map(Iterator::collect);
+            let normals = reader.read_normals().map(|values| values.collect::<Vec<_>>());
             validate_attribute_count("NORMAL", normals.as_ref().map(Vec::len), positions.len(), mesh_index, primitive_index)?;
             if let Some(values) = &normals {
                 validate_finite_vectors3(values, "NORMAL", mesh_index, primitive_index)?;
@@ -189,7 +189,7 @@ pub fn import_gltf(path: impl AsRef<Path>) -> Result<ImportedAsset, ImportError>
                 return Err(ImportError::InvalidTriangleIndexCount { mesh_index, primitive_index, index_count: indices.len() });
             }
             for &index in &indices {
-                if usize::try_from(index).map_or(true, |value| value >= positions.len()) {
+                if usize::try_from(index).is_none_or(|value| value >= positions.len()) {
                     return Err(ImportError::IndexOutOfBounds {
                         mesh_index,
                         primitive_index,
@@ -360,11 +360,11 @@ mod tests {
         let mut glb = Vec::with_capacity(total_length);
         glb.extend_from_slice(b"glTF");
         glb.extend_from_slice(&2_u32.to_le_bytes());
-        glb.extend_from_slice(&(total_length as u32).to_le_bytes());
-        glb.extend_from_slice(&(json_chunk.len() as u32).to_le_bytes());
+        glb.extend_from_slice(&u32::try_from(total_length).expect("GLB fixture length should fit u32").to_le_bytes());
+        glb.extend_from_slice(&u32::try_from(json_chunk.len()).expect("JSON chunk length should fit u32").to_le_bytes());
         glb.extend_from_slice(&0x4E4F534A_u32.to_le_bytes());
         glb.extend_from_slice(&json_chunk);
-        glb.extend_from_slice(&(binary_chunk.len() as u32).to_le_bytes());
+        glb.extend_from_slice(&u32::try_from(binary_chunk.len()).expect("BIN chunk length should fit u32").to_le_bytes());
         glb.extend_from_slice(&0x004E4942_u32.to_le_bytes());
         glb.extend_from_slice(&binary_chunk);
         fs::write(directory.path("triangle.glb"), glb).expect("GLB fixture should be written");
@@ -387,12 +387,12 @@ mod tests {
         let mut accumulator = 0_u32;
         let mut bits = 0_u8;
         for byte in encoded.bytes().filter(|byte| *byte != b'=') {
-            let value = TABLE.iter().position(|candidate| *candidate == byte).expect("fixture base64 should be valid") as u32;
+            let value = u32::try_from(TABLE.iter().position(|candidate| *candidate == byte).expect("fixture base64 should be valid")).expect("base64 digit should fit u32");
             accumulator = (accumulator << 6) | value;
             bits += 6;
             if bits >= 8 {
                 bits -= 8;
-                output.push((accumulator >> bits) as u8);
+                output.push(u8::try_from((accumulator >> bits) & 0xff).expect("decoded byte should fit u8"));
             }
         }
         output
