@@ -6,7 +6,7 @@ use wgpu::{
     RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface, SurfaceCapabilities,
     SurfaceConfiguration, SurfaceError, TextureFormat, TextureUsages,
 };
-use zyne_math::Camera3d;
+use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
 use crate::{FrameOutcome, GraphicsError, pipeline::CubePipeline};
@@ -116,7 +116,7 @@ impl GraphicsContext {
     /// Returns an error when frame acquisition cannot recover or GPU memory is
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(None)
+        self.render_frame_internal(None, None)
     }
 
     /// Renders a frame using a caller-supplied camera.
@@ -128,12 +128,30 @@ impl GraphicsContext {
         &mut self,
         camera: &Camera3d,
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(Some(camera))
+        self.render_frame_internal(Some(camera), None)
+    }
+
+    /// Renders all supplied transforms as instances of the built-in cube mesh.
+    ///
+    /// `None` camera uses the renderer's default camera. An empty transform
+    /// slice clears the frame without drawing entities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the scene exceeds GPU instance-buffer limits or
+    /// surface acquisition/presentation fails.
+    pub fn render_frame_with_transforms(
+        &mut self,
+        camera: Option<&Camera3d>,
+        transforms: &[Transform3d],
+    ) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(camera, Some(transforms))
     }
 
     fn render_frame_internal(
         &mut self,
         camera: Option<&Camera3d>,
+        transforms: Option<&[Transform3d]>,
     ) -> Result<FrameOutcome, GraphicsError> {
         if self.surface_suspended {
             return Ok(FrameOutcome::Skipped);
@@ -152,6 +170,12 @@ impl GraphicsContext {
             self.surface_config.height,
             camera,
         );
+
+        let instance_count = self.cube_pipeline.update_instances(
+            &self.device,
+            &self.queue,
+            transforms,
+        )?;
 
         let mut encoder = self
             .device
@@ -188,7 +212,8 @@ impl GraphicsContext {
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
             render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
-            render_pass.draw(0..36, 0..1);
+            render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
+            render_pass.draw(0..36, 0..instance_count);
         }
 
         self.queue.submit(Some(encoder.finish()));

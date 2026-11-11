@@ -21,6 +21,8 @@ pub enum GraphicsError {
     SurfaceAcquisition(String),
     /// The GPU ran out of memory while acquiring a surface frame.
     SurfaceOutOfMemory,
+    /// Scene instance count exceeds the supported GPU buffer or draw range.
+    TooManyInstances,
 }
 
 impl fmt::Display for GraphicsError {
@@ -56,6 +58,9 @@ impl fmt::Display for GraphicsError {
             }
             Self::SurfaceOutOfMemory => {
                 formatter.write_str("GPU ran out of memory while acquiring a surface frame")
+            }
+            Self::TooManyInstances => {
+                formatter.write_str("scene contains too many render instances for this GPU")
             }
         }
     }
