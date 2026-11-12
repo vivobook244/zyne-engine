@@ -309,7 +309,7 @@ impl AssetRegistry {
             .by_id
             .get_mut(&id)
             .ok_or(RegistryError::ResourceNotFound { id })?;
-        metadata.name = name.trim().to_owned();
+        name.trim().clone_into(&mut metadata.name);
         Ok(())
     }
 
