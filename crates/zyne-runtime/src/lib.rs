@@ -16,6 +16,7 @@ pub use scene_assets::{
     MissingAssetReference, SceneAssetValidationReport, validate_scene_asset_references,
 };
 
+pub use zyne_assets::AssetRegistry;
 pub use zyne_core::{
     ButtonState, Engine, EngineConfig, EngineContext, EngineVersion, InputEvent, InputState,
     KeyCode, MouseButton, ScrollDelta, ZyneError, ZyneResult,
