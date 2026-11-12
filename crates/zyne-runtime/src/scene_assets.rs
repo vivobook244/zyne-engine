@@ -15,13 +15,11 @@ pub struct MissingAssetReference {
 impl MissingAssetReference {
     /// Returns the persistent identity of the referencing scene entity.
     #[must_use]
-    #[must_use]
     pub const fn entity_id(&self) -> SceneEntityId {
         self.entity_id
     }
 
     /// Returns the unresolved persistent resource identity.
-    #[must_use]
     #[must_use]
     pub const fn resource_id(&self) -> ResourceId {
         self.resource_id
