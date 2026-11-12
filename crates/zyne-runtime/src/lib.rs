@@ -13,7 +13,9 @@ pub use application_config::ApplicationConfig;
 pub use camera_controller::OrbitCameraController;
 pub use event_queue::EventQueue;
 pub use scene_assets::{
-    MissingAssetReference, SceneAssetValidationReport, validate_scene_asset_references,
+    MissingAssetReference, ResolvedSceneAssetReference, SceneAssetResolverError,
+    SceneAssetRuntimeStatus, SceneAssetStatusReport, SceneAssetValidationReport,
+    resolve_scene_asset_statuses, validate_scene_asset_references,
 };
 
 pub use zyne_assets::AssetRegistry;
