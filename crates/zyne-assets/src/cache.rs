@@ -481,7 +481,9 @@ mod tests {
         let mut cache = AssetCache::new(ResourceKind::Texture);
 
         cache.begin_loading(&registry, id).unwrap();
-        cache.fail_loading(id, "image decoder rejected data").unwrap();
+        cache
+            .fail_loading(id, "image decoder rejected data")
+            .unwrap();
         assert_eq!(cache.state(&registry, id), Ok(AssetState::Failed));
         assert_eq!(
             cache.failure_reason(id),
