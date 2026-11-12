@@ -6,11 +6,15 @@ mod application_config;
 mod camera_controller;
 pub mod diagnostics;
 mod event_queue;
+mod scene_assets;
 
 pub use application::Application;
 pub use application_config::ApplicationConfig;
 pub use camera_controller::OrbitCameraController;
 pub use event_queue::EventQueue;
+pub use scene_assets::{
+    MissingAssetReference, SceneAssetValidationReport, validate_scene_asset_references,
+};
 
 pub use zyne_core::{
     ButtonState, Engine, EngineConfig, EngineContext, EngineVersion, InputEvent, InputState,
