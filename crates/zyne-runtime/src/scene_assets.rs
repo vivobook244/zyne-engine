@@ -88,7 +88,6 @@ pub fn validate_scene_asset_references(
 mod tests {
     use super::validate_scene_asset_references;
     use crate::Scene;
-    use uuid::Uuid;
     use zyne_assets::{
         AssetMetadata, AssetRegistry, ImporterSettings, ProjectRelativePath, ResourceKind,
     };
@@ -149,13 +148,11 @@ mod tests {
     #[test]
     fn reports_all_missing_references_and_does_not_mutate_inputs() {
         let mut scene = Scene::new("Multiple References").unwrap();
-        let first_entity = crate::SceneEntityId::from_uuid(Uuid::from_u128(1));
-        let second_entity = crate::SceneEntityId::from_uuid(Uuid::from_u128(2));
-        scene
-            .spawn_entity_with_id(first_entity, "First", Transform3d::identity())
+        let first_entity = scene
+            .spawn_entity("First", Transform3d::identity())
             .unwrap();
-        scene
-            .spawn_entity_with_id(second_entity, "Second", Transform3d::identity())
+        let second_entity = scene
+            .spawn_entity("Second", Transform3d::identity())
             .unwrap();
 
         let registered_id = ResourceId::new();
@@ -176,17 +173,27 @@ mod tests {
         let report = validate_scene_asset_references(&scene, &registry);
 
         assert_eq!(report.missing_count(), 3);
+        let expected = scene
+            .entity_ids()
+            .into_iter()
+            .flat_map(|entity_id| {
+                let resource_ids = if entity_id == first_entity {
+                    vec![first_missing_id, second_missing_id]
+                } else {
+                    vec![first_missing_id]
+                };
+                resource_ids
+                    .into_iter()
+                    .map(move |resource_id| (entity_id, resource_id))
+            })
+            .collect::<Vec<_>>();
         assert_eq!(
             report
                 .missing_references()
                 .iter()
                 .map(|missing| (missing.entity_id(), missing.resource_id()))
                 .collect::<Vec<_>>(),
-            vec![
-                (first_entity, first_missing_id),
-                (first_entity, second_missing_id),
-                (second_entity, first_missing_id),
-            ]
+            expected
         );
         assert_eq!(registry.len(), 1);
         assert_eq!(
