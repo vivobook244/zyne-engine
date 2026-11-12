@@ -204,3 +204,140 @@ mod tests {
         );
     }
 }
+
+/// Runtime state of one persistent asset reference in a scene.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneAssetRuntimeStatus {
+    /// The scene references an ID that is absent from the project registry.
+    Unregistered,
+    /// The registry knows the asset kind, but no matching typed cache was supplied.
+    CacheUnavailable { kind: zyne_assets::ResourceKind },
+    /// The asset is registered but has not started loading in its cache.
+    Unloaded,
+    /// The asset is currently being loaded.
+    Loading,
+    /// The asset has a resident runtime value.
+    Loaded,
+    /// The latest load attempt failed.
+    Failed { reason: String },
+}
+
+/// Runtime status for one scene entity's asset reference.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedSceneAssetReference {
+    entity_id: SceneEntityId,
+    resource_id: ResourceId,
+    status: SceneAssetRuntimeStatus,
+}
+
+impl ResolvedSceneAssetReference {
+    /// Returns the persistent identity of the referencing scene entity.
+    #[must_use]
+    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+
+    /// Returns the persistent identity of the referenced asset.
+    #[must_use]
+    pub const fn resource_id(&self) -> ResourceId { self.resource_id }
+
+    /// Returns the resolved runtime status.
+    #[must_use]
+    pub const fn status(&self) -> &SceneAssetRuntimeStatus { &self.status }
+}
+
+/// Deterministic, read-only runtime status snapshot for a scene's asset references.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SceneAssetStatusReport {
+    references: Vec<ResolvedSceneAssetReference>,
+}
+
+impl SceneAssetStatusReport {
+    /// Returns every reference in deterministic entity/reference order.
+    #[must_use]
+    pub fn references(&self) -> &[ResolvedSceneAssetReference] { &self.references }
+
+    /// Returns true only when every reference has a resident runtime value.
+    #[must_use]
+    pub fn is_ready(&self) -> bool {
+        self.references.iter().all(|reference| reference.status == SceneAssetRuntimeStatus::Loaded)
+    }
+
+    /// Returns the number of references whose assets are loaded.
+    #[must_use]
+    pub fn loaded_count(&self) -> usize {
+        self.references.iter().filter(|reference| reference.status == SceneAssetRuntimeStatus::Loaded).count()
+    }
+
+    /// Returns the number of references whose latest load attempt failed.
+    #[must_use]
+    pub fn failed_count(&self) -> usize {
+        self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Failed { .. })).count()
+    }
+
+    /// Returns the number of registered references that are not yet loaded.
+    #[must_use]
+    pub fn pending_count(&self) -> usize {
+        self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Unloaded | SceneAssetRuntimeStatus::Loading)).count()
+    }
+}
+
+/// Errors encountered while resolving scene asset runtime status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneAssetResolverError {
+    /// More than one cache was supplied for the same resource kind.
+    DuplicateCacheKind { kind: zyne_assets::ResourceKind },
+}
+
+impl std::fmt::Display for SceneAssetResolverError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DuplicateCacheKind { kind } => write!(formatter, "multiple asset caches supplied for {kind:?}"),
+        }
+    }
+}
+
+impl std::error::Error for SceneAssetResolverError {}
+
+/// Resolves every scene asset reference against the registry and typed runtime caches.
+///
+/// The supplied caches must contain at most one cache per resource kind.
+/// This function does not mutate the scene, registry, or caches. Results follow
+/// deterministic scene entity order and each entity's reference insertion order.
+pub fn resolve_scene_asset_statuses(
+    scene: &Scene,
+    registry: &AssetRegistry,
+    caches: &[&dyn zyne_assets::AssetCacheStatus],
+) -> Result<SceneAssetStatusReport, SceneAssetResolverError> {
+    use std::collections::HashSet;
+
+    let mut cache_kinds = HashSet::with_capacity(caches.len());
+    for cache in caches {
+        let kind = cache.kind();
+        if !cache_kinds.insert(kind) {
+            return Err(SceneAssetResolverError::DuplicateCacheKind { kind });
+        }
+    }
+
+    let mut report = SceneAssetStatusReport::default();
+    for entity_id in scene.entity_ids() {
+        let Some(references) = scene.entity_asset_references(entity_id) else { continue; };
+
+        for &resource_id in references {
+            let status = match registry.find(resource_id) {
+                None => SceneAssetRuntimeStatus::Unregistered,
+                Some(metadata) => match caches.iter().find(|cache| cache.kind() == metadata.kind()) {
+                    None => SceneAssetRuntimeStatus::CacheUnavailable { kind: metadata.kind() },
+                    Some(cache) => match cache.state(resource_id) {
+                        zyne_assets::AssetState::Unloaded => SceneAssetRuntimeStatus::Unloaded,
+                        zyne_assets::AssetState::Loading => SceneAssetRuntimeStatus::Loading,
+                        zyne_assets::AssetState::Loaded => SceneAssetRuntimeStatus::Loaded,
+                        zyne_assets::AssetState::Failed => SceneAssetRuntimeStatus::Failed {
+                            reason: cache.failure_reason(resource_id).unwrap_or("asset load failed without a diagnostic").to_owned(),
+                        },
+                    },
+                },
+            };
+            report.references.push(ResolvedSceneAssetReference { entity_id, resource_id, status });
+        }
+    }
+    Ok(report)
+}
