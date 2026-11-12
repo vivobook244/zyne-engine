@@ -330,6 +330,7 @@ mod tests {
     use super::{Scene, SceneLoadError};
     use crate::{SceneEntityId, SceneError, SceneId};
     use uuid::Uuid;
+    use zyne_core::ResourceId;
     use zyne_math::Transform3d;
 
     #[test]
@@ -444,6 +445,46 @@ mod tests {
         assert_eq!(decoded.entity_count(), 1);
         assert_eq!(decoded.entity_name(entity_id), Some("Crate"));
         assert_eq!(decoded.entity_transform(entity_id), Some(transform));
+    }
+
+    #[test]
+    fn scene_preserves_asset_references_through_ron_round_trip() {
+        let mut scene = Scene::new("Asset Scene").unwrap();
+        let entity_id = scene
+            .spawn_entity("Player", Transform3d::identity())
+            .unwrap();
+        let first = ResourceId::new();
+        let second = ResourceId::new();
+        assert!(
+            scene
+                .set_entity_asset_references(entity_id, &[first, second])
+                .unwrap()
+        );
+
+        let encoded = scene.to_ron().unwrap();
+        let decoded = Scene::from_ron(&encoded).unwrap();
+        assert_eq!(
+            decoded.entity_asset_references(entity_id),
+            Some(&[first, second][..])
+        );
+    }
+
+    #[test]
+    fn scene_rejects_duplicate_asset_references() {
+        let mut scene = Scene::new("Duplicate References").unwrap();
+        let entity_id = scene
+            .spawn_entity("Player", Transform3d::identity())
+            .unwrap();
+        let resource_id = ResourceId::new();
+
+        assert_eq!(
+            scene.set_entity_asset_references(entity_id, &[resource_id, resource_id]),
+            Err(SceneError::DuplicateAssetReference {
+                entity_id,
+                resource_id,
+            })
+        );
+        assert_eq!(scene.entity_asset_references(entity_id), Some(&[][..]));
     }
 
     #[test]
