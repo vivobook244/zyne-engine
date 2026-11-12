@@ -6,6 +6,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use zyne_core::ResourceId;
 use zyne_math::Transform3d;
 
 pub use world::{Scene, SceneLoadError, SceneSaveError};
@@ -71,6 +72,8 @@ pub struct SceneEntityDocument {
     id: SceneEntityId,
     name: String,
     transform: Transform3d,
+    #[serde(default)]
+    asset_references: Vec<ResourceId>,
 }
 
 impl SceneEntityDocument {
@@ -101,6 +104,7 @@ impl SceneEntityDocument {
             id,
             name,
             transform,
+            asset_references: Vec::new(),
         })
     }
 
@@ -117,6 +121,37 @@ impl SceneEntityDocument {
     #[must_use]
     pub const fn transform(&self) -> &Transform3d {
         &self.transform
+    }
+
+    /// Returns stable asset identities referenced by this entity.
+    #[must_use]
+    pub fn asset_references(&self) -> &[ResourceId] {
+        &self.asset_references
+    }
+
+    /// Adds a persistent asset reference while rejecting duplicates.
+    ///
+    /// # Errors
+    ///
+    /// Returns `DuplicateAssetReference` when the ID is already attached.
+    pub fn add_asset_reference(&mut self, id: ResourceId) -> Result<(), SceneError> {
+        if self.asset_references.contains(&id) {
+            return Err(SceneError::DuplicateAssetReference {
+                entity_id: self.id,
+                resource_id: id,
+            });
+        }
+        self.asset_references.push(id);
+        Ok(())
+    }
+
+    /// Removes a persistent asset reference, returning whether it existed.
+    pub fn remove_asset_reference(&mut self, id: ResourceId) -> bool {
+        let Some(index) = self.asset_references.iter().position(|existing| *existing == id) else {
+            return false;
+        };
+        self.asset_references.remove(index);
+        true
     }
 }
 
@@ -193,12 +228,12 @@ impl SceneDocument {
         Ok(())
     }
 
-    /// Validates schema version, names, and persistent entity identities.
+    /// Validates schema version, names, and persistent entity and asset identities.
     ///
     /// # Errors
     ///
-    /// Returns an error when a name is blank, an ID is duplicated, or the
-    /// schema version is unsupported.
+    /// Returns an error when a name is blank, an entity or asset ID is duplicated,
+    /// or the schema version is unsupported.
     pub fn validate(&self) -> Result<(), SceneError> {
         if self.schema_version != CURRENT_SCENE_SCHEMA_VERSION {
             return Err(SceneError::UnsupportedSchemaVersion {
@@ -217,6 +252,15 @@ impl SceneDocument {
             if !ids.insert(entity.id) {
                 return Err(SceneError::DuplicateEntityId { id: entity.id });
             }
+            let mut resource_ids = HashSet::with_capacity(entity.asset_references.len());
+            for resource_id in &entity.asset_references {
+                if !resource_ids.insert(*resource_id) {
+                    return Err(SceneError::DuplicateAssetReference {
+                        entity_id: entity.id,
+                        resource_id: *resource_id,
+                    });
+                }
+            }
         }
         Ok(())
     }
@@ -227,6 +271,10 @@ pub enum SceneError {
     EmptySceneName,
     EmptyEntityName { id: SceneEntityId },
     DuplicateEntityId { id: SceneEntityId },
+    DuplicateAssetReference {
+        entity_id: SceneEntityId,
+        resource_id: ResourceId,
+    },
     UnsupportedSchemaVersion { found: u32, expected: u32 },
 }
 
@@ -240,6 +288,13 @@ impl std::fmt::Display for SceneError {
             Self::DuplicateEntityId { id } => {
                 write!(formatter, "duplicate scene entity identity {id:?}")
             }
+            Self::DuplicateAssetReference {
+                entity_id,
+                resource_id,
+            } => write!(
+                formatter,
+                "scene entity {entity_id:?} contains duplicate asset reference {resource_id}"
+            ),
             Self::UnsupportedSchemaVersion { found, expected } => write!(
                 formatter,
                 "unsupported scene schema version {found}; expected {expected}"
@@ -254,6 +309,7 @@ impl std::error::Error for SceneError {}
 mod tests {
     use super::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError};
     use uuid::Uuid;
+    use zyne_core::ResourceId;
     use zyne_math::Transform3d;
 
     #[test]
@@ -302,6 +358,57 @@ mod tests {
             SceneEntityDocument::with_id(id, "  ", Transform3d::identity()),
             Err(SceneError::EmptyEntityName { id })
         );
+    }
+
+    #[test]
+    fn entity_asset_references_are_unique_and_removable() {
+        let mut entity = SceneEntityDocument::new("Player", Transform3d::identity()).unwrap();
+        let resource_id = ResourceId::new();
+        entity.add_asset_reference(resource_id).unwrap();
+        assert_eq!(entity.asset_references(), &[resource_id]);
+        assert_eq!(
+            entity.add_asset_reference(resource_id),
+            Err(SceneError::DuplicateAssetReference {
+                entity_id: entity.id(),
+                resource_id,
+            })
+        );
+        assert!(entity.remove_asset_reference(resource_id));
+        assert!(!entity.remove_asset_reference(resource_id));
+        assert!(entity.asset_references().is_empty());
+    }
+
+    #[test]
+    fn scene_document_round_trips_persistent_asset_references() {
+        let mut scene = SceneDocument::new("Asset References").unwrap();
+        let mut entity = SceneEntityDocument::new("Player", Transform3d::identity()).unwrap();
+        let resource_id = ResourceId::new();
+        entity.add_asset_reference(resource_id).unwrap();
+        entity.add_asset_reference(ResourceId::new()).unwrap();
+        scene.add_entity(entity).unwrap();
+
+        let encoded = ron::ser::to_string(&scene).unwrap();
+        let decoded: SceneDocument = ron::de::from_str(&encoded).unwrap();
+        assert_eq!(decoded, scene);
+        assert_eq!(decoded.entities()[0].asset_references().len(), 2);
+        assert_eq!(decoded.validate(), Ok(()));
+    }
+
+    #[test]
+    fn legacy_scene_documents_without_asset_references_remain_loadable() {
+        let source = r#"(
+            schema_version: 1,
+            id: "00000000-0000-0000-0000-000000000001",
+            name: "Legacy",
+            entities: [(
+                id: "00000000-0000-0000-0000-000000000002",
+                name: "Player",
+                transform: (translation: (0.0, 0.0, 0.0), rotation: (0.0, 0.0, 0.0, 1.0), scale: (1.0, 1.0, 1.0)),
+            )],
+        )"#;
+        let decoded: SceneDocument = ron::de::from_str(source).unwrap();
+        assert!(decoded.entities()[0].asset_references().is_empty());
+        assert_eq!(decoded.validate(), Ok(()));
     }
 
     #[test]
