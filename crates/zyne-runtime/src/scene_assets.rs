@@ -121,7 +121,7 @@ mod tests {
 
         assert!(report.is_valid());
         assert_eq!(report.missing_count(), 0);
-        assert!(report.missing_references().is_empty());
+        assert_eq!(report.missing_references(), []);
     }
 
     #[test]
