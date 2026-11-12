@@ -3089,6 +3089,7 @@ version = "0.1.0"
 dependencies = [
  "tracing",
  "tracing-subscriber",
+ "zyne-assets",
  "zyne-core",
  "zyne-graphics",
  "zyne-math",
