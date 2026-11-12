@@ -403,7 +403,7 @@ mod tests {
             entities: [(
                 id: "00000000-0000-0000-0000-000000000002",
                 name: "Player",
-                transform: (translation: (0.0, 0.0, 0.0), rotation: (0.0, 0.0, 0.0, 1.0), scale: (1.0, 1.0, 1.0)),
+                transform: (translation: [0.0, 0.0, 0.0], rotation: [0.0, 0.0, 0.0, 1.0], scale: [1.0, 1.0, 1.0]),
             )],
         )"#;
         let decoded: SceneDocument = ron::de::from_str(source).unwrap();
