@@ -3050,7 +3050,6 @@ dependencies = [
  "thiserror 2.0.21",
  "toml",
  "uuid",
- "zyne-core",
  "zyne-math",
 ]
 
@@ -3106,5 +3105,6 @@ dependencies = [
  "serde",
  "toml",
  "uuid",
+ "zyne-core",
  "zyne-math",
 ]
