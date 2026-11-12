@@ -10,6 +10,7 @@ bevy_ecs.workspace = true
 ron.workspace = true
 serde.workspace = true
 uuid.workspace = true
+zyne-core = { path = "../zyne-core" }
 zyne-math = { path = "../zyne-math" }
 
 [dev-dependencies]
