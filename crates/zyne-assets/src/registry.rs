@@ -1,7 +1,7 @@
 //! Persistent asset metadata registry.
 //!
- //! The registry owns stable metadata only. It does not load source files,
- //! allocate GPU resources, or create runtime handles.
+//! The registry owns stable metadata only. It does not load source files,
+//! allocate GPU resources, or create runtime handles.
 
 use std::collections::{BTreeMap, HashMap};
 
