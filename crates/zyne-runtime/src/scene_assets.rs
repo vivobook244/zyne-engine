@@ -235,16 +235,21 @@ pub struct ResolvedSceneAssetReference {
 impl ResolvedSceneAssetReference {
     /// Returns the persistent identity of the referencing scene entity.
     #[must_use]
-    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+    pub const fn entity_id(&self) -> SceneEntityId {
+        self.entity_id
+    }
 
     /// Returns the persistent identity of the referenced asset.
     #[must_use]
-    pub const fn resource_id(&self) -> ResourceId { self.resource_id }
+    pub const fn resource_id(&self) -> ResourceId {
+        self.resource_id
+    }
 
     /// Returns the resolved runtime status.
     #[must_use]
-    #[must_use]
-    pub const fn status(&self) -> &SceneAssetRuntimeStatus { &self.status }
+    pub const fn status(&self) -> &SceneAssetRuntimeStatus {
+        &self.status
+    }
 }
 
 /// Deterministic, read-only runtime status snapshot for a scene's asset references.
@@ -256,35 +261,53 @@ pub struct SceneAssetStatusReport {
 impl SceneAssetStatusReport {
     /// Returns every reference in deterministic entity/reference order.
     #[must_use]
-    #[must_use]
-    pub fn references(&self) -> &[ResolvedSceneAssetReference] { &self.references }
+    pub fn references(&self) -> &[ResolvedSceneAssetReference] {
+        &self.references
+    }
 
     /// Returns true only when every reference has a resident runtime value.
     #[must_use]
-    #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.references.iter().all(|reference| reference.status == SceneAssetRuntimeStatus::Loaded)
+        self.references
+            .iter()
+            .all(|reference| reference.status == SceneAssetRuntimeStatus::Loaded)
     }
 
     /// Returns the number of references whose assets are loaded.
     #[must_use]
-    #[must_use]
     pub fn loaded_count(&self) -> usize {
-        self.references.iter().filter(|reference| reference.status == SceneAssetRuntimeStatus::Loaded).count()
+        self.references
+            .iter()
+            .filter(|reference| reference.status == SceneAssetRuntimeStatus::Loaded)
+            .count()
     }
 
     /// Returns the number of references whose latest load attempt failed.
     #[must_use]
-    #[must_use]
     pub fn failed_count(&self) -> usize {
-        self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Failed { .. })).count()
+        self.references
+            .iter()
+            .filter(|reference| {
+                matches!(
+                    reference.status,
+                    SceneAssetRuntimeStatus::Failed { .. }
+                )
+            })
+            .count()
     }
 
     /// Returns the number of registered references that are not yet loaded.
     #[must_use]
-    #[must_use]
     pub fn pending_count(&self) -> usize {
-        self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Unloaded | SceneAssetRuntimeStatus::Loading)).count()
+        self.references
+            .iter()
+            .filter(|reference| {
+                matches!(
+                    reference.status,
+                    SceneAssetRuntimeStatus::Unloaded | SceneAssetRuntimeStatus::Loading
+                )
+            })
+            .count()
     }
 }
 
@@ -298,7 +321,9 @@ pub enum SceneAssetResolverError {
 impl std::fmt::Display for SceneAssetResolverError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DuplicateCacheKind { kind } => write!(formatter, "multiple asset caches supplied for {kind:?}"),
+            Self::DuplicateCacheKind { kind } => {
+                write!(formatter, "multiple asset caches supplied for {kind:?}")
+            }
         }
     }
 }
@@ -313,7 +338,7 @@ impl std::error::Error for SceneAssetResolverError {}
 ///
 /// # Errors
 ///
-/// Returns `DuplicateCacheKind` when multiple caches are supplied for one resource kind.
+/// Returns DuplicateCacheKind when multiple caches are supplied for one resource kind.
 #[must_use]
 pub fn resolve_scene_asset_statuses(
     scene: &Scene,
@@ -331,29 +356,54 @@ pub fn resolve_scene_asset_statuses(
 
     let mut report = SceneAssetStatusReport::default();
     for entity_id in scene.entity_ids() {
-        let Some(references) = scene.entity_asset_references(entity_id) else { continue; };
+        let Some(references) = scene.entity_asset_references(entity_id) else {
+            continue;
+        };
 
         for &resource_id in references {
             let status = match registry.find(resource_id) {
                 None => SceneAssetRuntimeStatus::Unregistered,
-                Some(metadata) => match caches.iter().find(|cache| cache.kind() == metadata.kind()) {
-                    None => SceneAssetRuntimeStatus::CacheUnavailable { kind: metadata.kind() },
-                    Some(cache) => match cache.state(resource_id) {
-                        zyne_assets::AssetState::Unloaded => SceneAssetRuntimeStatus::Unloaded,
-                        zyne_assets::AssetState::Loading => SceneAssetRuntimeStatus::Loading,
-                        zyne_assets::AssetState::Loaded => SceneAssetRuntimeStatus::Loaded,
-                        zyne_assets::AssetState::Failed => SceneAssetRuntimeStatus::Failed {
-                            reason: cache.failure_reason(resource_id).unwrap_or("asset load failed without a diagnostic").to_owned(),
+                Some(metadata) => {
+                    match caches
+                        .iter()
+                        .find(|cache| cache.kind() == metadata.kind())
+                    {
+                        None => SceneAssetRuntimeStatus::CacheUnavailable {
+                            kind: metadata.kind(),
                         },
-                    },
-                },
+                        Some(cache) => match cache.state(resource_id) {
+                            zyne_assets::AssetState::Unloaded => {
+                                SceneAssetRuntimeStatus::Unloaded
+                            }
+                            zyne_assets::AssetState::Loading => {
+                                SceneAssetRuntimeStatus::Loading
+                            }
+                            zyne_assets::AssetState::Loaded => SceneAssetRuntimeStatus::Loaded,
+                            zyne_assets::AssetState::Failed => {
+                                SceneAssetRuntimeStatus::Failed {
+                                    reason: cache
+                                        .failure_reason(resource_id)
+                                        .unwrap_or("asset load failed without a diagnostic")
+                                        .to_owned(),
+                                }
+                            }
+                        },
+                    }
+                }
             };
-            report.references.push(ResolvedSceneAssetReference { entity_id, resource_id, status });
+
+            report
+                .references
+                .push(ResolvedSceneAssetReference {
+                    entity_id,
+                    resource_id,
+                    status,
+                });
         }
     }
+
     Ok(report)
 }
-
 
 #[cfg(test)]
 mod runtime_status_tests {
