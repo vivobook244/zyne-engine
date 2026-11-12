@@ -363,7 +363,7 @@ pub fn resolve_scene_asset_statuses(
                         },
                         Some(cache) => match cache.state(resource_id) {
                             zyne_assets::AssetState::Unloaded => SceneAssetRuntimeStatus::Unloaded,
-                            zyne_assets::AssetState::Loading => SceneAssetRuntimeStatus::Loading
+                            zyne_assets::AssetState::Loading => SceneAssetRuntimeStatus::Loading,
                             zyne_assets::AssetState::Loaded => SceneAssetRuntimeStatus::Loaded,
                             zyne_assets::AssetState::Failed => SceneAssetRuntimeStatus::Failed {
                                 reason: cache
