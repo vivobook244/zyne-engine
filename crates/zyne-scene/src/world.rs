@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use bevy_ecs::{component::Component, entity::Entity, world::World};
+use zyne_core::ResourceId;
 use zyne_math::Transform3d;
 
 use crate::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId};
@@ -15,6 +16,9 @@ struct EntityName(String);
 
 #[derive(Component, Debug, Clone, Copy)]
 struct LocalTransform(Transform3d);
+
+#[derive(Component, Debug, Clone, Default)]
+struct EntityAssetReferences(Vec<ResourceId>);
 
 /// An in-memory scene that owns its ECS world.
 pub struct Scene {
@@ -108,6 +112,7 @@ impl Scene {
                 PersistentEntityId(document.id()),
                 EntityName(document.name().to_owned()),
                 LocalTransform(*document.transform()),
+                EntityAssetReferences::default(),
             ))
             .id();
         self.entities.insert(id, handle);
@@ -145,6 +150,54 @@ impl Scene {
             .map(|value| value.0)
     }
 
+    /// Returns persistent asset references attached to an entity.
+    #[must_use]
+    pub fn entity_asset_references(&self, id: SceneEntityId) -> Option<&[ResourceId]> {
+        let handle = *self.entities.get(&id)?;
+        let persistent_id = self.world.get::<PersistentEntityId>(handle)?;
+        if persistent_id.0 != id {
+            return None;
+        }
+        self.world
+            .get::<EntityAssetReferences>(handle)
+            .map(|references| references.0.as_slice())
+    }
+
+    /// Replaces an entity's persistent asset references.
+    ///
+    /// # Errors
+    ///
+    /// Returns `DuplicateAssetReference` when the supplied IDs contain duplicates.
+    pub fn set_entity_asset_references(
+        &mut self,
+        id: SceneEntityId,
+        references: &[ResourceId],
+    ) -> Result<bool, SceneError> {
+        let mut unique = std::collections::HashSet::with_capacity(references.len());
+        for resource_id in references {
+            if !unique.insert(*resource_id) {
+                return Err(SceneError::DuplicateAssetReference {
+                    entity_id: id,
+                    resource_id: *resource_id,
+                });
+            }
+        }
+        let Some(&handle) = self.entities.get(&id) else {
+            return Ok(false);
+        };
+        let Some(persistent_id) = self.world.get::<PersistentEntityId>(handle) else {
+            return Ok(false);
+        };
+        if persistent_id.0 != id {
+            return Ok(false);
+        }
+        let Some(mut asset_references) = self.world.get_mut::<EntityAssetReferences>(handle) else {
+            return Ok(false);
+        };
+        asset_references.0 = references.to_vec();
+        Ok(true)
+    }
+
     pub fn set_entity_transform(&mut self, id: SceneEntityId, transform: Transform3d) -> bool {
         let Some(&handle) = self.entities.get(&id) else {
             return false;
@@ -176,7 +229,13 @@ impl Scene {
             let transform = self
                 .entity_transform(id)
                 .ok_or(SceneError::DuplicateEntityId { id })?;
-            document.add_entity(SceneEntityDocument::with_id(id, name, transform)?)?;
+            let mut entity = SceneEntityDocument::with_id(id, name, transform)?;
+            if let Some(references) = self.entity_asset_references(id) {
+                for resource_id in references {
+                    entity.add_asset_reference(*resource_id)?;
+                }
+            }
+            document.add_entity(entity)?;
         }
         document.validate()?;
         Ok(document)
@@ -193,6 +252,10 @@ impl Scene {
         let mut scene = Self::from_validated_document(document);
         for entity in document.entities() {
             scene.spawn_entity_with_id(entity.id(), entity.name(), *entity.transform())?;
+            let references = entity.asset_references();
+            if !references.is_empty() {
+                scene.set_entity_asset_references(entity.id(), references)?;
+            }
         }
         Ok(scene)
     }
