@@ -370,7 +370,7 @@ pub fn resolve_scene_asset_statuses(
                                     .failure_reason(resource_id)
                                     .unwrap_or("asset load failed without a diagnostic")
                                     .to_owned(),
-                            }
+                            },
                         },
                     }
                 }
@@ -497,9 +497,7 @@ mod runtime_status_tests {
     #[test]
     fn reports_unloaded_state_when_matching_cache_has_not_seen_asset() {
         let mut scene = Scene::new("Unloaded Asset").unwrap();
-        let entity = scene
-            .spawn_entity("Prop", Transform3d::identity())
-            .unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         let id = ResourceId::new();
         let mut registry = AssetRegistry::new();
         register(&mut registry, id, ResourceKind::Mesh, "prop.glb");
