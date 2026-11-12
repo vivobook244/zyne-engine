@@ -8,7 +8,7 @@ mod cache;
 mod gltf_import;
 mod registry;
 
-pub use cache::{AssetCache, AssetCacheError, AssetState};
+pub use cache::{AssetCache, AssetCacheError, AssetCacheStatus, AssetState};
 pub use gltf_import::{
     ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
 };
