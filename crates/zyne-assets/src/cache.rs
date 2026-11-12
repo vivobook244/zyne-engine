@@ -320,6 +320,34 @@ impl<T> AssetCache<T> {
     }
 }
 
+/// Read-only lifecycle view implemented by every typed asset cache.
+pub trait AssetCacheStatus {
+    /// Returns the resource kind owned by this cache.
+    fn kind(&self) -> ResourceKind;
+
+    /// Returns the lifecycle state for an ID.
+    ///
+    /// IDs not yet encountered by this cache are considered Unloaded.
+    fn state(&self, id: ResourceId) -> AssetState;
+
+    /// Returns the most recent load failure diagnostic, if any.
+    fn failure_reason(&self, id: ResourceId) -> Option<&str>;
+}
+
+impl<T> AssetCacheStatus for AssetCache<T> {
+    fn kind(&self) -> ResourceKind {
+        AssetCache::kind(self)
+    }
+
+    fn state(&self, id: ResourceId) -> AssetState {
+        self.entry_state(id)
+    }
+
+    fn failure_reason(&self, id: ResourceId) -> Option<&str> {
+        AssetCache::failure_reason(self, id)
+    }
+}
+
 /// Errors produced by typed asset cache operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AssetCacheError {
