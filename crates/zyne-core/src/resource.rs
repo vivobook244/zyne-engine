@@ -156,22 +156,28 @@ impl<T> ResourceStorage<T> {
     ///
     /// Reuses a released slot when possible. Returns an error if the storage
     /// cannot represent another slot with a 32-bit index.
+    ///
+    /// # Errors
+    ///
+    /// Returns ResourceStorageError::CapacityExceeded when no representable
+    /// slot index remains.
     pub fn insert(&mut self, value: T) -> Result<Handle<T>, ResourceStorageError> {
         self.len += 1;
         if let Some(index) = self.free_slots.pop() {
-            let slot_index = usize::try_from(index).expect("u32 slot index must fit usize");
+            let Ok(slot_index) = usize::try_from(index) else {
+                self.free_slots.push(index);
+                self.len -= 1;
+                return Err(ResourceStorageError::CapacityExceeded);
+            };
             let slot = &mut self.slots[slot_index];
             debug_assert!(slot.value.is_none());
             slot.value = Some(value);
             return Ok(Handle::from_raw_parts(index, slot.generation));
         }
 
-        let index = match u32::try_from(self.slots.len()) {
-            Ok(index) => index,
-            Err(_) => {
-                self.len -= 1;
-                return Err(ResourceStorageError::CapacityExceeded);
-            }
+        let Ok(index) = u32::try_from(self.slots.len()) else {
+            self.len -= 1;
+            return Err(ResourceStorageError::CapacityExceeded);
         };
         self.slots.push(Slot {
             generation: 0,
