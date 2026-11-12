@@ -6,12 +6,14 @@
 
 mod cache;
 mod gltf_import;
+mod material;
 mod registry;
 
 pub use cache::{AssetCache, AssetCacheError, AssetCacheStatus, AssetState};
 pub use gltf_import::{
     ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
 };
+pub use material::{BlinnPhongMaterial, MaterialError};
 pub use registry::{
     AssetMetadata, AssetRegistry, ImporterSettings, ProjectRelativePath, RegistryError,
     RegistryLoadError, ResourceKind,
