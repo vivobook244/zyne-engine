@@ -331,8 +331,7 @@ impl std::error::Error for SceneAssetResolverError {}
 ///
 /// # Errors
 ///
-/// Returns DuplicateCacheKind when multiple caches are supplied for one resource kind.
-#[must_use]
+/// Returns `DuplicateCacheKind` when multiple caches are supplied for one resource kind.
 pub fn resolve_scene_asset_statuses(
     scene: &Scene,
     registry: &AssetRegistry,
