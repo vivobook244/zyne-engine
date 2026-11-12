@@ -1,6 +1,6 @@
 # Phase 4 — Asset & Resource Pipeline
 
-**Status:** PHASE 4.1 COMPLETE; PHASE 4.2 IMPLEMENTED — CI VALIDATION PENDING  
+**Status:** PHASE 4.1 COMPLETE; PHASE 4.2 COMPLETE; PHASE 4.3 IMPLEMENTED — CI VALIDATION PENDING  
 **Branch:** main  
 **Prerequisite:** Phase 3 — World, ECS & Scene  
 **Goal:** Import source assets into validated CPU-side engine data, then resolve persistent resource identities into safe runtime handles.
@@ -8,10 +8,11 @@
 ## Architecture decisions
 
 - Introduce a dedicated zyne-assets crate for asset import and CPU-side asset representations.
-- Keep zyne-core limited to stable ResourceId and typed Handle<T> contracts. Do not add filesystem, format, registry, or GPU dependencies to core.
+- Keep zyne-core limited to stable ResourceId, typed Handle<T>, and generic runtime slot storage. Do not add filesystem, format, registry, or GPU dependencies to core.
 - Keep importers independent from ECS and GPU APIs. Importers produce validated CPU data; zyne-graphics remains responsible for GPU allocation and upload.
 - Persist ResourceId, resource kind, project-relative source path, and importer settings. Never persist runtime handles, slot indices, GPU objects, or pointers.
-- AssetRegistry owns persistent metadata; typed runtime resource storage is introduced in Phase 4.3 and validates handle index plus generation.
+- AssetRegistry owns persistent metadata only. ResourceStorage<T> owns typed runtime values and validates handle index plus generation.
+- Keep metadata persistence separate from runtime storage. Runtime storage does not serialize handles or slot coordinates.
 - Preserve the workspace MSRV at Rust 1.85. Pin dependencies where necessary; do not upgrade MSRV implicitly through a transitive dependency.
 - Start with glTF 2.0 / GLB 2.0. Keep unsupported features explicit rather than silently dropping data.
 
@@ -38,10 +39,12 @@
 
 ### 4.3 Typed runtime resource resolution
 
-- [ ] Implement registry-owned typed slots using Handle<T>.
-- [ ] Validate both slot index and generation on lookup.
-- [ ] Increment generation on release and reject stale handles.
-- [ ] Keep handle construction and slot mutation inside the registry implementation.
+- [x] Implement generic typed runtime slots using Handle<T>.
+- [x] Validate both slot index and generation on lookup, mutation, and removal.
+- [x] Increment generation on release and reject stale handles after slot reuse.
+- [x] Keep handle construction private to zyne-core storage implementation.
+- [x] Retire slots instead of wrapping a generation counter at its maximum value.
+- [x] Keep persistent metadata and runtime slot storage separate.
 
 ### 4.4 Asset cache and lifecycle
 
