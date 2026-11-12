@@ -15,11 +15,13 @@ pub struct MissingAssetReference {
 impl MissingAssetReference {
     /// Returns the persistent identity of the referencing scene entity.
     #[must_use]
+    #[must_use]
     pub const fn entity_id(&self) -> SceneEntityId {
         self.entity_id
     }
 
     /// Returns the unresolved persistent resource identity.
+    #[must_use]
     #[must_use]
     pub const fn resource_id(&self) -> ResourceId {
         self.resource_id
@@ -241,6 +243,7 @@ impl ResolvedSceneAssetReference {
 
     /// Returns the resolved runtime status.
     #[must_use]
+    #[must_use]
     pub const fn status(&self) -> &SceneAssetRuntimeStatus { &self.status }
 }
 
@@ -253,9 +256,11 @@ pub struct SceneAssetStatusReport {
 impl SceneAssetStatusReport {
     /// Returns every reference in deterministic entity/reference order.
     #[must_use]
+    #[must_use]
     pub fn references(&self) -> &[ResolvedSceneAssetReference] { &self.references }
 
     /// Returns true only when every reference has a resident runtime value.
+    #[must_use]
     #[must_use]
     pub fn is_ready(&self) -> bool {
         self.references.iter().all(|reference| reference.status == SceneAssetRuntimeStatus::Loaded)
@@ -263,17 +268,20 @@ impl SceneAssetStatusReport {
 
     /// Returns the number of references whose assets are loaded.
     #[must_use]
+    #[must_use]
     pub fn loaded_count(&self) -> usize {
         self.references.iter().filter(|reference| reference.status == SceneAssetRuntimeStatus::Loaded).count()
     }
 
     /// Returns the number of references whose latest load attempt failed.
     #[must_use]
+    #[must_use]
     pub fn failed_count(&self) -> usize {
         self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Failed { .. })).count()
     }
 
     /// Returns the number of registered references that are not yet loaded.
+    #[must_use]
     #[must_use]
     pub fn pending_count(&self) -> usize {
         self.references.iter().filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Unloaded | SceneAssetRuntimeStatus::Loading)).count()
@@ -302,6 +310,11 @@ impl std::error::Error for SceneAssetResolverError {}
 /// The supplied caches must contain at most one cache per resource kind.
 /// This function does not mutate the scene, registry, or caches. Results follow
 /// deterministic scene entity order and each entity's reference insertion order.
+///
+/// # Errors
+///
+/// Returns `DuplicateCacheKind` when multiple caches are supplied for one resource kind.
+#[must_use]
 pub fn resolve_scene_asset_statuses(
     scene: &Scene,
     registry: &AssetRegistry,
