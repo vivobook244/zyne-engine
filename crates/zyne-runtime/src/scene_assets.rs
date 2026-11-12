@@ -71,12 +71,10 @@ pub fn validate_scene_asset_references(
 
         for &resource_id in references {
             if registry.find(resource_id).is_none() {
-                report
-                    .missing_references
-                    .push(MissingAssetReference {
-                        entity_id,
-                        resource_id,
-                    });
+                report.missing_references.push(MissingAssetReference {
+                    entity_id,
+                    resource_id,
+                });
             }
         }
     }
