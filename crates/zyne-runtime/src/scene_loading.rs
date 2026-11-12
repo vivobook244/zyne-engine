@@ -134,9 +134,7 @@ mod tests {
 
     fn scene_source(references: &[ResourceId]) -> String {
         let mut scene = Scene::new("Asset Diagnostic Scene").unwrap();
-        let entity = scene
-            .spawn_entity("Prop", Transform3d::identity())
-            .unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         scene
             .set_entity_asset_references(entity, references)
             .unwrap();
