@@ -4,9 +4,11 @@
 //! CPU data, while the registry persists stable metadata independently of
 //! runtime handles and GPU allocations.
 
+mod cache;
 mod gltf_import;
 mod registry;
 
+pub use cache::{AssetCache, AssetCacheError, AssetState};
 pub use gltf_import::{
     ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
 };

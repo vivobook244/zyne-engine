@@ -1,6 +1,6 @@
 # Phase 4 — Asset & Resource Pipeline
 
-**Status:** PHASE 4.1 COMPLETE; PHASE 4.2 COMPLETE; PHASE 4.3 IMPLEMENTED — CI VALIDATION PENDING  
+**Status:** PHASE 4.1 COMPLETE; PHASE 4.2 COMPLETE; PHASE 4.3 COMPLETE; PHASE 4.4 IMPLEMENTED — VALIDATION PENDING  
 **Branch:** main  
 **Prerequisite:** Phase 3 — World, ECS & Scene  
 **Goal:** Import source assets into validated CPU-side engine data, then resolve persistent resource identities into safe runtime handles.
@@ -12,7 +12,8 @@
 - Keep importers independent from ECS and GPU APIs. Importers produce validated CPU data; zyne-graphics remains responsible for GPU allocation and upload.
 - Persist ResourceId, resource kind, project-relative source path, and importer settings. Never persist runtime handles, slot indices, GPU objects, or pointers.
 - AssetRegistry owns persistent metadata only. ResourceStorage<T> owns typed runtime values and validates handle index plus generation.
-- Keep metadata persistence separate from runtime storage. Runtime storage does not serialize handles or slot coordinates.
+- AssetCache<T> owns lifecycle state and maps a stable ResourceId to one typed runtime handle. Each cache instance accepts exactly one ResourceKind.
+- Keep metadata persistence separate from runtime storage. Runtime storage and cache lifecycle state do not serialize handles or slot coordinates.
 - Preserve the workspace MSRV at Rust 1.85. Pin dependencies where necessary; do not upgrade MSRV implicitly through a transitive dependency.
 - Start with glTF 2.0 / GLB 2.0. Keep unsupported features explicit rather than silently dropping data.
 
@@ -28,7 +29,7 @@
 - [x] Validate required position data, index bounds, attribute lengths, finite values, triangle index counts, and image dimensions/byte lengths.
 - [x] Return explicit errors for malformed documents, unsupported required extensions, and unsupported primitive topology.
 - [x] Add fixture coverage and verify importer behavior on Windows/Linux CI.
-- [x] Verify dependency resolution and Cargo.lock with `--locked` on the local environment and Windows/Linux CI.
+- [x] Verify dependency resolution and Cargo.lock with --locked on the local environment and Windows/Linux CI.
 
 ### 4.2 Persistent resource registry
 
@@ -45,13 +46,18 @@
 - [x] Keep handle construction private to zyne-core storage implementation.
 - [x] Retire slots instead of wrapping a generation counter at its maximum value.
 - [x] Keep persistent metadata and runtime slot storage separate.
+- [x] Validate formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI.
 
 ### 4.4 Asset cache and lifecycle
 
-- [ ] Implement explicit Unloaded, Loading, Loaded, and Failed states.
-- [ ] Cache CPU-side imports and runtime resources without duplicate concurrent ownership.
-- [ ] Define retry and unload behavior.
-- [ ] Defer asynchronous loading, eviction policy, and dependency scheduling until measured need exists.
+- [x] Implement explicit Unloaded, Loading, Loaded, and Failed states.
+- [x] Add a typed AssetCache<T> that validates ResourceId and ResourceKind against AssetRegistry.
+- [x] Prevent duplicate loading/completion for the same resource ID within one typed cache.
+- [x] Store CPU-side runtime values through ResourceStorage<T> and expose typed handles/accessors.
+- [x] Preserve failure diagnostics and support explicit retry.
+- [x] Unload resident values, invalidate their runtime handles, and preserve persistent registry metadata.
+- [x] Reject invalid lifecycle transitions and missing or mismatched registry entries.
+- [ ] Complete local formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI validation.
 
 ### 4.5 Scene resource references
 
@@ -69,15 +75,24 @@
 - Invalid indices, non-finite values, malformed files, and unsupported required extensions fail explicitly.
 - Image width, height, pixel format, and bytes are available without creating GPU resources.
 - Unit tests, formatting, strict Clippy, locked workspace checks, and Windows/Ubuntu CI pass.
-- No change to the Rust 1.85 MSRV; the workspace still declares `rust-version = "1.85"`.
+- No change to the Rust 1.85 MSRV; the workspace still declares rust-version = "1.85".
 
-**Validation note:** The current GitHub Actions workflow uses the stable Rust toolchain. Local and CI `--locked` checks passed, and dependencies are pinned according to the Rust 1.85 compatibility policy. A dedicated CI run using the exact Rust 1.85 toolchain is still recommended to verify the MSRV explicitly.
+**Validation note:** The current GitHub Actions workflow uses the stable Rust toolchain. Local and CI --locked checks passed, and dependencies are pinned according to the Rust 1.85 compatibility policy. A dedicated CI run using the exact Rust 1.85 toolchain is still recommended to verify the MSRV explicitly.
+
+## Phase 4.4 lifecycle contract
+
+- Loading is explicit and caller-driven: begin_loading, then complete_loading or fail_loading. The cache does not own filesystem I/O or importer execution.
+- A cache instance is typed for one ResourceKind. Different asset kinds use separate typed cache instances.
+- Failed resources retain a diagnostic string. retry_loading transitions Failed back to Loading and clears the previous diagnostic.
+- unload removes the runtime value and invalidates its Handle<T>; the AssetRegistry entry remains intact.
+- Runtime handles, lifecycle state, and failure diagnostics are transient and are never serialized.
+- Asynchronous loading, automatic eviction, dependency scheduling, and hot reload remain deferred until required by measured workloads.
 
 ## Dependency policy
 
 - Use the stable gltf 1.4.1 API with only the features required by the importer.
 - The glTF import feature depends on the image 0.25 series. Pin image to 0.25.9 to keep the Rust 1.85 compatibility policy; do not allow image 0.25.10 (Rust 1.88) to enter the lockfile.
-- Commit Cargo.lock updates generated by Cargo and verify with --locked in CI.
+- Commit Cargo.lock updates generated by Cargo and verify with --locked in CI. Phase 4.4 introduces no new external dependencies.
 
 ## Deferred
 
