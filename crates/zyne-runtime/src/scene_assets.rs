@@ -307,14 +307,13 @@ pub fn resolve_scene_asset_statuses(
     registry: &AssetRegistry,
     caches: &[&dyn zyne_assets::AssetCacheStatus],
 ) -> Result<SceneAssetStatusReport, SceneAssetResolverError> {
-    use std::collections::HashSet;
-
-    let mut cache_kinds = HashSet::with_capacity(caches.len());
+    let mut cache_kinds = Vec::with_capacity(caches.len());
     for cache in caches {
         let kind = cache.kind();
-        if !cache_kinds.insert(kind) {
+        if cache_kinds.contains(&kind) {
             return Err(SceneAssetResolverError::DuplicateCacheKind { kind });
         }
+        cache_kinds.push(kind);
     }
 
     let mut report = SceneAssetStatusReport::default();
@@ -340,4 +339,131 @@ pub fn resolve_scene_asset_statuses(
         }
     }
     Ok(report)
+}
+
+
+#[cfg(test)]
+mod runtime_status_tests {
+    use super::{SceneAssetResolverError, SceneAssetRuntimeStatus, resolve_scene_asset_statuses};
+    use crate::Scene;
+    use zyne_assets::{
+        AssetCache, AssetCacheStatus, AssetMetadata, AssetRegistry, ImporterSettings,
+        ProjectRelativePath, ResourceKind,
+    };
+    use zyne_core::ResourceId;
+    use zyne_math::Transform3d;
+
+    struct MeshData;
+    struct TextureData;
+    struct AudioData;
+
+    fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
+        let metadata = AssetMetadata::new(
+            id,
+            path,
+            kind,
+            ProjectRelativePath::new(path).unwrap(),
+            ImporterSettings::new("test", 1).unwrap(),
+        )
+        .unwrap();
+        registry.register(metadata).unwrap();
+    }
+
+    #[test]
+    fn resolves_all_runtime_states_across_multiple_typed_caches() {
+        let mut scene = Scene::new("Runtime Asset States").unwrap();
+        let entity = scene.spawn_entity("Actor", Transform3d::identity()).unwrap();
+        let mesh_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let audio_id = ResourceId::new();
+        let no_cache_id = ResourceId::new();
+        let unregistered_id = ResourceId::new();
+
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, mesh_id, ResourceKind::Mesh, "mesh.glb");
+        register(&mut registry, texture_id, ResourceKind::Texture, "texture.png");
+        register(&mut registry, audio_id, ResourceKind::Audio, "audio.ogg");
+        register(&mut registry, no_cache_id, ResourceKind::Model, "model.glb");
+        scene.set_entity_asset_references(
+            entity,
+            &[mesh_id, texture_id, audio_id, no_cache_id, unregistered_id],
+        ).unwrap();
+
+        let mut meshes = AssetCache::<MeshData>::new(ResourceKind::Mesh);
+        meshes.begin_loading(&registry, mesh_id).unwrap();
+        meshes.complete_loading(&registry, mesh_id, MeshData).unwrap();
+
+        let mut textures = AssetCache::<TextureData>::new(ResourceKind::Texture);
+        textures.begin_loading(&registry, texture_id).unwrap();
+
+        let mut audio = AssetCache::<AudioData>::new(ResourceKind::Audio);
+        audio.begin_loading(&registry, audio_id).unwrap();
+        audio.fail_loading(audio_id, "unsupported audio codec").unwrap();
+
+        let caches: [&dyn AssetCacheStatus; 3] = [&meshes, &textures, &audio];
+        let report = resolve_scene_asset_statuses(&scene, &registry, &caches).unwrap();
+
+        assert_eq!(report.references().len(), 5);
+        assert_eq!(report.loaded_count(), 1);
+        assert_eq!(report.pending_count(), 1);
+        assert_eq!(report.failed_count(), 1);
+        assert!(!report.is_ready());
+
+        let statuses = report.references().iter().map(|reference| {
+            (reference.resource_id(), reference.status().clone())
+        }).collect::<Vec<_>>();
+        assert_eq!(statuses, vec![
+            (mesh_id, SceneAssetRuntimeStatus::Loaded),
+            (texture_id, SceneAssetRuntimeStatus::Loading),
+            (audio_id, SceneAssetRuntimeStatus::Failed {
+                reason: "unsupported audio codec".to_owned(),
+            }),
+            (no_cache_id, SceneAssetRuntimeStatus::CacheUnavailable {
+                kind: ResourceKind::Model,
+            }),
+            (unregistered_id, SceneAssetRuntimeStatus::Unregistered),
+        ]);
+    }
+
+    #[test]
+    fn reports_unloaded_state_when_matching_cache_has_not_seen_asset() {
+        let mut scene = Scene::new("Unloaded Asset").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, id, ResourceKind::Mesh, "prop.glb");
+        scene.set_entity_asset_references(entity, &[id]).unwrap();
+
+        let meshes = AssetCache::<MeshData>::new(ResourceKind::Mesh);
+        let caches: [&dyn AssetCacheStatus; 1] = [&meshes];
+        let report = resolve_scene_asset_statuses(&scene, &registry, &caches).unwrap();
+
+        assert_eq!(report.references()[0].status(), &SceneAssetRuntimeStatus::Unloaded);
+        assert_eq!(report.pending_count(), 1);
+    }
+
+    #[test]
+    fn rejects_duplicate_cache_kinds_instead_of_resolving_ambiguously() {
+        let scene = Scene::new("Duplicate Cache Kinds").unwrap();
+        let registry = AssetRegistry::new();
+        let first = AssetCache::<MeshData>::new(ResourceKind::Mesh);
+        let second = AssetCache::<MeshData>::new(ResourceKind::Mesh);
+        let caches: [&dyn AssetCacheStatus; 2] = [&first, &second];
+
+        assert_eq!(
+            resolve_scene_asset_statuses(&scene, &registry, &caches),
+            Err(SceneAssetResolverError::DuplicateCacheKind {
+                kind: ResourceKind::Mesh,
+            }),
+        );
+    }
+
+    #[test]
+    fn empty_scene_is_ready_without_asset_references() {
+        let scene = Scene::new("No Assets").unwrap();
+        let report = resolve_scene_asset_statuses(&scene, &AssetRegistry::new(), &[]).unwrap();
+
+        assert!(report.is_ready());
+        assert_eq!(report.references().len(), 0);
+    }
 }
