@@ -285,12 +285,7 @@ impl SceneAssetStatusReport {
     pub fn failed_count(&self) -> usize {
         self.references
             .iter()
-            .filter(|reference| {
-                matches!(
-                    reference.status,
-                    SceneAssetRuntimeStatus::Failed { .. }
-                )
-            })
+            .filter(|reference| matches!(reference.status, SceneAssetRuntimeStatus::Failed { .. }))
             .count()
     }
 
@@ -362,41 +357,30 @@ pub fn resolve_scene_asset_statuses(
             let status = match registry.find(resource_id) {
                 None => SceneAssetRuntimeStatus::Unregistered,
                 Some(metadata) => {
-                    match caches
-                        .iter()
-                        .find(|cache| cache.kind() == metadata.kind())
-                    {
+                    match caches.iter().find(|cache| cache.kind() == metadata.kind()) {
                         None => SceneAssetRuntimeStatus::CacheUnavailable {
                             kind: metadata.kind(),
                         },
                         Some(cache) => match cache.state(resource_id) {
-                            zyne_assets::AssetState::Unloaded => {
-                                SceneAssetRuntimeStatus::Unloaded
-                            }
-                            zyne_assets::AssetState::Loading => {
-                                SceneAssetRuntimeStatus::Loading
-                            }
+                            zyne_assets::AssetState::Unloaded => SceneAssetRuntimeStatus::Unloaded,
+                            zyne_assets::AssetState::Loading => SceneAssetRuntimeStatus::Loading
                             zyne_assets::AssetState::Loaded => SceneAssetRuntimeStatus::Loaded,
-                            zyne_assets::AssetState::Failed => {
-                                SceneAssetRuntimeStatus::Failed {
-                                    reason: cache
-                                        .failure_reason(resource_id)
-                                        .unwrap_or("asset load failed without a diagnostic")
-                                        .to_owned(),
-                                }
+                            zyne_assets::AssetState::Failed => SceneAssetRuntimeStatus::Failed {
+                                reason: cache
+                                    .failure_reason(resource_id)
+                                    .unwrap_or("asset load failed without a diagnostic")
+                                    .to_owned(),
                             }
                         },
                     }
                 }
             };
 
-            report
-                .references
-                .push(ResolvedSceneAssetReference {
-                    entity_id,
-                    resource_id,
-                    status,
-                });
+            report.references.push(ResolvedSceneAssetReference {
+                entity_id,
+                resource_id,
+                status,
+            });
         }
     }
 
@@ -433,7 +417,9 @@ mod runtime_status_tests {
     #[test]
     fn resolves_all_runtime_states_across_multiple_typed_caches() {
         let mut scene = Scene::new("Runtime Asset States").unwrap();
-        let entity = scene.spawn_entity("Actor", Transform3d::identity()).unwrap();
+        let entity = scene
+            .spawn_entity("Actor", Transform3d::identity())
+            .unwrap();
         let mesh_id = ResourceId::new();
         let texture_id = ResourceId::new();
         let audio_id = ResourceId::new();
@@ -442,24 +428,35 @@ mod runtime_status_tests {
 
         let mut registry = AssetRegistry::new();
         register(&mut registry, mesh_id, ResourceKind::Mesh, "mesh.glb");
-        register(&mut registry, texture_id, ResourceKind::Texture, "texture.png");
+        register(
+            &mut registry,
+            texture_id,
+            ResourceKind::Texture,
+            "texture.png",
+        );
         register(&mut registry, audio_id, ResourceKind::Audio, "audio.ogg");
         register(&mut registry, no_cache_id, ResourceKind::Model, "model.glb");
-        scene.set_entity_asset_references(
-            entity,
-            &[mesh_id, texture_id, audio_id, no_cache_id, unregistered_id],
-        ).unwrap();
+        scene
+            .set_entity_asset_references(
+                entity,
+                &[mesh_id, texture_id, audio_id, no_cache_id, unregistered_id],
+            )
+            .unwrap();
 
         let mut meshes = AssetCache::<MeshData>::new(ResourceKind::Mesh);
         meshes.begin_loading(&registry, mesh_id).unwrap();
-        meshes.complete_loading(&registry, mesh_id, MeshData).unwrap();
+        meshes
+            .complete_loading(&registry, mesh_id, MeshData)
+            .unwrap();
 
         let mut textures = AssetCache::<TextureData>::new(ResourceKind::Texture);
         textures.begin_loading(&registry, texture_id).unwrap();
 
         let mut audio = AssetCache::<AudioData>::new(ResourceKind::Audio);
         audio.begin_loading(&registry, audio_id).unwrap();
-        audio.fail_loading(audio_id, "unsupported audio codec").unwrap();
+        audio
+            .fail_loading(audio_id, "unsupported audio codec")
+            .unwrap();
 
         let caches: [&dyn AssetCacheStatus; 3] = [&meshes, &textures, &audio];
         let report = resolve_scene_asset_statuses(&scene, &registry, &caches).unwrap();
@@ -470,26 +467,39 @@ mod runtime_status_tests {
         assert_eq!(report.failed_count(), 1);
         assert!(!report.is_ready());
 
-        let statuses = report.references().iter().map(|reference| {
-            (reference.resource_id(), reference.status().clone())
-        }).collect::<Vec<_>>();
-        assert_eq!(statuses, vec![
-            (mesh_id, SceneAssetRuntimeStatus::Loaded),
-            (texture_id, SceneAssetRuntimeStatus::Loading),
-            (audio_id, SceneAssetRuntimeStatus::Failed {
-                reason: "unsupported audio codec".to_owned(),
-            }),
-            (no_cache_id, SceneAssetRuntimeStatus::CacheUnavailable {
-                kind: ResourceKind::Model,
-            }),
-            (unregistered_id, SceneAssetRuntimeStatus::Unregistered),
-        ]);
+        let statuses = report
+            .references()
+            .iter()
+            .map(|reference| (reference.resource_id(), reference.status().clone()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            statuses,
+            vec![
+                (mesh_id, SceneAssetRuntimeStatus::Loaded),
+                (texture_id, SceneAssetRuntimeStatus::Loading),
+                (
+                    audio_id,
+                    SceneAssetRuntimeStatus::Failed {
+                        reason: "unsupported audio codec".to_owned(),
+                    },
+                ),
+                (
+                    no_cache_id,
+                    SceneAssetRuntimeStatus::CacheUnavailable {
+                        kind: ResourceKind::Model,
+                    },
+                ),
+                (unregistered_id, SceneAssetRuntimeStatus::Unregistered),
+            ]
+        );
     }
 
     #[test]
     fn reports_unloaded_state_when_matching_cache_has_not_seen_asset() {
         let mut scene = Scene::new("Unloaded Asset").unwrap();
-        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let entity = scene
+            .spawn_entity("Prop", Transform3d::identity())
+            .unwrap();
         let id = ResourceId::new();
         let mut registry = AssetRegistry::new();
         register(&mut registry, id, ResourceKind::Mesh, "prop.glb");
