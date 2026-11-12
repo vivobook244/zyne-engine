@@ -159,7 +159,7 @@ impl<T> ResourceStorage<T> {
     ///
     /// # Errors
     ///
-    /// Returns ResourceStorageError::CapacityExceeded when no representable
+    /// Returns `ResourceStorageError::CapacityExceeded` when no representable
     /// slot index remains.
     pub fn insert(&mut self, value: T) -> Result<Handle<T>, ResourceStorageError> {
         self.len += 1;
