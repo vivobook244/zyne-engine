@@ -9,6 +9,8 @@ rust-version.workspace = true
 gltf.workspace = true
 # Pins gltf's optional image decoder to the workspace MSRV-compatible release.
 image.workspace = true
+ron.workspace = true
+serde.workspace = true
 zyne-core = { path = "../zyne-core" }
 
 [lints]
