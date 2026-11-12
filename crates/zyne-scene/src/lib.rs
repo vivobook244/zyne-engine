@@ -147,7 +147,11 @@ impl SceneEntityDocument {
 
     /// Removes a persistent asset reference, returning whether it existed.
     pub fn remove_asset_reference(&mut self, id: ResourceId) -> bool {
-        let Some(index) = self.asset_references.iter().position(|existing| *existing == id) else {
+        let Some(index) = self
+            .asset_references
+            .iter()
+            .position(|existing| *existing == id)
+        else {
             return false;
         };
         self.asset_references.remove(index);
@@ -269,13 +273,20 @@ impl SceneDocument {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneError {
     EmptySceneName,
-    EmptyEntityName { id: SceneEntityId },
-    DuplicateEntityId { id: SceneEntityId },
+    EmptyEntityName {
+        id: SceneEntityId,
+    },
+    DuplicateEntityId {
+        id: SceneEntityId,
+    },
     DuplicateAssetReference {
         entity_id: SceneEntityId,
         resource_id: ResourceId,
     },
-    UnsupportedSchemaVersion { found: u32, expected: u32 },
+    UnsupportedSchemaVersion {
+        found: u32,
+        expected: u32,
+    },
 }
 
 impl std::fmt::Display for SceneError {
