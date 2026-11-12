@@ -1,8 +1,8 @@
 //! Typed CPU-side asset cache and explicit resource lifecycle.
 //!
-//! A cache instance owns resources of exactly one ResourceKind. Persistent
-//! metadata remains in AssetRegistry, while runtime values live in
-//! ResourceStorage. Runtime handles are never persisted.
+//! A cache instance owns resources of exactly one `ResourceKind`. Persistent
+//! metadata remains in `AssetRegistry`, while runtime values live in
+//! `ResourceStorage`. Runtime handles are never persisted.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -77,8 +77,8 @@ impl<T> AssetCache<T> {
     ///
     /// # Errors
     ///
-    /// Returns ResourceNotFound when the ID is absent from the registry, or
-    /// ResourceKindMismatch when the metadata belongs to another cache kind.
+    /// Returns `ResourceNotFound` when the ID is absent from the registry, or
+    /// `ResourceKindMismatch` when the metadata belongs to another cache kind.
     pub fn state(
         &self,
         registry: &AssetRegistry,
@@ -233,8 +233,8 @@ impl<T> AssetCache<T> {
     ///
     /// # Errors
     ///
-    /// Returns ResourceNotCached when the cache has no lifecycle entry for
-    /// the ID, InvalidState while loading, or RuntimeValueMissing if the
+    /// Returns `ResourceNotCached` when the cache has no lifecycle entry for
+    /// the ID, `InvalidState` while loading, or `RuntimeValueMissing` if the
     /// internal loaded-handle invariant is broken.
     pub fn unload(&mut self, id: ResourceId) -> Result<(), AssetCacheError> {
         let entry = self
