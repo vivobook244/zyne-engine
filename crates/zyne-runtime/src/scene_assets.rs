@@ -499,7 +499,10 @@ mod runtime_status_tests {
         let caches: [&dyn AssetCacheStatus; 1] = [&meshes];
         let report = resolve_scene_asset_statuses(&scene, &registry, &caches).unwrap();
 
-        assert_eq!(report.references()[0].status(), &SceneAssetRuntimeStatus::Unloaded);
+        assert_eq!(
+            report.references()[0].status(),
+            &SceneAssetRuntimeStatus::Unloaded
+        );
         assert_eq!(report.pending_count(), 1);
     }
 
