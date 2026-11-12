@@ -307,7 +307,8 @@ impl std::error::Error for SceneError {}
 
 #[cfg(test)]
 mod tests {
-    use super::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError};
+    use super::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId};
+    use serde::Serialize;
     use uuid::Uuid;
     use zyne_core::ResourceId;
     use zyne_math::Transform3d;
@@ -375,7 +376,7 @@ mod tests {
         );
         assert!(entity.remove_asset_reference(resource_id));
         assert!(!entity.remove_asset_reference(resource_id));
-        assert!(entity.asset_references().is_empty());
+        assert_eq!(entity.asset_references(), []);
     }
 
     #[test]
@@ -396,18 +397,34 @@ mod tests {
 
     #[test]
     fn legacy_scene_documents_without_asset_references_remain_loadable() {
-        let source = r#"(
+        #[derive(Serialize)]
+        struct LegacySceneDocument {
+            schema_version: u32,
+            id: SceneId,
+            name: String,
+            entities: Vec<LegacySceneEntityDocument>,
+        }
+
+        #[derive(Serialize)]
+        struct LegacySceneEntityDocument {
+            id: SceneEntityId,
+            name: String,
+            transform: Transform3d,
+        }
+
+        let source = LegacySceneDocument {
             schema_version: 1,
-            id: "00000000-0000-0000-0000-000000000001",
-            name: "Legacy",
-            entities: [(
-                id: "00000000-0000-0000-0000-000000000002",
-                name: "Player",
-                transform: (translation: [0.0, 0.0, 0.0], rotation: [0.0, 0.0, 0.0, 1.0], scale: [1.0, 1.0, 1.0]),
-            )],
-        )"#;
-        let decoded: SceneDocument = ron::de::from_str(source).unwrap();
-        assert!(decoded.entities()[0].asset_references().is_empty());
+            id: SceneId::from_uuid(Uuid::from_u128(1)),
+            name: "Legacy".to_owned(),
+            entities: vec![LegacySceneEntityDocument {
+                id: SceneEntityId::from_uuid(Uuid::from_u128(2)),
+                name: "Player".to_owned(),
+                transform: Transform3d::identity(),
+            }],
+        };
+        let encoded = ron::ser::to_string(&source).unwrap();
+        let decoded: SceneDocument = ron::de::from_str(&encoded).unwrap();
+        assert_eq!(decoded.entities()[0].asset_references(), []);
         assert_eq!(decoded.validate(), Ok(()));
     }
 
