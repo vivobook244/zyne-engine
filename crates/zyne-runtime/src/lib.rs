@@ -7,6 +7,7 @@ mod camera_controller;
 pub mod diagnostics;
 mod event_queue;
 mod scene_assets;
+mod scene_loading;
 
 pub use application::Application;
 pub use application_config::ApplicationConfig;
@@ -17,6 +18,7 @@ pub use scene_assets::{
     SceneAssetRuntimeStatus, SceneAssetStatusReport, SceneAssetValidationReport,
     resolve_scene_asset_statuses, validate_scene_asset_references,
 };
+pub use scene_loading::{LoadedScene, SceneAssetLoadError, load_scene_with_asset_diagnostics};
 
 pub use zyne_assets::AssetRegistry;
 pub use zyne_core::{
