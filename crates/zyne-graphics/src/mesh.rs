@@ -17,12 +17,7 @@ pub struct MeshVertex {
 impl MeshVertex {
     /// Creates a vertex. Attribute validation is performed by MeshData::new.
     #[must_use]
-    pub const fn new(
-        position: [f32; 3],
-        color: [f32; 3],
-        uv: [f32; 2],
-        normal: [f32; 3],
-    ) -> Self {
+    pub const fn new(position: [f32; 3], color: [f32; 3], uv: [f32; 2], normal: [f32; 3]) -> Self {
         Self {
             position,
             color,
