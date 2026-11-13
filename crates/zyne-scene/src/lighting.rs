@@ -23,19 +23,25 @@ impl std::fmt::Display for LightError {
             Self::NonFiniteDirection => formatter.write_str("light direction must be finite"),
             Self::ZeroDirection => formatter.write_str("light direction must not be zero"),
             Self::NonFiniteColor { component } => {
-                write!(formatter, "light color component {component} must be finite")
+                write!(
+                    formatter,
+                    "light color component {component} must be finite"
+                )
             }
             Self::NegativeColor { component } => {
-                write!(formatter, "light color component {component} must not be negative")
+                write!(
+                    formatter,
+                    "light color component {component} must not be negative"
+                )
             }
             Self::NonFiniteIntensity => formatter.write_str("light intensity must be finite"),
             Self::NegativeIntensity => formatter.write_str("light intensity must not be negative"),
             Self::NonFiniteRange => formatter.write_str("light range must be finite"),
             Self::NonPositiveRange => formatter.write_str("light range must be greater than zero"),
             Self::NonFiniteSpotAngle => formatter.write_str("spot angles must be finite"),
-            Self::InvalidSpotAngles => formatter.write_str(
-                "spot angles must satisfy 0 <= inner <= outer <= 90 degrees",
-            ),
+            Self::InvalidSpotAngles => {
+                formatter.write_str("spot angles must satisfy 0 <= inner <= outer <= 90 degrees")
+            }
         }
     }
 }
@@ -54,25 +60,31 @@ pub struct DirectionalLight {
 
 impl DirectionalLight {
     /// Creates a directional light with a normalized ray direction.
-    pub fn new(
-        direction: [f32; 3],
-        color: [f32; 3],
-        intensity: f32,
-    ) -> Result<Self, LightError> {
+    pub fn new(direction: [f32; 3], color: [f32; 3], intensity: f32) -> Result<Self, LightError> {
         let direction = normalize_direction(direction)?;
         validate_color(color)?;
         validate_intensity(intensity)?;
-        Ok(Self { direction, color, intensity })
+        Ok(Self {
+            direction,
+            color,
+            intensity,
+        })
     }
 
     #[must_use]
-    pub const fn direction(&self) -> [f32; 3] { self.direction }
+    pub const fn direction(&self) -> [f32; 3] {
+        self.direction
+    }
 
     #[must_use]
-    pub const fn color(&self) -> [f32; 3] { self.color }
+    pub const fn color(&self) -> [f32; 3] {
+        self.color
+    }
 
     #[must_use]
-    pub const fn intensity(&self) -> f32 { self.intensity }
+    pub const fn intensity(&self) -> f32 {
+        self.intensity
+    }
 }
 
 impl<'de> Deserialize<'de> for DirectionalLight {
@@ -105,7 +117,11 @@ impl PointLight {
         validate_color(color)?;
         validate_intensity(intensity)?;
         validate_range(range)?;
-        Ok(Self { color, intensity, range })
+        Ok(Self {
+            color,
+            intensity,
+            range,
+        })
     }
 
     #[must_use]
@@ -115,7 +131,9 @@ impl PointLight {
     pub const fn intensity(&self) -> f32 { self.intensity }
 
     #[must_use]
-    pub const fn range(&self) -> f32 { self.range }
+    pub const fn range(&self) -> f32 {
+        self.range
+    }
 }
 
 impl<'de> Deserialize<'de> for PointLight {
@@ -169,7 +187,14 @@ impl SpotLight {
         {
             return Err(LightError::InvalidSpotAngles);
         }
-        Ok(Self { direction, color, intensity, range, inner_angle, outer_angle })
+        Ok(Self {
+            direction,
+            color,
+            intensity,
+            range,
+            inner_angle,
+            outer_angle,
+        })
     }
 
     #[must_use]
@@ -185,10 +210,14 @@ impl SpotLight {
     pub const fn range(&self) -> f32 { self.range }
 
     #[must_use]
-    pub const fn inner_angle(&self) -> f32 { self.inner_angle }
+    pub const fn inner_angle(&self) -> f32 {
+        self.inner_angle
+    }
 
     #[must_use]
-    pub const fn outer_angle(&self) -> f32 { self.outer_angle }
+    pub const fn outer_angle(&self) -> f32 {
+        self.outer_angle
+    }
 }
 
 impl<'de> Deserialize<'de> for SpotLight {
@@ -358,14 +387,7 @@ mod tests {
             Err(LightError::InvalidSpotAngles)
         );
         assert_eq!(
-            SpotLight::new(
-                [0.0, 0.0, -1.0],
-                [1.0; 3],
-                1.0,
-                5.0,
-                f32::NAN,
-                0.5,
-            ),
+            SpotLight::new([0.0, 0.0, -1.0], [1.0; 3], 1.0, 5.0, f32::NAN, 0.5,),
             Err(LightError::NonFiniteSpotAngle)
         );
     }
