@@ -124,9 +124,9 @@ impl LightingUniform {
         let point_count = data.point_lights.len().min(MAX_POINT_LIGHTS);
         let spot_count = data.spot_lights.len().min(MAX_SPOT_LIGHTS);
         uniform.counts = [
-            u32::try_from(directional_count).unwrap_or(MAX_DIRECTIONAL_LIGHTS as u32),
-            u32::try_from(point_count).unwrap_or(MAX_POINT_LIGHTS as u32),
-            u32::try_from(spot_count).unwrap_or(MAX_SPOT_LIGHTS as u32),
+            u32::try_from(directional_count).unwrap_or(u32::MAX),
+            u32::try_from(point_count).unwrap_or(u32::MAX),
+            u32::try_from(spot_count).unwrap_or(u32::MAX),
             0,
         ];
         for (target, source) in uniform
