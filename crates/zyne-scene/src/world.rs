@@ -258,11 +258,7 @@ impl Scene {
     }
 
     /// Adds, replaces, or removes a point light on an entity.
-    pub fn set_entity_point_light(
-        &mut self,
-        id: SceneEntityId,
-        light: Option<PointLight>,
-    ) -> bool {
+    pub fn set_entity_point_light(&mut self, id: SceneEntityId, light: Option<PointLight>) -> bool {
         let Some(&handle) = self.entities.get(&id) else {
             return false;
         };
@@ -297,11 +293,7 @@ impl Scene {
     }
 
     /// Adds, replaces, or removes a spot light on an entity.
-    pub fn set_entity_spot_light(
-        &mut self,
-        id: SceneEntityId,
-        light: Option<SpotLight>,
-    ) -> bool {
+    pub fn set_entity_spot_light(&mut self, id: SceneEntityId, light: Option<SpotLight>) -> bool {
         let Some(&handle) = self.entities.get(&id) else {
             return false;
         };
@@ -651,9 +643,7 @@ mod tests {
         use crate::{DirectionalLight, PointLight, SpotLight};
 
         let mut scene = Scene::new("Persistent Lighting").unwrap();
-        let entity = scene
-            .spawn_entity("Lamp", Transform3d::identity())
-            .unwrap();
+        let entity = scene.spawn_entity("Lamp", Transform3d::identity()).unwrap();
         let directional = DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 1.5).unwrap();
         let point = PointLight::new([1.0, 0.8, 0.6], 2.0, 15.0).unwrap();
         let spot = SpotLight::new(
