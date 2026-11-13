@@ -26,7 +26,7 @@ impl SceneMeshRenderer {
 
     /// Uploads referenced mesh assets that are not resident on the GPU yet.
     ///
-    /// Only references registered as ResourceKind::Mesh are considered.
+    /// Only references registered as `ResourceKind::Mesh` are considered.
     /// Existing GPU uploads are retained and reused.
     ///
     /// # Errors
@@ -272,6 +272,9 @@ mod tests {
             .set_entity_asset_references(entity, &[missing_id])
             .unwrap();
 
-        assert!(collect_scene_mesh_instances(&scene, &AssetRegistry::new()).is_empty());
+        assert_eq!(
+            collect_scene_mesh_instances(&scene, &AssetRegistry::new()),
+            Vec::new()
+        );
     }
 }
