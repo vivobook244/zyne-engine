@@ -4,12 +4,25 @@ use std::collections::HashMap;
 use std::fmt;
 
 use zyne_assets::{AssetCache, AssetRegistry, ResourceKind};
+use zyne_core::Engine;
 use zyne_core::ResourceId;
 use zyne_graphics::{
     FrameOutcome, GpuMesh, GraphicsContext, GraphicsError, MeshData, MeshRenderBatch,
 };
 use zyne_math::Camera3d;
 use zyne_scene::Scene;
+
+/// Engine contract for applications that render a live ECS scene.
+pub trait SceneEngine: Engine {
+    /// Returns the mutable game scene as a read-only render snapshot.
+    fn scene(&self) -> &Scene;
+
+    /// Returns persistent metadata for the scene's asset references.
+    fn asset_registry(&self) -> &AssetRegistry;
+
+    /// Returns loaded CPU mesh data referenced by the scene.
+    fn mesh_cache(&self) -> &AssetCache<MeshData>;
+}
 
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
