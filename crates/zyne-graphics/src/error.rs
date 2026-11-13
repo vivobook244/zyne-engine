@@ -23,6 +23,8 @@ pub enum GraphicsError {
     SurfaceOutOfMemory,
     /// Scene instance count exceeds the supported GPU buffer or draw range.
     TooManyInstances,
+    /// A mesh vertex or index buffer exceeds the device's supported size.
+    MeshBufferTooLarge,
 }
 
 impl fmt::Display for GraphicsError {
@@ -61,6 +63,9 @@ impl fmt::Display for GraphicsError {
             }
             Self::TooManyInstances => {
                 formatter.write_str("scene contains too many render instances for this GPU")
+            }
+            Self::MeshBufferTooLarge => {
+                formatter.write_str("mesh buffers exceed the supported GPU buffer size")
             }
         }
     }
