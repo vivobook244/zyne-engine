@@ -4,7 +4,7 @@ use std::{error::Error, fmt};
 /// One renderer-facing vertex with position, linear color, UV, and normal data.
 ///
 /// The memory layout matches the vertex attributes consumed by the basic 3D
-/// WGSL shader. Values are validated when placed in MeshData.
+/// WGSL shader. Values are validated when placed in `MeshData`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Pod, Zeroable)]
 pub struct MeshVertex {
@@ -15,7 +15,7 @@ pub struct MeshVertex {
 }
 
 impl MeshVertex {
-    /// Creates a vertex. Attribute validation is performed by MeshData::new.
+    /// Creates a vertex. Attribute validation is performed by `MeshData::new`.
     #[must_use]
     pub const fn new(position: [f32; 3], color: [f32; 3], uv: [f32; 2], normal: [f32; 3]) -> Self {
         Self {
