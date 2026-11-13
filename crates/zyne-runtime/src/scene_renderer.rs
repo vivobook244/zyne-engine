@@ -104,13 +104,14 @@ impl SceneMeshRenderer {
         let batches: Vec<_> = groups
             .iter()
             .map(|(resource_id, transforms)| {
-                let mesh = self
-                    .meshes
+                self.meshes
                     .get(resource_id)
-                    .expect("mesh presence was validated before batch creation");
-                MeshRenderBatch::new(mesh, transforms)
+                    .map(|mesh| MeshRenderBatch::new(mesh, transforms))
+                    .ok_or(SceneRenderError::MissingGpuMesh {
+                        resource_id: *resource_id,
+                    })
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         graphics
             .render_frame_with_mesh_batches(camera, &batches)
@@ -236,10 +237,18 @@ mod tests {
         assert_eq!(instances.len(), 2);
         assert!(instances.iter().all(|(id, _)| *id == mesh_id));
         assert!(instances.iter().any(|(_, transform)| {
-            transform.translation() == [1.0, 0.0, 0.0]
+            transform
+                .translation()
+                .iter()
+                .zip([1.0, 0.0, 0.0])
+                .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         }));
         assert!(instances.iter().any(|(_, transform)| {
-            transform.translation() == [2.0, 0.0, 0.0]
+            transform
+                .translation()
+                .iter()
+                .zip([2.0, 0.0, 0.0])
+                .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         }));
     }
 
