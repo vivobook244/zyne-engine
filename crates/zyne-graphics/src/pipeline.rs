@@ -331,7 +331,7 @@ impl CubePipeline {
                     model,
                     normal_matrix: normal_matrix_from_model(model, [1.0; 3], model),
                 }]
-            },
+            }
         };
         let instance_count =
             u32::try_from(instances.len()).map_err(|_| crate::GraphicsError::TooManyInstances)?;
@@ -545,7 +545,9 @@ fn normal_matrix_from_model(
     rotation: [[f32; 4]; 4],
 ) -> [[f32; 4]; 3] {
     const MIN_ABS_SCALE: f32 = 1.0e-6;
-    let singular = scale.iter().any(|component| component.abs() < MIN_ABS_SCALE);
+    let singular = scale
+        .iter()
+        .any(|component| component.abs() < MIN_ABS_SCALE);
     let source = if singular { rotation } else { model };
 
     let mut normal = [[0.0; 4]; 3];
@@ -580,8 +582,14 @@ mod tests {
         );
         for face in 0..6 {
             let face_vertices = &vertices[(face * 6)..(face * 6 + 6)];
-            assert!(face_vertices.iter().all(|vertex| vertex.normal == face_vertices[0].normal));
-            assert!((face_vertices[0].normal.iter().map(|n| n * n).sum::<f32>() - 1.0).abs() < 1.0e-6);
+            assert!(
+                face_vertices
+                    .iter()
+                    .all(|vertex| vertex.normal == face_vertices[0].normal)
+            );
+            assert!(
+                (face_vertices[0].normal.iter().map(|n| n * n).sum::<f32>() - 1.0).abs() < 1.0e-6
+            );
         }
         assert!(
             vertices
@@ -638,7 +646,11 @@ mod tests {
         assert_eq!(instance.model, Transform3d::identity().to_matrix());
         assert_eq!(
             instance.normal_matrix,
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0]
+            ]
         );
     }
 
@@ -659,7 +671,13 @@ mod tests {
             .expect("zero scale is currently a valid transform");
         let instance = InstanceRaw::from_transform(transform);
 
-        assert!(instance.normal_matrix.iter().flatten().all(|value| value.is_finite()));
+        assert!(
+            instance
+                .normal_matrix
+                .iter()
+                .flatten()
+                .all(|value| value.is_finite())
+        );
         assert_eq!(
             instance.normal_matrix,
             [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
