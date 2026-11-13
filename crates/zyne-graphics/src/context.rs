@@ -12,7 +12,7 @@ use zyne_platform::PlatformWindow;
 
 use crate::{
     FrameOutcome, GraphicsError,
-    mesh::{GpuMesh, MeshData},
+    mesh::{GpuMesh, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
 };
 
@@ -168,7 +168,7 @@ impl GraphicsContext {
     /// Returns an error when frame acquisition cannot recover or GPU memory is
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(None, None, None)
+        self.render_frame_internal(None, None, None, None)
     }
 
     /// Renders a frame using a caller-supplied camera.
@@ -180,7 +180,7 @@ impl GraphicsContext {
         &mut self,
         camera: &Camera3d,
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(Some(camera), None, None)
+        self.render_frame_internal(Some(camera), None, None, None)
     }
 
     /// Renders all supplied transforms as instances of the built-in cube mesh.
@@ -197,7 +197,7 @@ impl GraphicsContext {
         camera: Option<&Camera3d>,
         transforms: &[Transform3d],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, Some(transforms), None)
+        self.render_frame_internal(camera, Some(transforms), None, None)
     }
 
     /// Renders an uploaded mesh with one or more transforms using indexed drawing.
@@ -215,7 +215,24 @@ impl GraphicsContext {
         mesh: &GpuMesh,
         transforms: &[Transform3d],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, Some(transforms), Some(mesh))
+        self.render_frame_internal(camera, Some(transforms), Some(mesh), None)
+    }
+
+    /// Renders multiple uploaded meshes in one frame using instanced indexed draws.
+    ///
+    /// Each batch is drawn with its own contiguous range in the shared instance
+    /// buffer. Empty batches are ignored; an empty batch list clears the frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the combined instance buffer exceeds device limits
+    /// or frame acquisition/presentation fails.
+    pub fn render_frame_with_mesh_batches(
+        &mut self,
+        camera: Option<&Camera3d>,
+        batches: &[MeshRenderBatch<'_>],
+    ) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(camera, None, None, Some(batches))
     }
 
     fn render_frame_internal(
@@ -223,6 +240,7 @@ impl GraphicsContext {
         camera: Option<&Camera3d>,
         transforms: Option<&[Transform3d]>,
         mesh: Option<&GpuMesh>,
+        mesh_batches: Option<&[MeshRenderBatch<'_>]>,
     ) -> Result<FrameOutcome, GraphicsError> {
         if self.surface_suspended {
             return Ok(FrameOutcome::Skipped);
@@ -242,9 +260,36 @@ impl GraphicsContext {
             camera,
         );
 
-        let instance_count =
-            self.cube_pipeline
-                .update_instances(&self.device, &self.queue, transforms)?;
+        let batch_transforms = mesh_batches.map(|batches| {
+            batches
+                .iter()
+                .flat_map(|batch| batch.transforms().iter().copied())
+                .collect::<Vec<_>>()
+        });
+        let frame_transforms = batch_transforms.as_deref().or(transforms);
+        let instance_count = self.cube_pipeline.update_instances(
+            &self.device,
+            &self.queue,
+            frame_transforms,
+        )?;
+        let mut batch_ranges = Vec::new();
+        if let Some(batches) = mesh_batches {
+            let mut first_instance = 0_u32;
+            for batch in batches {
+                let count = u32::try_from(batch.transforms().len())
+                    .map_err(|_| GraphicsError::TooManyInstances)?;
+                let end_instance = first_instance
+                    .checked_add(count)
+                    .ok_or(GraphicsError::TooManyInstances)?;
+                if count > 0 {
+                    batch_ranges.push((batch.mesh(), first_instance..end_instance));
+                }
+                first_instance = end_instance;
+            }
+            if first_instance != instance_count {
+                return Err(GraphicsError::TooManyInstances);
+            }
+        }
 
         let mut encoder = self
             .device
@@ -281,12 +326,21 @@ impl GraphicsContext {
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
-            if let Some(mesh) = mesh {
+            if !batch_ranges.is_empty() {
+                for (mesh, instances) in &batch_ranges {
+                    render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+                    render_pass.set_index_buffer(
+                        mesh.index_buffer().slice(..),
+                        wgpu::IndexFormat::Uint32,
+                    );
+                    render_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
+                }
+            } else if let Some(mesh) = mesh {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                 render_pass
                     .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
-            } else {
+            } else if mesh_batches.is_none() {
                 render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
                 render_pass.draw(0..36, 0..instance_count);
             }
