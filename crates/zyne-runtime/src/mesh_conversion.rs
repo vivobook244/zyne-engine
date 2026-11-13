@@ -21,7 +21,11 @@ pub enum PrimitiveMeshError {
 impl fmt::Display for PrimitiveMeshError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AttributeCountMismatch { attribute, expected, actual } => write!(
+            Self::AttributeCountMismatch {
+                attribute,
+                expected,
+                actual,
+            } => write!(
                 formatter,
                 "glTF primitive {attribute} count is {actual}, expected {expected}"
             ),
@@ -109,11 +113,7 @@ mod tests {
         ImportedPrimitive {
             index: 0,
             material_index: None,
-            positions: vec![
-                [0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ],
+            positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             normals: Some(vec![[0.0, 0.0, 1.0]; 3]),
             tex_coords_0: Some(vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]),
             indices: vec![0, 1, 2],
@@ -142,7 +142,11 @@ mod tests {
         let mesh = imported_primitive_to_mesh_data(&primitive)
             .expect("primitive without optional attributes should convert");
 
-        assert!(mesh.vertices().iter().all(|vertex| vertex.normal == [0.0, 0.0, 1.0]));
+        assert!(
+            mesh.vertices()
+                .iter()
+                .all(|vertex| vertex.normal == [0.0, 0.0, 1.0])
+        );
         assert!(mesh.vertices().iter().all(|vertex| vertex.uv == [0.0, 0.0]));
     }
 
