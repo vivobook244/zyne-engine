@@ -94,7 +94,7 @@ fn normalize_f64_or_up(normal: [f64; 3]) -> [f32; 3] {
         .iter()
         .map(|component| component * component)
         .sum::<f64>();
-    if !length_squared.is_finite() || length_squared == 0.0 {
+    if !length_squared.is_finite() || length_squared <= f64::MIN_POSITIVE {
         return [0.0, 1.0, 0.0];
     }
 
