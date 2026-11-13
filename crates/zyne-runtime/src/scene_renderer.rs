@@ -180,11 +180,7 @@ fn collect_scene_lighting(scene: &Scene) -> LightingData {
         let Some(transform) = scene.entity_transform(entity_id) else {
             continue;
         };
-        let rotation = zyne_math::Transform3d::new(
-            [0.0; 3],
-            transform.rotation(),
-            [1.0; 3],
-        )
+        let rotation = zyne_math::Transform3d::new([0.0; 3], transform.rotation(), [1.0; 3])
         .expect("scene transforms contain validated rotations")
         .to_matrix();
 
@@ -220,15 +216,9 @@ fn collect_scene_lighting(scene: &Scene) -> LightingData {
 
 fn transform_direction(matrix: [[f32; 4]; 4], direction: [f32; 3]) -> [f32; 3] {
     let transformed = [
-        matrix[0][0] * direction[0]
-            + matrix[1][0] * direction[1]
-            + matrix[2][0] * direction[2],
-        matrix[0][1] * direction[0]
-            + matrix[1][1] * direction[1]
-            + matrix[2][1] * direction[2],
-        matrix[0][2] * direction[0]
-            + matrix[1][2] * direction[1]
-            + matrix[2][2] * direction[2],
+        matrix[0][0] * direction[0] + matrix[1][0] * direction[1] + matrix[2][0] * direction[2],
+        matrix[0][1] * direction[0] + matrix[1][1] * direction[1] + matrix[2][1] * direction[2],
+        matrix[0][2] * direction[0] + matrix[1][2] * direction[1] + matrix[2][2] * direction[2],
     ];
     let length = transformed
         .iter()
@@ -356,7 +346,12 @@ mod tests {
                 "Light",
                 Transform3d::new(
                     [3.0, 4.0, 5.0],
-                    [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0, std::f32::consts::FRAC_1_SQRT_2],
+                    [
+                        0.0,
+                        std::f32::consts::FRAC_1_SQRT_2,
+                        0.0,
+                        std::f32::consts::FRAC_1_SQRT_2,
+                    ],
                     [1.0; 3],
                 )
                 .unwrap(),
@@ -366,10 +361,7 @@ mod tests {
             entity,
             Some(DirectionalLight::new([0.0, 0.0, -1.0], [1.0; 3], 2.0).unwrap()),
         );
-        scene.set_entity_point_light(
-            entity,
-            Some(PointLight::new([1.0; 3], 3.0, 8.0).unwrap()),
-        );
+        scene.set_entity_point_light(entity, Some(PointLight::new([1.0; 3], 3.0, 8.0).unwrap()));
         scene.set_entity_spot_light(
             entity,
             Some(
