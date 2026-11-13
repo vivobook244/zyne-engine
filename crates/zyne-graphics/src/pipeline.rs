@@ -3,8 +3,8 @@ use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
 use crate::lighting::{
-    DirectionalLightData, LightingData, PointLightData, SpotLightData, MAX_DIRECTIONAL_LIGHTS,
-    MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+    DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+    PointLightData, SpotLightData,
 };
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -156,28 +156,58 @@ impl LightingUniform {
 
 fn directional_light_raw(light: DirectionalLightData) -> DirectionalLightRaw {
     DirectionalLightRaw {
-        direction: [light.direction[0], light.direction[1], light.direction[2], 0.0],
-        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+        direction: [
+            light.direction[0],
+            light.direction[1],
+            light.direction[2],
+            0.0,
+        ],
+        color_intensity: [
+            light.color[0],
+            light.color[1],
+            light.color[2],
+            light.intensity,
+        ],
     }
 }
 
 fn point_light_raw(light: PointLightData) -> PointLightRaw {
     PointLightRaw {
-        position_range: [light.position[0], light.position[1], light.position[2], light.range],
-        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+        position_range: [
+            light.position[0],
+            light.position[1],
+            light.position[2],
+            light.range,
+        ],
+        color_intensity: [
+            light.color[0],
+            light.color[1],
+            light.color[2],
+            light.intensity,
+        ],
     }
 }
 
 fn spot_light_raw(light: SpotLightData) -> SpotLightRaw {
     SpotLightRaw {
-        position_range: [light.position[0], light.position[1], light.position[2], light.range],
+        position_range: [
+            light.position[0],
+            light.position[1],
+            light.position[2],
+            light.range,
+        ],
         direction_inner_cos: [
             light.direction[0],
             light.direction[1],
             light.direction[2],
             light.inner_angle.cos(),
         ],
-        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+        color_intensity: [
+            light.color[0],
+            light.color[1],
+            light.color[2],
+            light.intensity,
+        ],
         outer_cos_padding: [light.outer_angle.cos(), 0.0, 0.0, 0.0],
     }
 }
@@ -462,11 +492,7 @@ impl CubePipeline {
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 
-    pub(super) fn update_lighting(
-        &self,
-        queue: &wgpu::Queue,
-        lighting: Option<&LightingData>,
-    ) {
+    pub(super) fn update_lighting(&self, queue: &wgpu::Queue, lighting: Option<&LightingData>) {
         let default_lighting;
         let lighting = if let Some(lighting) = lighting {
             lighting
