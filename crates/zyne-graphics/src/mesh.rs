@@ -39,7 +39,6 @@ impl GpuMesh {
     }
 }
 
-
 /// One uploaded mesh and the transforms of its scene instances.
 pub struct MeshRenderBatch<'a> {
     mesh: &'a GpuMesh,
