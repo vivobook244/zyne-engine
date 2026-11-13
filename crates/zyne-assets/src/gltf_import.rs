@@ -588,10 +588,7 @@ mod tests {
             indices: vec![0, 1, 2],
         };
 
-        assert_eq!(
-            primitive.resolved_normals(),
-            vec![[0.0, 0.0, 1.0]; 3]
-        );
+        assert_eq!(primitive.resolved_normals(), vec![[0.0, 0.0, 1.0]; 3]);
     }
 
     #[test]
