@@ -8,7 +8,7 @@ mod pipeline;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;
-pub use mesh::{GpuMesh, MeshData, MeshError, MeshVertex};
+pub use mesh::{GpuMesh, MeshData, MeshError, MeshRenderBatch, MeshVertex};
 
 /// Result of attempting to render one window frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
