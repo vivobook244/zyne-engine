@@ -97,7 +97,7 @@ fn normalize_f64_or_up(normal: [f64; 3]) -> [f32; 3] {
         .iter()
         .map(|component| component * component)
         .sum::<f64>();
-    if !length_squared.is_finite() || length_squared <= f64::EPSILON {
+    if !length_squared.is_finite() || length_squared == 0.0 {
         return [0.0, 1.0, 0.0];
     }
 
@@ -571,6 +571,27 @@ mod tests {
         assert_eq!(normals[1], [0.0, diagonal, diagonal]);
         assert_eq!(normals[2], [0.0, 0.0, 1.0]);
         assert_eq!(normals[3], [0.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn generates_normals_for_small_but_non_degenerate_triangles() {
+        let primitive = super::ImportedPrimitive {
+            index: 0,
+            material_index: None,
+            positions: vec![
+                [0.0, 0.0, 0.0],
+                [0.00001, 0.0, 0.0],
+                [0.0, 0.00001, 0.0],
+            ],
+            normals: None,
+            tex_coords_0: None,
+            indices: vec![0, 1, 2],
+        };
+
+        assert_eq!(
+            primitive.resolved_normals(),
+            vec![[0.0, 0.0, 1.0]; 3]
+        );
     }
 
     #[test]
