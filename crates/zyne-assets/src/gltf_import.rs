@@ -82,7 +82,7 @@ impl ImportedPrimitive {
 
         accumulated
             .into_iter()
-            .map(|normal| normalize_f64_or_up(normal))
+            .map(normalize_f64_or_up)
             .collect()
     }
 }
@@ -91,6 +91,7 @@ fn normalize_or_up(normal: [f32; 3]) -> [f32; 3] {
     normalize_f64_or_up(normal.map(f64::from))
 }
 
+#[allow(clippy::cast_possible_truncation)] // The normalized components are bounded to [-1, 1].
 fn normalize_f64_or_up(normal: [f64; 3]) -> [f32; 3] {
     let length_squared = normal
         .iter()
