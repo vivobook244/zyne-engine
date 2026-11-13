@@ -583,17 +583,13 @@ mod tests {
         );
         for face in 0..6 {
             let face_vertices = &vertices[(face * 6)..(face * 6 + 6)];
-            assert!(
-                face_vertices
+            assert!(face_vertices.iter().all(|vertex| {
+                vertex
+                    .normal
                     .iter()
-                    .all(|vertex| {
-                        vertex
-                            .normal
-                            .iter()
-                            .zip(face_vertices[0].normal)
-                            .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
-                    })
-            );
+                    .zip(face_vertices[0].normal)
+                    .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
+            }));
             assert!(
                 (face_vertices[0].normal.iter().map(|n| n * n).sum::<f32>() - 1.0).abs() < 1.0e-6
             );
