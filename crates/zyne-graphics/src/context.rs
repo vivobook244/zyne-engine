@@ -11,7 +11,7 @@ use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
 use crate::{
-    FrameOutcome, GraphicsError,
+    FrameOutcome, GraphicsError, LightingData,
     mesh::{GpuMesh, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
 };
@@ -168,7 +168,7 @@ impl GraphicsContext {
     /// Returns an error when frame acquisition cannot recover or GPU memory is
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(None, None, None, None)
+        self.render_frame_internal(None, None, None, None, None)
     }
 
     /// Renders a frame using a caller-supplied camera.
@@ -180,7 +180,7 @@ impl GraphicsContext {
         &mut self,
         camera: &Camera3d,
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(Some(camera), None, None, None)
+        self.render_frame_internal(Some(camera), None, None, None, None)
     }
 
     /// Renders all supplied transforms as instances of the built-in cube mesh.
@@ -197,7 +197,7 @@ impl GraphicsContext {
         camera: Option<&Camera3d>,
         transforms: &[Transform3d],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, Some(transforms), None, None)
+        self.render_frame_internal(camera, Some(transforms), None, None, None)
     }
 
     /// Renders an uploaded mesh with one or more transforms using indexed drawing.
@@ -215,7 +215,7 @@ impl GraphicsContext {
         mesh: &GpuMesh,
         transforms: &[Transform3d],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, Some(transforms), Some(mesh), None)
+        self.render_frame_internal(camera, Some(transforms), Some(mesh), None, None)
     }
 
     /// Renders multiple uploaded meshes in one frame using instanced indexed draws.
@@ -232,7 +232,21 @@ impl GraphicsContext {
         camera: Option<&Camera3d>,
         batches: &[MeshRenderBatch<'_>],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, None, None, Some(batches))
+        self.render_frame_internal(camera, None, None, Some(batches), None)
+    }
+
+    /// Renders scene mesh batches using the supplied Blinn–Phong lighting snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if instance upload or frame acquisition/presentation fails.
+    pub fn render_frame_with_mesh_batches_and_lighting(
+        &mut self,
+        camera: Option<&Camera3d>,
+        batches: &[MeshRenderBatch<'_>],
+        lighting: &LightingData,
+    ) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(camera, None, None, Some(batches), Some(lighting))
     }
 
     fn render_frame_internal(
@@ -241,6 +255,7 @@ impl GraphicsContext {
         transforms: Option<&[Transform3d]>,
         mesh: Option<&GpuMesh>,
         mesh_batches: Option<&[MeshRenderBatch<'_>]>,
+        lighting: Option<&LightingData>,
     ) -> Result<FrameOutcome, GraphicsError> {
         if self.surface_suspended {
             return Ok(FrameOutcome::Skipped);
@@ -259,6 +274,8 @@ impl GraphicsContext {
             self.surface_config.height,
             camera,
         );
+
+        self.cube_pipeline.update_lighting(&self.queue, lighting);
 
         let batch_transforms = mesh_batches.map(|batches| {
             batches
@@ -323,6 +340,7 @@ impl GraphicsContext {
             render_pass.set_pipeline(self.cube_pipeline.pipeline());
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
+            render_pass.set_bind_group(2, self.cube_pipeline.lighting_bind_group(), &[]);
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
                 for (mesh, instances) in &batch_ranges {
