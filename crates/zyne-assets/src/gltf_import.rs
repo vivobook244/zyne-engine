@@ -92,7 +92,10 @@ fn normalize_or_up(normal: [f32; 3]) -> [f32; 3] {
 }
 
 fn normalize_f64_or_up(normal: [f64; 3]) -> [f32; 3] {
-    let length_squared = normal.iter().map(|component| component * component).sum::<f64>();
+    let length_squared = normal
+        .iter()
+        .map(|component| component * component)
+        .sum::<f64>();
     if !length_squared.is_finite() || length_squared <= f64::EPSILON {
         return [0.0, 1.0, 0.0];
     }
