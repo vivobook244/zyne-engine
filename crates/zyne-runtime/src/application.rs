@@ -5,14 +5,18 @@ use std::{
 };
 
 use zyne_core::{Engine, EngineContext, ZyneError, ZyneResult};
-use zyne_graphics::GraphicsContext;
+use zyne_graphics::{GraphicsContext, MeshData};
+use zyne_math::Camera3d;
 use zyne_platform::{
     PlatformEvent, PlatformWindow, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
 };
 
-use crate::{ApplicationConfig, EventQueue, InputState};
+use crate::{ApplicationConfig, EventQueue, InputState, SceneEngine, SceneMeshRenderer};
 
 const MAX_FIXED_UPDATES_PER_FRAME: u32 = 8;
+
+type SceneRenderHook<E> =
+    Box<dyn FnMut(&E, &mut GraphicsContext, Option<&Camera3d>) -> ZyneResult<()>>;
 
 /// Owns the desktop application configuration and starts the runtime loop.
 #[derive(Debug, Clone)]
@@ -43,6 +47,47 @@ impl Application {
     /// Returns the first runtime, graphics, or platform error. A shutdown error
     /// is returned only when no earlier error occurred.
     pub fn run<E: Engine>(self, engine: E) -> ZyneResult<()> {
+        self.run_with_render_hook(engine, None)
+    }
+
+    /// Runs an engine and automatically renders its scene mesh references.
+    ///
+    /// The engine supplies a scene, its asset registry, and a loaded CPU mesh
+    /// cache through SceneEngine. Mesh uploads are retained by the runtime and
+    /// shared by all entities referencing the same mesh.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first runtime, asset upload, graphics, or platform error.
+    pub fn run_scene<E: SceneEngine>(self, engine: E) -> ZyneResult<()> {
+        let mut renderer = SceneMeshRenderer::new();
+        let hook: SceneRenderHook<E> = Box::new(move |engine, graphics, camera| {
+            renderer
+                .sync_meshes(
+                    graphics,
+                    engine.scene(),
+                    engine.asset_registry(),
+                    engine.mesh_cache(),
+                )
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            renderer
+                .render_scene(
+                    graphics,
+                    engine.scene(),
+                    engine.asset_registry(),
+                    camera,
+                )
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            Ok(())
+        });
+        self.run_with_render_hook(engine, Some(hook))
+    }
+
+    fn run_with_render_hook<E: Engine>(
+        self,
+        engine: E,
+        render_hook: Option<SceneRenderHook<E>>,
+    ) -> ZyneResult<()> {
         let context = EngineContext::new(self.config.engine().clone())?;
         let fixed_delta = 1.0 / f64::from(self.config.engine().fixed_timestep_hz);
         let frame_interval = Duration::from_secs_f64(fixed_delta);
@@ -50,6 +95,7 @@ impl Application {
             engine,
             context,
             graphics: None,
+            render_hook,
             events: EventQueue::new(),
             input: InputState::new(),
             started: false,
@@ -103,6 +149,7 @@ struct RuntimeState<E> {
     engine: E,
     context: EngineContext,
     graphics: Option<GraphicsContext>,
+    render_hook: Option<SceneRenderHook<E>>,
     events: EventQueue,
     input: InputState,
     started: bool,
@@ -307,14 +354,14 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
 }
 
 fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
-    let (camera, render_transforms) = {
+    let camera = {
         let RuntimeState {
             engine,
             context,
             graphics,
             ..
         } = state;
-        let camera = graphics.as_ref().and_then(|graphics| {
+        graphics.as_ref().and_then(|graphics| {
             let (width, height) = graphics.surface_size();
             if height > 0 {
                 #[allow(clippy::cast_precision_loss)]
@@ -323,19 +370,29 @@ fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()
             } else {
                 None
             }
-        });
-        (camera, engine.render_transforms())
+        })
     };
 
-    if let Some(graphics) = state.graphics.as_mut() {
-        let render_result = if let Some(transforms) = render_transforms.as_ref() {
-            graphics.render_frame_with_transforms(camera.as_ref(), transforms)
-        } else if let Some(camera) = camera.as_ref() {
-            graphics.render_frame_with_camera(camera)
+    let RuntimeState {
+        engine,
+        graphics,
+        render_hook,
+        ..
+    } = state;
+    if let Some(graphics) = graphics.as_mut() {
+        if let Some(render_hook) = render_hook.as_mut() {
+            render_hook(engine, graphics, camera.as_ref())?;
         } else {
-            graphics.render_frame()
-        };
-        render_result.map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            let render_transforms = engine.render_transforms();
+            let render_result = if let Some(transforms) = render_transforms.as_ref() {
+                graphics.render_frame_with_transforms(camera.as_ref(), transforms)
+            } else if let Some(camera) = camera.as_ref() {
+                graphics.render_frame_with_camera(camera)
+            } else {
+                graphics.render_frame()
+            };
+            render_result.map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+        }
     }
 
     Ok(())
