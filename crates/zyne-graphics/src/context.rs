@@ -118,8 +118,8 @@ impl GraphicsContext {
     /// Returns an error if a buffer exceeds device limits or the index count
     /// cannot be represented by the indexed draw API.
     pub fn create_mesh(&self, data: &MeshData) -> Result<GpuMesh, GraphicsError> {
-        let vertex_count = u64::try_from(data.vertices().len())
-            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let vertex_count =
+            u64::try_from(data.vertices().len()).map_err(|_| GraphicsError::MeshBufferTooLarge)?;
         let vertex_stride = u64::try_from(std::mem::size_of::<crate::MeshVertex>())
             .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
         let vertex_size = vertex_count
