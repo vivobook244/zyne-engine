@@ -842,12 +842,13 @@ mod tests {
     fn lighting_uniform_caps_light_counts_to_gpu_capacity() {
         use super::LightingUniform;
         use crate::lighting::{
-            DirectionalLightData, LightingData, PointLightData, SpotLightData,
-            MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+            DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS,
+            MAX_SPOT_LIGHTS, PointLightData, SpotLightData,
         };
 
         let mut lighting = LightingData::with_ambient([0.1; 3]);
-        lighting.directional_lights = vec![DirectionalLightData::default(); MAX_DIRECTIONAL_LIGHTS + 2];
+        lighting.directional_lights =
+            vec![DirectionalLightData::default(); MAX_DIRECTIONAL_LIGHTS + 2];
         lighting.point_lights = vec![PointLightData::default(); MAX_POINT_LIGHTS + 2];
         lighting.spot_lights = vec![SpotLightData::default(); MAX_SPOT_LIGHTS + 2];
 
