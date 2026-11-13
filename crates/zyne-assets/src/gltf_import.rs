@@ -80,10 +80,7 @@ impl ImportedPrimitive {
             }
         }
 
-        accumulated
-            .into_iter()
-            .map(normalize_f64_or_up)
-            .collect()
+        accumulated.into_iter().map(normalize_f64_or_up).collect()
     }
 }
 
@@ -578,11 +575,7 @@ mod tests {
         let primitive = super::ImportedPrimitive {
             index: 0,
             material_index: None,
-            positions: vec![
-                [0.0, 0.0, 0.0],
-                [0.00001, 0.0, 0.0],
-                [0.0, 0.00001, 0.0],
-            ],
+            positions: vec![[0.0, 0.0, 0.0], [0.00001, 0.0, 0.0], [0.0, 0.00001, 0.0]],
             normals: None,
             tex_coords_0: None,
             indices: vec![0, 1, 2],
