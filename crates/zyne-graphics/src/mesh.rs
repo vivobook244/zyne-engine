@@ -3,7 +3,7 @@ use std::{error::Error, fmt};
 
 /// A mesh uploaded to a specific graphics device.
 ///
-/// GPU meshes are created by GraphicsContext::create_mesh and reused across frames.
+/// GPU meshes are created by `GraphicsContext::create_mesh` and reused across frames.
 pub struct GpuMesh {
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) index_buffer: wgpu::Buffer,
