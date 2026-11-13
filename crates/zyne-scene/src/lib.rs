@@ -76,6 +76,12 @@ pub struct SceneEntityDocument {
     transform: Transform3d,
     #[serde(default)]
     asset_references: Vec<ResourceId>,
+    #[serde(default)]
+    directional_light: Option<DirectionalLight>,
+    #[serde(default)]
+    point_light: Option<PointLight>,
+    #[serde(default)]
+    spot_light: Option<SpotLight>,
 }
 
 impl SceneEntityDocument {
@@ -107,6 +113,9 @@ impl SceneEntityDocument {
             name,
             transform,
             asset_references: Vec::new(),
+            directional_light: None,
+            point_light: None,
+            spot_light: None,
         })
     }
 
@@ -129,6 +138,39 @@ impl SceneEntityDocument {
     #[must_use]
     pub fn asset_references(&self) -> &[ResourceId] {
         &self.asset_references
+    }
+
+    /// Returns the directional light attached to this entity document.
+    #[must_use]
+    pub const fn directional_light(&self) -> Option<DirectionalLight> {
+        self.directional_light
+    }
+
+    /// Sets or removes the directional light attached to this entity document.
+    pub fn set_directional_light(&mut self, light: Option<DirectionalLight>) {
+        self.directional_light = light;
+    }
+
+    /// Returns the point light attached to this entity document.
+    #[must_use]
+    pub const fn point_light(&self) -> Option<PointLight> {
+        self.point_light
+    }
+
+    /// Sets or removes the point light attached to this entity document.
+    pub fn set_point_light(&mut self, light: Option<PointLight>) {
+        self.point_light = light;
+    }
+
+    /// Returns the spot light attached to this entity document.
+    #[must_use]
+    pub const fn spot_light(&self) -> Option<SpotLight> {
+        self.spot_light
+    }
+
+    /// Sets or removes the spot light attached to this entity document.
+    pub fn set_spot_light(&mut self, light: Option<SpotLight>) {
+        self.spot_light = light;
     }
 
     /// Adds a persistent asset reference while rejecting duplicates.
@@ -349,6 +391,32 @@ mod tests {
         assert_eq!(scene.entities().len(), 2);
         assert_ne!(scene.entities()[0].id(), scene.entities()[1].id());
         assert_eq!(scene.validate(), Ok(()));
+    }
+
+    #[test]
+    fn entity_document_preserves_all_light_components_in_ron() {
+        let mut entity =
+            SceneEntityDocument::new("Light Entity", Transform3d::identity()).unwrap();
+        let directional = DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 2.0).unwrap();
+        let point = PointLight::new([1.0, 0.5, 0.25], 3.0, 12.0).unwrap();
+        let spot = SpotLight::new(
+            [0.0, 0.0, -1.0],
+            [1.0; 3],
+            4.0,
+            20.0,
+            15.0_f32.to_radians(),
+            30.0_f32.to_radians(),
+        )
+        .unwrap();
+        entity.set_directional_light(Some(directional));
+        entity.set_point_light(Some(point));
+        entity.set_spot_light(Some(spot));
+
+        let encoded = ron::ser::to_string(&entity).unwrap();
+        let decoded: SceneEntityDocument = ron::de::from_str(&encoded).unwrap();
+        assert_eq!(decoded.directional_light(), Some(directional));
+        assert_eq!(decoded.point_light(), Some(point));
+        assert_eq!(decoded.spot_light(), Some(spot));
     }
 
     #[test]
