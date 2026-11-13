@@ -1,5 +1,6 @@
 //! Renderer-independent light parameters for scene and rendering systems.
 
+use bevy_ecs::component::Component;
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 /// Validation errors for light parameters.
@@ -51,7 +52,7 @@ impl std::error::Error for LightError {}
 /// A directional light whose direction points along the light rays.
 ///
 /// Color is linear RGB. Values above one are allowed for HDR workflows.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct DirectionalLight {
     direction: [f32; 3],
     color: [f32; 3],
