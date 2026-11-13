@@ -355,6 +355,9 @@ impl Scene {
                     entity.add_asset_reference(*resource_id)?;
                 }
             }
+            entity.set_directional_light(self.entity_directional_light(id));
+            entity.set_point_light(self.entity_point_light(id));
+            entity.set_spot_light(self.entity_spot_light(id));
             document.add_entity(entity)?;
         }
         document.validate()?;
@@ -376,6 +379,9 @@ impl Scene {
             if !references.is_empty() {
                 scene.set_entity_asset_references(entity.id(), references)?;
             }
+            scene.set_entity_directional_light(entity.id(), entity.directional_light());
+            scene.set_entity_point_light(entity.id(), entity.point_light());
+            scene.set_entity_spot_light(entity.id(), entity.spot_light());
         }
         Ok(scene)
     }
