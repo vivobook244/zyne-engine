@@ -65,7 +65,7 @@ impl MeshData {
 
         let vertex_count = vertices.len();
         for &index in &indices {
-            if usize::try_from(index).map_or(true, |value| value >= vertex_count) {
+            if !usize::try_from(index).is_ok_and(|value| value < vertex_count) {
                 return Err(MeshError::IndexOutOfBounds { index, vertex_count });
             }
         }
