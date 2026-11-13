@@ -125,8 +125,8 @@ impl GraphicsContext {
         let vertex_size = vertex_count
             .checked_mul(vertex_stride)
             .ok_or(GraphicsError::MeshBufferTooLarge)?;
-        let index_count = u32::try_from(data.indices().len())
-            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let index_count =
+            u32::try_from(data.indices().len()).map_err(|_| GraphicsError::MeshBufferTooLarge)?;
         let index_stride = u64::try_from(std::mem::size_of::<u32>())
             .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
         let index_size = u64::try_from(data.indices().len())
@@ -140,16 +140,20 @@ impl GraphicsContext {
             return Err(GraphicsError::MeshBufferTooLarge);
         }
 
-        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ZYNE Mesh Vertex Buffer"),
-            contents: bytemuck::cast_slice(data.vertices()),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ZYNE Mesh Index Buffer"),
-            contents: bytemuck::cast_slice(data.indices()),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ZYNE Mesh Vertex Buffer"),
+                contents: bytemuck::cast_slice(data.vertices()),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ZYNE Mesh Index Buffer"),
+                contents: bytemuck::cast_slice(data.indices()),
+                usage: wgpu::BufferUsages::INDEX,
+            });
 
         Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count))
     }
@@ -279,7 +283,8 @@ impl GraphicsContext {
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if let Some(mesh) = mesh {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                render_pass.set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass
+                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
             } else {
                 render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
