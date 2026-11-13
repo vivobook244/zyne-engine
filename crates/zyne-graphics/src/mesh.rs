@@ -1,6 +1,39 @@
 use bytemuck::{Pod, Zeroable};
 use std::{error::Error, fmt};
 
+/// A mesh uploaded to a specific graphics device.
+///
+/// GPU meshes are created by GraphicsContext::create_mesh and reused across frames.
+pub struct GpuMesh {
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
+    index_count: u32,
+}
+
+impl GpuMesh {
+    pub(crate) const fn new(
+        vertex_buffer: wgpu::Buffer,
+        index_buffer: wgpu::Buffer,
+        index_count: u32,
+    ) -> Self {
+        Self { vertex_buffer, index_buffer, index_count }
+    }
+
+    /// Returns the number of indices submitted by the indexed draw call.
+    #[must_use]
+    pub const fn index_count(&self) -> u32 {
+        self.index_count
+    }
+
+    pub(crate) const fn vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.vertex_buffer
+    }
+
+    pub(crate) const fn index_buffer(&self) -> &wgpu::Buffer {
+        &self.index_buffer
+    }
+}
+
 /// One renderer-facing vertex with position, linear color, UV, and normal data.
 ///
 /// The memory layout matches the vertex attributes consumed by the basic 3D
