@@ -56,9 +56,12 @@ impl InstanceRaw {
 
     fn from_transform(transform: Transform3d) -> Self {
         let model = transform.to_matrix();
+        let rotation = Transform3d::new([0.0; 3], transform.rotation(), [1.0; 3])
+            .expect("a validated transform rotation must remain valid")
+            .to_matrix();
         Self {
             model,
-            normal_matrix: normal_matrix_from_model(model, transform.scale()),
+            normal_matrix: normal_matrix_from_model(model, transform.scale(), rotation),
         }
     }
 }
@@ -80,9 +83,9 @@ const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, 0.7],
         ],
     ),
-        [0.0, 0.0, -1.0],
     (
         [0.22, 0.72, 0.95],
+        [0.0, 0.0, -1.0],
         [
             [0.7, -0.7, -0.7],
             [-0.7, -0.7, -0.7],
@@ -90,9 +93,9 @@ const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
             [0.7, 0.7, -0.7],
         ],
     ),
-        [1.0, 0.0, 0.0],
     (
         [0.30, 0.85, 0.48],
+        [1.0, 0.0, 0.0],
         [
             [0.7, -0.7, 0.7],
             [0.7, -0.7, -0.7],
@@ -100,9 +103,9 @@ const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
             [0.7, 0.7, 0.7],
         ],
     ),
-        [-1.0, 0.0, 0.0],
     (
         [0.95, 0.72, 0.24],
+        [-1.0, 0.0, 0.0],
         [
             [-0.7, -0.7, -0.7],
             [-0.7, -0.7, 0.7],
@@ -110,9 +113,9 @@ const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, -0.7],
         ],
     ),
-        [0.0, 1.0, 0.0],
     (
         [0.68, 0.42, 0.92],
+        [0.0, 1.0, 0.0],
         [
             [-0.7, 0.7, 0.7],
             [0.7, 0.7, 0.7],
@@ -120,9 +123,9 @@ const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, -0.7],
         ],
     ),
-        [0.0, -1.0, 0.0],
     (
         [0.24, 0.78, 0.82],
+        [0.0, -1.0, 0.0],
         [
             [-0.7, -0.7, -0.7],
             [0.7, -0.7, -0.7],
@@ -326,7 +329,7 @@ impl CubePipeline {
                 let model = rotation_y(0.15);
                 vec![InstanceRaw {
                     model,
-                    normal_matrix: normal_matrix_from_model(model, [1.0; 3]),
+                    normal_matrix: normal_matrix_from_model(model, [1.0; 3], model),
                 }]
             },
         };
@@ -536,27 +539,14 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
 /// Singular or near-singular scales use the rotation-only basis so the GPU
 /// never receives infinities or NaNs. Lighting for such collapsed geometry is
 /// necessarily approximate because a singular transform has no unique normal matrix.
-fn normal_matrix_from_model(model: [[f32; 4]; 4], scale: [f32; 3]) -> [[f32; 4]; 3] {
+fn normal_matrix_from_model(
+    model: [[f32; 4]; 4],
+    scale: [f32; 3],
+    rotation: [[f32; 4]; 4],
+) -> [[f32; 4]; 3] {
     const MIN_ABS_SCALE: f32 = 1.0e-6;
     let singular = scale.iter().any(|component| component.abs() < MIN_ABS_SCALE);
-    let source = if singular {
-        // Remove scale from the model basis by normalizing each column.
-        let mut rotation = model;
-        for column in 0..3 {
-            let length = (0..3)
-                .map(|row| rotation[column][row] * rotation[column][row])
-                .sum::<f32>()
-                .sqrt();
-            if length > MIN_ABS_SCALE {
-                for row in 0..3 {
-                    rotation[column][row] /= length;
-                }
-            }
-        }
-        rotation
-    } else {
-        model
-    };
+    let source = if singular { rotation } else { model };
 
     let mut normal = [[0.0; 4]; 3];
     for column in 0..3 {
