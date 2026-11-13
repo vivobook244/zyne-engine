@@ -10,8 +10,8 @@ mod pipeline;
 pub use context::GraphicsContext;
 pub use error::GraphicsError;
 pub use lighting::{
-    DirectionalLightData, LightingData, PointLightData, SpotLightData, MAX_DIRECTIONAL_LIGHTS,
-    MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+    DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+    PointLightData, SpotLightData,
 };
 pub use mesh::{GpuMesh, MeshData, MeshError, MeshRenderBatch, MeshVertex};
 
