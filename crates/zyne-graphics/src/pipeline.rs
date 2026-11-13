@@ -767,8 +767,8 @@ mod tests {
 
     #[test]
     fn lighting_uniform_uploads_supported_light_counts_and_parameters() {
-        use crate::lighting::{DirectionalLightData, LightingData, PointLightData, SpotLightData};
         use super::LightingUniform;
+        use crate::lighting::{DirectionalLightData, LightingData, PointLightData, SpotLightData};
 
         let mut lighting = LightingData::with_ambient([0.1, 0.2, 0.3]);
         lighting.directional_lights.push(DirectionalLightData {
@@ -795,21 +795,36 @@ mod tests {
         let uniform = LightingUniform::from_data(&lighting);
         assert_eq!(uniform.ambient_color, [0.1, 0.2, 0.3, 1.0]);
         assert_eq!(uniform.counts, [1, 1, 1, 0]);
-        assert_eq!(uniform.directional_lights[0].direction, [0.0, -1.0, 0.0, 0.0]);
-        assert_eq!(uniform.directional_lights[0].color_intensity, [1.0, 0.8, 0.6, 2.0]);
-        assert_eq!(uniform.point_lights[0].position_range, [1.0, 2.0, 3.0, 12.0]);
+        assert_eq!(
+            uniform.directional_lights[0].direction,
+            [0.0, -1.0, 0.0, 0.0]
+        );
+        assert_eq!(
+            uniform.directional_lights[0].color_intensity,
+            [1.0, 0.8, 0.6, 2.0]
+        );
+        assert_eq!(
+            uniform.point_lights[0].position_range,
+            [1.0, 2.0, 3.0, 12.0]
+        );
         assert_eq!(uniform.spot_lights[0].position_range, [4.0, 5.0, 6.0, 20.0]);
-        assert!((uniform.spot_lights[0].direction_inner_cos[3] - 15.0_f32.to_radians().cos()).abs() < 1.0e-6);
-        assert!((uniform.spot_lights[0].outer_cos_padding[0] - 30.0_f32.to_radians().cos()).abs() < 1.0e-6);
+        assert!(
+            (uniform.spot_lights[0].direction_inner_cos[3] - 15.0_f32.to_radians().cos()).abs()
+                < 1.0e-6
+        );
+        assert!(
+            (uniform.spot_lights[0].outer_cos_padding[0] - 30.0_f32.to_radians().cos()).abs()
+                < 1.0e-6
+        );
     }
 
     #[test]
     fn lighting_uniform_caps_light_counts_to_gpu_capacity() {
+        use super::LightingUniform;
         use crate::lighting::{
             DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS,
             MAX_SPOT_LIGHTS, PointLightData, SpotLightData,
         };
-        use super::LightingUniform;
 
         let mut lighting = LightingData::with_ambient([0.1; 3]);
         lighting.directional_lights = vec![DirectionalLightData {
