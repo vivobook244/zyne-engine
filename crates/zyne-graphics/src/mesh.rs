@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use std::{error::Error, fmt};
+use zyne_math::Transform3d;
 
 /// A mesh uploaded to a specific graphics device.
 ///
@@ -35,6 +36,33 @@ impl GpuMesh {
 
     pub(crate) const fn index_buffer(&self) -> &wgpu::Buffer {
         &self.index_buffer
+    }
+}
+
+
+/// One uploaded mesh and the transforms of its scene instances.
+pub struct MeshRenderBatch<'a> {
+    mesh: &'a GpuMesh,
+    transforms: &'a [Transform3d],
+}
+
+impl<'a> MeshRenderBatch<'a> {
+    /// Creates a batch for one mesh and its instance transforms.
+    #[must_use]
+    pub const fn new(mesh: &'a GpuMesh, transforms: &'a [Transform3d]) -> Self {
+        Self { mesh, transforms }
+    }
+
+    /// Returns the uploaded mesh used by this batch.
+    #[must_use]
+    pub const fn mesh(&self) -> &'a GpuMesh {
+        self.mesh
+    }
+
+    /// Returns the transforms submitted for this mesh.
+    #[must_use]
+    pub const fn transforms(&self) -> &'a [Transform3d] {
+        self.transforms
     }
 }
 
