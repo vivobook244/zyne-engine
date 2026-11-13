@@ -8,7 +8,7 @@ pub const MAX_POINT_LIGHTS: usize = 16;
 pub const MAX_SPOT_LIGHTS: usize = 8;
 
 /// A directional light snapshot in world space.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DirectionalLightData {
     pub direction: [f32; 3],
     pub color: [f32; 3],
