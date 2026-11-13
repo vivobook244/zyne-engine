@@ -392,9 +392,9 @@ mod tests {
         let scene = Scene::new("Ambient Only").unwrap();
         let lighting = super::collect_scene_lighting(&scene);
         assert_eq!(lighting.ambient_color, [0.16, 0.16, 0.18]);
-        assert!(lighting.directional_lights.is_empty());
-        assert!(lighting.point_lights.is_empty());
-        assert!(lighting.spot_lights.is_empty());
+        assert_eq!(lighting.directional_lights.as_slice(), &[]);
+        assert_eq!(lighting.point_lights.as_slice(), &[]);
+        assert_eq!(lighting.spot_lights.as_slice(), &[]);
     }
 
     #[test]
