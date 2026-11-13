@@ -548,7 +548,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn generates_area_weighted_normals_for_missing_source_normals() {
         let primitive = super::ImportedPrimitive {
