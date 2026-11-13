@@ -1,5 +1,6 @@
 //! Scene identity and serializable document contracts for ZYNE.
 
+mod lighting;
 mod world;
 
 use std::collections::HashSet;
@@ -9,6 +10,7 @@ use uuid::Uuid;
 use zyne_core::ResourceId;
 use zyne_math::Transform3d;
 
+pub use lighting::{DirectionalLight, LightError, PointLight, SpotLight};
 pub use world::{Scene, SceneLoadError, SceneSaveError};
 
 const CURRENT_SCENE_SCHEMA_VERSION: u32 = 1;
