@@ -740,6 +740,86 @@ mod tests {
     };
 
     #[test]
+    fn lighting_uniform_uploads_supported_light_counts_and_parameters() {
+        use crate::lighting::{DirectionalLightData, LightingData, PointLightData, SpotLightData};
+        use super::LightingUniform;
+
+        let mut lighting = LightingData::with_ambient([0.1, 0.2, 0.3]);
+        lighting.directional_lights.push(DirectionalLightData {
+            direction: [0.0, -1.0, 0.0],
+            color: [1.0, 0.8, 0.6],
+            intensity: 2.0,
+        });
+        lighting.point_lights.push(PointLightData {
+            position: [1.0, 2.0, 3.0],
+            color: [0.5, 0.6, 0.7],
+            intensity: 3.0,
+            range: 12.0,
+        });
+        lighting.spot_lights.push(SpotLightData {
+            position: [4.0, 5.0, 6.0],
+            direction: [0.0, 0.0, -1.0],
+            color: [0.9, 0.8, 0.7],
+            intensity: 4.0,
+            range: 20.0,
+            inner_angle: 15.0_f32.to_radians(),
+            outer_angle: 30.0_f32.to_radians(),
+        });
+
+        let uniform = LightingUniform::from_data(&lighting);
+        assert_eq!(uniform.ambient_color, [0.1, 0.2, 0.3, 1.0]);
+        assert_eq!(uniform.counts, [1, 1, 1, 0]);
+        assert_eq!(uniform.directional_lights[0].direction, [0.0, -1.0, 0.0, 0.0]);
+        assert_eq!(uniform.directional_lights[0].color_intensity, [1.0, 0.8, 0.6, 2.0]);
+        assert_eq!(uniform.point_lights[0].position_range, [1.0, 2.0, 3.0, 12.0]);
+        assert_eq!(uniform.spot_lights[0].position_range, [4.0, 5.0, 6.0, 20.0]);
+        assert!((uniform.spot_lights[0].direction_inner_cos[3] - 15.0_f32.to_radians().cos()).abs() < 1.0e-6);
+        assert!((uniform.spot_lights[0].outer_cos_padding[0] - 30.0_f32.to_radians().cos()).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn lighting_uniform_caps_light_counts_to_gpu_capacity() {
+        use crate::lighting::{
+            DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS,
+            MAX_SPOT_LIGHTS, PointLightData, SpotLightData,
+        };
+        use super::LightingUniform;
+
+        let mut lighting = LightingData::with_ambient([0.1; 3]);
+        lighting.directional_lights = vec![DirectionalLightData {
+            direction: [0.0, -1.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+        }; MAX_DIRECTIONAL_LIGHTS + 2];
+        lighting.point_lights = vec![PointLightData {
+            position: [0.0; 3],
+            color: [1.0; 3],
+            intensity: 1.0,
+            range: 5.0,
+        }; MAX_POINT_LIGHTS + 2];
+        lighting.spot_lights = vec![SpotLightData {
+            position: [0.0; 3],
+            direction: [0.0, 0.0, -1.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+            range: 5.0,
+            inner_angle: 0.2,
+            outer_angle: 0.4,
+        }; MAX_SPOT_LIGHTS + 2];
+
+        let uniform = LightingUniform::from_data(&lighting);
+        assert_eq!(
+            uniform.counts,
+            [
+                MAX_DIRECTIONAL_LIGHTS as u32,
+                MAX_POINT_LIGHTS as u32,
+                MAX_SPOT_LIGHTS as u32,
+                0,
+            ]
+        );
+    }
+
+    #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
         let vertices = cube_vertices();
         assert_eq!(vertices.len(), 36);
