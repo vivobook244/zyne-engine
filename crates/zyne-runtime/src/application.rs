@@ -71,12 +71,7 @@ impl Application {
                 )
                 .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
             renderer
-                .render_scene(
-                    graphics,
-                    engine.scene(),
-                    engine.asset_registry(),
-                    camera,
-                )
+                .render_scene(graphics, engine.scene(), engine.asset_registry(), camera)
                 .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
             Ok(())
         });
