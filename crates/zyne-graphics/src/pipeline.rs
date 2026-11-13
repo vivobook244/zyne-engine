@@ -2,6 +2,11 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
+use crate::lighting::{
+    DirectionalLightData, LightingData, PointLightData, SpotLightData, MAX_DIRECTIONAL_LIGHTS,
+    MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
+};
+
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const CHECKER_TEXTURE_SIZE: u32 = 64;
 const CHECKER_TILE_SIZE: u32 = 8;
@@ -70,6 +75,111 @@ impl InstanceRaw {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct CameraUniform {
     view_projection: [[f32; 4]; 4],
+    camera_position: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct DirectionalLightRaw {
+    direction: [f32; 4],
+    color_intensity: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct PointLightRaw {
+    position_range: [f32; 4],
+    color_intensity: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct SpotLightRaw {
+    position_range: [f32; 4],
+    direction_inner_cos: [f32; 4],
+    color_intensity: [f32; 4],
+    outer_cos_padding: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct LightingUniform {
+    ambient_color: [f32; 4],
+    counts: [u32; 4],
+    directional_lights: [DirectionalLightRaw; MAX_DIRECTIONAL_LIGHTS],
+    point_lights: [PointLightRaw; MAX_POINT_LIGHTS],
+    spot_lights: [SpotLightRaw; MAX_SPOT_LIGHTS],
+}
+
+impl LightingUniform {
+    fn from_data(data: &LightingData) -> Self {
+        let mut uniform = Self::zeroed();
+        uniform.ambient_color = [
+            data.ambient_color[0],
+            data.ambient_color[1],
+            data.ambient_color[2],
+            1.0,
+        ];
+        let directional_count = data.directional_lights.len().min(MAX_DIRECTIONAL_LIGHTS);
+        let point_count = data.point_lights.len().min(MAX_POINT_LIGHTS);
+        let spot_count = data.spot_lights.len().min(MAX_SPOT_LIGHTS);
+        uniform.counts = [
+            u32::try_from(directional_count).unwrap_or(MAX_DIRECTIONAL_LIGHTS as u32),
+            u32::try_from(point_count).unwrap_or(MAX_POINT_LIGHTS as u32),
+            u32::try_from(spot_count).unwrap_or(MAX_SPOT_LIGHTS as u32),
+            0,
+        ];
+        for (target, source) in uniform
+            .directional_lights
+            .iter_mut()
+            .zip(data.directional_lights.iter().take(directional_count))
+        {
+            *target = directional_light_raw(*source);
+        }
+        for (target, source) in uniform
+            .point_lights
+            .iter_mut()
+            .zip(data.point_lights.iter().take(point_count))
+        {
+            *target = point_light_raw(*source);
+        }
+        for (target, source) in uniform
+            .spot_lights
+            .iter_mut()
+            .zip(data.spot_lights.iter().take(spot_count))
+        {
+            *target = spot_light_raw(*source);
+        }
+        uniform
+    }
+}
+
+fn directional_light_raw(light: DirectionalLightData) -> DirectionalLightRaw {
+    DirectionalLightRaw {
+        direction: [light.direction[0], light.direction[1], light.direction[2], 0.0],
+        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+    }
+}
+
+fn point_light_raw(light: PointLightData) -> PointLightRaw {
+    PointLightRaw {
+        position_range: [light.position[0], light.position[1], light.position[2], light.range],
+        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+    }
+}
+
+fn spot_light_raw(light: SpotLightData) -> SpotLightRaw {
+    SpotLightRaw {
+        position_range: [light.position[0], light.position[1], light.position[2], light.range],
+        direction_inner_cos: [
+            light.direction[0],
+            light.direction[1],
+            light.direction[2],
+            light.inner_angle.cos(),
+        ],
+        color_intensity: [light.color[0], light.color[1], light.color[2], light.intensity],
+        outer_cos_padding: [light.outer_angle.cos(), 0.0, 0.0, 0.0],
+    }
 }
 
 type CubeFace = ([f32; 3], [f32; 3], [[f32; 3]; 4]);
@@ -167,6 +277,8 @@ pub(super) struct CubePipeline {
     vertex_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    lighting_buffer: wgpu::Buffer,
+    lighting_bind_group: wgpu::BindGroup,
     checker_texture: CheckerTexture,
     instance_buffer: wgpu::Buffer,
     instance_capacity: usize,
@@ -199,6 +311,7 @@ impl CubePipeline {
             label: Some("ZYNE Camera Uniform"),
             contents: bytemuck::bytes_of(&CameraUniform {
                 view_projection: identity_matrix(),
+                camera_position: [4.0, 2.8, 4.0, 1.0],
             }),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
@@ -211,10 +324,36 @@ impl CubePipeline {
             }],
         });
 
+        let lighting_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ZYNE Lighting Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        let lighting_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Lighting Uniform"),
+            contents: bytemuck::bytes_of(&LightingUniform::from_data(&LightingData::default())),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let lighting_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ZYNE Lighting Bind Group"),
+            layout: &lighting_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: lighting_buffer.as_entire_binding(),
+            }],
+        });
         let checker_texture = create_checker_texture(device, queue);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
-            bind_group_layouts: &[&camera_layout, &checker_texture.layout],
+            bind_group_layouts: &[&camera_layout, &checker_texture.layout, &lighting_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -273,6 +412,8 @@ impl CubePipeline {
             vertex_buffer,
             camera_buffer,
             camera_bind_group,
+            lighting_buffer,
+            lighting_bind_group,
             checker_texture,
             instance_buffer,
             instance_capacity: 1,
@@ -311,8 +452,30 @@ impl CubePipeline {
 
         let uniform = CameraUniform {
             view_projection: camera.view_projection_matrix(),
+            camera_position: [
+                camera.position()[0],
+                camera.position()[1],
+                camera.position()[2],
+                1.0,
+            ],
         };
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    pub(super) fn update_lighting(
+        &self,
+        queue: &wgpu::Queue,
+        lighting: Option<&LightingData>,
+    ) {
+        let default_lighting;
+        let lighting = if let Some(lighting) = lighting {
+            lighting
+        } else {
+            default_lighting = LightingData::default();
+            &default_lighting
+        };
+        let uniform = LightingUniform::from_data(lighting);
+        queue.write_buffer(&self.lighting_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 
     pub(super) fn update_instances(
@@ -381,6 +544,10 @@ impl CubePipeline {
 
     pub(super) const fn texture_bind_group(&self) -> &wgpu::BindGroup {
         &self.checker_texture.bind_group
+    }
+
+    pub(super) const fn lighting_bind_group(&self) -> &wgpu::BindGroup {
+        &self.lighting_bind_group
     }
 
     pub(super) const fn instance_buffer(&self) -> &wgpu::Buffer {
