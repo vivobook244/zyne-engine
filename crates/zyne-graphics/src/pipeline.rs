@@ -826,8 +826,7 @@ mod tests {
         };
 
         let mut lighting = LightingData::with_ambient([0.1; 3]);
-        lighting.directional_lights =
-            vec![Default::default(); MAX_DIRECTIONAL_LIGHTS + 2];
+        lighting.directional_lights = vec![Default::default(); MAX_DIRECTIONAL_LIGHTS + 2];
         lighting.point_lights = vec![Default::default(); MAX_POINT_LIGHTS + 2];
         lighting.spot_lights = vec![Default::default(); MAX_SPOT_LIGHTS + 2];
 
