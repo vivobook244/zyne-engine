@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use wgpu::util::DeviceExt;
 use wgpu::{
     Adapter, AdapterInfo, Color, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance,
     Limits, LoadOp, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
@@ -9,7 +10,11 @@ use wgpu::{
 use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
-use crate::{FrameOutcome, GraphicsError, pipeline::CubePipeline};
+use crate::{
+    FrameOutcome, GraphicsError,
+    mesh::{GpuMesh, MeshData},
+    pipeline::CubePipeline,
+};
 
 const DEFAULT_CLEAR_COLOR: Color = Color {
     r: 0.055,
@@ -106,6 +111,49 @@ impl GraphicsContext {
         })
     }
 
+    /// Uploads validated CPU mesh data into reusable GPU vertex and index buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a buffer exceeds device limits or the index count
+    /// cannot be represented by the indexed draw API.
+    pub fn create_mesh(&self, data: &MeshData) -> Result<GpuMesh, GraphicsError> {
+        let vertex_count = u64::try_from(data.vertices().len())
+            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let vertex_stride = u64::try_from(std::mem::size_of::<crate::MeshVertex>())
+            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let vertex_size = vertex_count
+            .checked_mul(vertex_stride)
+            .ok_or(GraphicsError::MeshBufferTooLarge)?;
+        let index_count = u32::try_from(data.indices().len())
+            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let index_stride = u64::try_from(std::mem::size_of::<u32>())
+            .map_err(|_| GraphicsError::MeshBufferTooLarge)?;
+        let index_size = u64::try_from(data.indices().len())
+            .map_err(|_| GraphicsError::MeshBufferTooLarge)?
+            .checked_mul(index_stride)
+            .ok_or(GraphicsError::MeshBufferTooLarge)?;
+
+        if vertex_size > self.device.limits().max_buffer_size
+            || index_size > self.device.limits().max_buffer_size
+        {
+            return Err(GraphicsError::MeshBufferTooLarge);
+        }
+
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Mesh Vertex Buffer"),
+            contents: bytemuck::cast_slice(data.vertices()),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Mesh Index Buffer"),
+            contents: bytemuck::cast_slice(data.indices()),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count))
+    }
+
     /// Acquires a surface frame, clears it, submits GPU work, and presents it.
     ///
     /// Lost and outdated surfaces are reconfigured and retried once. A timeout
@@ -116,7 +164,7 @@ impl GraphicsContext {
     /// Returns an error when frame acquisition cannot recover or GPU memory is
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(None, None)
+        self.render_frame_internal(None, None, None)
     }
 
     /// Renders a frame using a caller-supplied camera.
@@ -128,7 +176,7 @@ impl GraphicsContext {
         &mut self,
         camera: &Camera3d,
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(Some(camera), None)
+        self.render_frame_internal(Some(camera), None, None)
     }
 
     /// Renders all supplied transforms as instances of the built-in cube mesh.
@@ -145,13 +193,32 @@ impl GraphicsContext {
         camera: Option<&Camera3d>,
         transforms: &[Transform3d],
     ) -> Result<FrameOutcome, GraphicsError> {
-        self.render_frame_internal(camera, Some(transforms))
+        self.render_frame_internal(camera, Some(transforms), None)
+    }
+
+    /// Renders an uploaded mesh with one or more transforms using indexed drawing.
+    ///
+    /// The mesh must have been uploaded by this graphics context. All supplied
+    /// transforms are submitted in a single instanced indexed draw call.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the instance buffer exceeds device limits or frame
+    /// acquisition/presentation fails.
+    pub fn render_frame_with_mesh(
+        &mut self,
+        camera: Option<&Camera3d>,
+        mesh: &GpuMesh,
+        transforms: &[Transform3d],
+    ) -> Result<FrameOutcome, GraphicsError> {
+        self.render_frame_internal(camera, Some(transforms), Some(mesh))
     }
 
     fn render_frame_internal(
         &mut self,
         camera: Option<&Camera3d>,
         transforms: Option<&[Transform3d]>,
+        mesh: Option<&GpuMesh>,
     ) -> Result<FrameOutcome, GraphicsError> {
         if self.surface_suspended {
             return Ok(FrameOutcome::Skipped);
@@ -209,9 +276,15 @@ impl GraphicsContext {
             render_pass.set_pipeline(self.cube_pipeline.pipeline());
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
-            render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
-            render_pass.draw(0..36, 0..instance_count);
+            if let Some(mesh) = mesh {
+                render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+                render_pass.set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
+            } else {
+                render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
+                render_pass.draw(0..36, 0..instance_count);
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));
