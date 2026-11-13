@@ -12,11 +12,12 @@ struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
     uv: [f32; 2],
+    normal: [f32; 3],
 }
 
 impl Vertex {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 3] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    const ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3];
 
     const fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -31,14 +32,18 @@ impl Vertex {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct InstanceRaw {
     model: [[f32; 4]; 4],
+    normal_matrix: [[f32; 4]; 3],
 }
 
 impl InstanceRaw {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
-        3 => Float32x4,
+    const ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
         4 => Float32x4,
         5 => Float32x4,
-        6 => Float32x4
+        6 => Float32x4,
+        7 => Float32x4,
+        8 => Float32x4,
+        9 => Float32x4,
+        10 => Float32x4
     ];
 
     const fn layout() -> wgpu::VertexBufferLayout<'static> {
@@ -50,8 +55,10 @@ impl InstanceRaw {
     }
 
     fn from_transform(transform: Transform3d) -> Self {
+        let model = transform.to_matrix();
         Self {
-            model: transform.to_matrix(),
+            model,
+            normal_matrix: normal_matrix_from_model(model, transform.scale()),
         }
     }
 }
@@ -62,9 +69,10 @@ struct CameraUniform {
     view_projection: [[f32; 4]; 4],
 }
 
-const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
+const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
     (
         [0.95, 0.28, 0.22],
+        [0.0, 0.0, 1.0],
         [
             [-0.7, -0.7, 0.7],
             [0.7, -0.7, 0.7],
@@ -72,6 +80,7 @@ const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, 0.7],
         ],
     ),
+        [0.0, 0.0, -1.0],
     (
         [0.22, 0.72, 0.95],
         [
@@ -81,6 +90,7 @@ const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
             [0.7, 0.7, -0.7],
         ],
     ),
+        [1.0, 0.0, 0.0],
     (
         [0.30, 0.85, 0.48],
         [
@@ -90,6 +100,7 @@ const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
             [0.7, 0.7, 0.7],
         ],
     ),
+        [-1.0, 0.0, 0.0],
     (
         [0.95, 0.72, 0.24],
         [
@@ -99,6 +110,7 @@ const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, -0.7],
         ],
     ),
+        [0.0, 1.0, 0.0],
     (
         [0.68, 0.42, 0.92],
         [
@@ -108,6 +120,7 @@ const CUBE_FACES: [([f32; 3], [[f32; 3]; 4]); 6] = [
             [-0.7, 0.7, -0.7],
         ],
     ),
+        [0.0, -1.0, 0.0],
     (
         [0.24, 0.78, 0.82],
         [
@@ -124,16 +137,18 @@ fn cube_vertices() -> [Vertex; 36] {
         position: [0.0; 3],
         color: [0.0; 3],
         uv: [0.0; 2],
+        normal: [0.0, 0.0, 1.0],
     }; 36];
     let face_uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
     let triangles = [0, 1, 2, 0, 2, 3];
 
-    for (face_index, (color, corners)) in CUBE_FACES.iter().enumerate() {
+    for (face_index, (color, normal, corners)) in CUBE_FACES.iter().enumerate() {
         for (vertex_index, triangle_corner) in triangles.iter().enumerate() {
             vertices[face_index * 6 + vertex_index] = Vertex {
                 position: corners[*triangle_corner],
                 color: *color,
                 uv: face_uvs[*triangle_corner],
+                normal: *normal,
             };
         }
     }
@@ -307,9 +322,13 @@ impl CubePipeline {
                 .copied()
                 .map(InstanceRaw::from_transform)
                 .collect(),
-            None => vec![InstanceRaw {
-                model: rotation_y(0.15),
-            }],
+            None => {
+                let model = rotation_y(0.15);
+                vec![InstanceRaw {
+                    model,
+                    normal_matrix: normal_matrix_from_model(model, [1.0; 3]),
+                }]
+            },
         };
         let instance_count =
             u32::try_from(instances.len()).map_err(|_| crate::GraphicsError::TooManyInstances)?;
@@ -512,6 +531,43 @@ fn rotation_y(angle: f32) -> [[f32; 4]; 4] {
     ]
 }
 
+/// Builds an inverse-transpose normal matrix from a column-major model matrix.
+///
+/// Singular or near-singular scales use the rotation-only basis so the GPU
+/// never receives infinities or NaNs. Lighting for such collapsed geometry is
+/// necessarily approximate because a singular transform has no unique normal matrix.
+fn normal_matrix_from_model(model: [[f32; 4]; 4], scale: [f32; 3]) -> [[f32; 4]; 3] {
+    const MIN_ABS_SCALE: f32 = 1.0e-6;
+    let singular = scale.iter().any(|component| component.abs() < MIN_ABS_SCALE);
+    let source = if singular {
+        // Remove scale from the model basis by normalizing each column.
+        let mut rotation = model;
+        for column in 0..3 {
+            let length = (0..3)
+                .map(|row| rotation[column][row] * rotation[column][row])
+                .sum::<f32>()
+                .sqrt();
+            if length > MIN_ABS_SCALE {
+                for row in 0..3 {
+                    rotation[column][row] /= length;
+                }
+            }
+        }
+        rotation
+    } else {
+        model
+    };
+
+    let mut normal = [[0.0; 4]; 3];
+    for column in 0..3 {
+        let divisor = if singular { 1.0 } else { scale[column] * scale[column] };
+        for row in 0..3 {
+            normal[column][row] = source[column][row] / divisor;
+        }
+    }
+    normal
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -528,6 +584,11 @@ mod tests {
                 .iter()
                 .all(|vertex| vertex.position.iter().all(|n| (-0.7..=0.7).contains(n)))
         );
+        for face in 0..6 {
+            let face_vertices = &vertices[(face * 6)..(face * 6 + 6)];
+            assert!(face_vertices.iter().all(|vertex| vertex.normal == face_vertices[0].normal));
+            assert!((face_vertices[0].normal.iter().map(|n| n * n).sum::<f32>() - 1.0).abs() < 1.0e-6);
+        }
         assert!(
             vertices
                 .iter()
@@ -581,6 +642,34 @@ mod tests {
 
         let instance = InstanceRaw::from_transform(Transform3d::identity());
         assert_eq!(instance.model, Transform3d::identity().to_matrix());
+        assert_eq!(
+            instance.normal_matrix,
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+        );
+    }
+
+    #[test]
+    fn normal_matrix_uses_inverse_transpose_for_non_uniform_scale() {
+        let transform = Transform3d::new([0.0; 3], [0.0, 0.0, 0.0, 1.0], [2.0, 4.0, 0.5])
+            .expect("non-uniform scale should be valid");
+        let instance = InstanceRaw::from_transform(transform);
+
+        assert_eq!(instance.normal_matrix[0][0], 0.5);
+        assert_eq!(instance.normal_matrix[1][1], 0.25);
+        assert_eq!(instance.normal_matrix[2][2], 2.0);
+    }
+
+    #[test]
+    fn singular_scale_falls_back_to_finite_rotation_basis() {
+        let transform = Transform3d::new([0.0; 3], [0.0, 0.0, 0.0, 1.0], [0.0, 2.0, 3.0])
+            .expect("zero scale is currently a valid transform");
+        let instance = InstanceRaw::from_transform(transform);
+
+        assert!(instance.normal_matrix.iter().flatten().all(|value| value.is_finite()));
+        assert_eq!(
+            instance.normal_matrix,
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+        );
     }
 
     #[test]
