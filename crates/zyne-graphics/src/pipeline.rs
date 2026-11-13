@@ -72,7 +72,9 @@ struct CameraUniform {
     view_projection: [[f32; 4]; 4],
 }
 
-const CUBE_FACES: [([f32; 3], [f32; 3], [[f32; 3]; 4]); 6] = [
+type CubeFace = ([f32; 3], [f32; 3], [[f32; 3]; 4]);
+
+const CUBE_FACES: [CubeFace; 6] = [
     (
         [0.95, 0.28, 0.22],
         [0.0, 0.0, 1.0],
@@ -319,19 +321,18 @@ impl CubePipeline {
         queue: &wgpu::Queue,
         transforms: Option<&[Transform3d]>,
     ) -> Result<u32, crate::GraphicsError> {
-        let instances: Vec<InstanceRaw> = match transforms {
-            Some(transforms) => transforms
+        let instances: Vec<InstanceRaw> = if let Some(transforms) = transforms {
+            transforms
                 .iter()
                 .copied()
                 .map(InstanceRaw::from_transform)
-                .collect(),
-            None => {
-                let model = rotation_y(0.15);
-                vec![InstanceRaw {
-                    model,
-                    normal_matrix: normal_matrix_from_model(model, [1.0; 3], model),
-                }]
-            }
+                .collect()
+        } else {
+            let model = rotation_y(0.15);
+            vec![InstanceRaw {
+                model,
+                normal_matrix: normal_matrix_from_model(model, [1.0; 3], model),
+            }]
         };
         let instance_count =
             u32::try_from(instances.len()).map_err(|_| crate::GraphicsError::TooManyInstances)?;
@@ -585,7 +586,13 @@ mod tests {
             assert!(
                 face_vertices
                     .iter()
-                    .all(|vertex| vertex.normal == face_vertices[0].normal)
+                    .all(|vertex| {
+                        vertex
+                            .normal
+                            .iter()
+                            .zip(face_vertices[0].normal)
+                            .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
+                    })
             );
             assert!(
                 (face_vertices[0].normal.iter().map(|n| n * n).sum::<f32>() - 1.0).abs() < 1.0e-6
