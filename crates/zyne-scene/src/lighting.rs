@@ -125,10 +125,14 @@ impl PointLight {
     }
 
     #[must_use]
-    pub const fn color(&self) -> [f32; 3] { self.color }
+    pub const fn color(&self) -> [f32; 3] {
+        self.color
+    }
 
     #[must_use]
-    pub const fn intensity(&self) -> f32 { self.intensity }
+    pub const fn intensity(&self) -> f32 {
+        self.intensity
+    }
 
     #[must_use]
     pub const fn range(&self) -> f32 {
@@ -198,16 +202,24 @@ impl SpotLight {
     }
 
     #[must_use]
-    pub const fn direction(&self) -> [f32; 3] { self.direction }
+    pub const fn direction(&self) -> [f32; 3] {
+        self.direction
+    }
 
     #[must_use]
-    pub const fn color(&self) -> [f32; 3] { self.color }
+    pub const fn color(&self) -> [f32; 3] {
+        self.color
+    }
 
     #[must_use]
-    pub const fn intensity(&self) -> f32 { self.intensity }
+    pub const fn intensity(&self) -> f32 {
+        self.intensity
+    }
 
     #[must_use]
-    pub const fn range(&self) -> f32 { self.range }
+    pub const fn range(&self) -> f32 {
+        self.range
+    }
 
     #[must_use]
     pub const fn inner_angle(&self) -> f32 {
