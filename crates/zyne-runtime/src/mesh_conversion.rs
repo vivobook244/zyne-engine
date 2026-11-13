@@ -149,12 +149,11 @@ mod tests {
                 .zip([0.0, 0.0, 1.0])
                 .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         }));
-        assert!(mesh.vertices().iter().all(|vertex| {
-            vertex
-                .uv
+        assert!(
+            mesh.vertices()
                 .iter()
-                .all(|coordinate| coordinate.abs() < 1.0e-6)
-        }));
+                .all(|vertex| { vertex.uv.iter().all(|coordinate| coordinate.abs() < 1.0e-6) })
+        );
     }
 
     #[test]
