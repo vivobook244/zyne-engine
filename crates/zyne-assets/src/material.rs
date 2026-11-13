@@ -7,9 +7,15 @@ use zyne_core::ResourceId;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MaterialError {
     /// A color component is not finite.
-    NonFiniteColor { property: &'static str, component: usize },
+    NonFiniteColor {
+        property: &'static str,
+        component: usize,
+    },
     /// A color component is negative.
-    NegativeColor { property: &'static str, component: usize },
+    NegativeColor {
+        property: &'static str,
+        component: usize,
+    },
     /// Shininess is not finite.
     NonFiniteShininess,
     /// Shininess must be greater than zero.
@@ -19,11 +25,23 @@ pub enum MaterialError {
 impl std::fmt::Display for MaterialError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NonFiniteColor { property, component } => {
-                write!(formatter, "{property} color component {component} must be finite")
+            Self::NonFiniteColor {
+                property,
+                component,
+            } => {
+                write!(
+                    formatter,
+                    "{property} color component {component} must be finite"
+                )
             }
-            Self::NegativeColor { property, component } => {
-                write!(formatter, "{property} color component {component} must not be negative")
+            Self::NegativeColor {
+                property,
+                component,
+            } => {
+                write!(
+                    formatter,
+                    "{property} color component {component} must not be negative"
+                )
             }
             Self::NonFiniteShininess => formatter.write_str("material shininess must be finite"),
             Self::NonPositiveShininess => {
@@ -155,10 +173,16 @@ impl<'de> Deserialize<'de> for BlinnPhongMaterial {
 fn validate_color(property: &'static str, color: [f32; 3]) -> Result<(), MaterialError> {
     for (component, value) in color.into_iter().enumerate() {
         if !value.is_finite() {
-            return Err(MaterialError::NonFiniteColor { property, component });
+            return Err(MaterialError::NonFiniteColor {
+                property,
+                component,
+            });
         }
         if value < 0.0 {
-            return Err(MaterialError::NegativeColor { property, component });
+            return Err(MaterialError::NegativeColor {
+                property,
+                component,
+            });
         }
     }
     Ok(())
@@ -192,8 +216,7 @@ mod tests {
 
     #[test]
     fn creates_material_with_high_dynamic_range_colors() {
-        let material =
-            BlinnPhongMaterial::new([0.1; 3], [1.5, 0.8, 0.4], [2.0; 3], 64.0).unwrap();
+        let material = BlinnPhongMaterial::new([0.1; 3], [1.5, 0.8, 0.4], [2.0; 3], 64.0).unwrap();
 
         assert_eq!(material.diffuse(), [1.5, 0.8, 0.4]);
         assert_eq!(material.specular(), [2.0; 3]);
@@ -243,13 +266,9 @@ mod tests {
 
     #[test]
     fn ron_round_trip_preserves_material_parameters_and_texture_reference() {
-        let mut material = BlinnPhongMaterial::new(
-            [0.05, 0.06, 0.07],
-            [0.8, 0.7, 0.6],
-            [0.3, 0.4, 0.5],
-            48.0,
-        )
-        .unwrap();
+        let mut material =
+            BlinnPhongMaterial::new([0.05, 0.06, 0.07], [0.8, 0.7, 0.6], [0.3, 0.4, 0.5], 48.0)
+                .unwrap();
         let texture = ResourceId::new();
         material.set_diffuse_texture(Some(texture));
 
