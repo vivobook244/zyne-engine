@@ -647,6 +647,35 @@ mod tests {
     }
 
     #[test]
+    fn scene_round_trip_preserves_light_components() {
+        use crate::{DirectionalLight, PointLight, SpotLight};
+
+        let mut scene = Scene::new("Persistent Lighting").unwrap();
+        let entity = scene
+            .spawn_entity("Lamp", Transform3d::identity())
+            .unwrap();
+        let directional = DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 1.5).unwrap();
+        let point = PointLight::new([1.0, 0.8, 0.6], 2.0, 15.0).unwrap();
+        let spot = SpotLight::new(
+            [0.0, 0.0, -1.0],
+            [1.0; 3],
+            3.0,
+            20.0,
+            10.0_f32.to_radians(),
+            25.0_f32.to_radians(),
+        )
+        .unwrap();
+        scene.set_entity_directional_light(entity, Some(directional));
+        scene.set_entity_point_light(entity, Some(point));
+        scene.set_entity_spot_light(entity, Some(spot));
+
+        let decoded = Scene::from_ron(&scene.to_ron().unwrap()).unwrap();
+        assert_eq!(decoded.entity_directional_light(entity), Some(directional));
+        assert_eq!(decoded.entity_point_light(entity), Some(point));
+        assert_eq!(decoded.entity_spot_light(entity), Some(spot));
+    }
+
+    #[test]
     fn loads_empty_scene() {
         let scene = Scene::new("Empty").unwrap();
         let decoded = Scene::from_ron(&scene.to_ron().unwrap()).unwrap();
