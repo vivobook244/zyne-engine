@@ -3,10 +3,12 @@
 
 mod context;
 mod error;
+mod mesh;
 mod pipeline;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;
+pub use mesh::{MeshData, MeshError, MeshVertex};
 
 /// Result of attempting to render one window frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
