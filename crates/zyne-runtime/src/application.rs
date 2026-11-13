@@ -5,7 +5,7 @@ use std::{
 };
 
 use zyne_core::{Engine, EngineContext, ZyneError, ZyneResult};
-use zyne_graphics::{GraphicsContext, MeshData};
+use zyne_graphics::GraphicsContext;
 use zyne_math::Camera3d;
 use zyne_platform::{
     PlatformEvent, PlatformWindow, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
@@ -502,6 +502,7 @@ mod tests {
             },
             context,
             graphics: None,
+            render_hook: None,
             events: EventQueue::new(),
             input: InputState::new(),
             started: true,
