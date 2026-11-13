@@ -186,7 +186,9 @@ fn valid_color_component(value: f32) -> f32 {
 }
 
 fn valid_color(color: [f32; 3]) -> bool {
-    color.iter().all(|component| component.is_finite() && *component >= 0.0)
+    color
+        .iter()
+        .all(|component| component.is_finite() && *component >= 0.0)
 }
 
 fn valid_intensity(intensity: f32) -> bool {
@@ -933,9 +935,7 @@ mod tests {
     #[test]
     fn lighting_uniform_skips_invalid_values_before_gpu_upload() {
         use super::LightingUniform;
-        use crate::lighting::{
-            DirectionalLightData, LightingData, PointLightData, SpotLightData,
-        };
+        use crate::lighting::{DirectionalLightData, LightingData, PointLightData, SpotLightData};
 
         let mut lighting = LightingData::with_ambient([f32::NAN, -1.0, 0.25]);
         lighting.directional_lights = vec![
