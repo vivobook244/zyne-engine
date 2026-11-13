@@ -115,43 +115,109 @@ impl LightingUniform {
     fn from_data(data: &LightingData) -> Self {
         let mut uniform = Self::zeroed();
         uniform.ambient_color = [
-            data.ambient_color[0],
-            data.ambient_color[1],
-            data.ambient_color[2],
+            valid_color_component(data.ambient_color[0]),
+            valid_color_component(data.ambient_color[1]),
+            valid_color_component(data.ambient_color[2]),
             1.0,
         ];
-        let directional_count = data.directional_lights.len().min(MAX_DIRECTIONAL_LIGHTS);
-        let point_count = data.point_lights.len().min(MAX_POINT_LIGHTS);
-        let spot_count = data.spot_lights.len().min(MAX_SPOT_LIGHTS);
+
+        let mut directional_count = 0;
+        for light in &data.directional_lights {
+            if directional_count == MAX_DIRECTIONAL_LIGHTS {
+                break;
+            }
+            if valid_direction(light.direction)
+                && valid_color(light.color)
+                && valid_intensity(light.intensity)
+            {
+                uniform.directional_lights[directional_count] = directional_light_raw(*light);
+                directional_count += 1;
+            }
+        }
+
+        let mut point_count = 0;
+        for light in &data.point_lights {
+            if point_count == MAX_POINT_LIGHTS {
+                break;
+            }
+            if valid_position(light.position)
+                && valid_color(light.color)
+                && valid_intensity(light.intensity)
+                && valid_range(light.range)
+            {
+                uniform.point_lights[point_count] = point_light_raw(*light);
+                point_count += 1;
+            }
+        }
+
+        let mut spot_count = 0;
+        for light in &data.spot_lights {
+            if spot_count == MAX_SPOT_LIGHTS {
+                break;
+            }
+            if valid_position(light.position)
+                && valid_direction(light.direction)
+                && valid_color(light.color)
+                && valid_intensity(light.intensity)
+                && valid_range(light.range)
+                && valid_spot_angles(light.inner_angle, light.outer_angle)
+            {
+                uniform.spot_lights[spot_count] = spot_light_raw(*light);
+                spot_count += 1;
+            }
+        }
+
         uniform.counts = [
             u32::try_from(directional_count).unwrap_or(u32::MAX),
             u32::try_from(point_count).unwrap_or(u32::MAX),
             u32::try_from(spot_count).unwrap_or(u32::MAX),
             0,
         ];
-        for (target, source) in uniform
-            .directional_lights
-            .iter_mut()
-            .zip(data.directional_lights.iter().take(directional_count))
-        {
-            *target = directional_light_raw(*source);
-        }
-        for (target, source) in uniform
-            .point_lights
-            .iter_mut()
-            .zip(data.point_lights.iter().take(point_count))
-        {
-            *target = point_light_raw(*source);
-        }
-        for (target, source) in uniform
-            .spot_lights
-            .iter_mut()
-            .zip(data.spot_lights.iter().take(spot_count))
-        {
-            *target = spot_light_raw(*source);
-        }
         uniform
     }
+}
+
+fn valid_color_component(value: f32) -> f32 {
+    if value.is_finite() && value >= 0.0 {
+        value
+    } else {
+        0.0
+    }
+}
+
+fn valid_color(color: [f32; 3]) -> bool {
+    color.iter().all(|component| component.is_finite() && *component >= 0.0)
+}
+
+fn valid_intensity(intensity: f32) -> bool {
+    intensity.is_finite() && intensity >= 0.0
+}
+
+fn valid_range(range: f32) -> bool {
+    range.is_finite() && range > 0.0
+}
+
+fn valid_position(position: [f32; 3]) -> bool {
+    position.iter().all(|component| component.is_finite())
+}
+
+fn valid_direction(direction: [f32; 3]) -> bool {
+    if !valid_position(direction) {
+        return false;
+    }
+    direction
+        .iter()
+        .map(|component| component * component)
+        .sum::<f32>()
+        > f32::EPSILON
+}
+
+fn valid_spot_angles(inner_angle: f32, outer_angle: f32) -> bool {
+    inner_angle.is_finite()
+        && outer_angle.is_finite()
+        && inner_angle >= 0.0
+        && outer_angle >= inner_angle
+        && outer_angle <= std::f32::consts::FRAC_PI_2
 }
 
 fn directional_light_raw(light: DirectionalLightData) -> DirectionalLightRaw {
