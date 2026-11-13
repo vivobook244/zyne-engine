@@ -22,7 +22,7 @@ pub use scene_assets::{
     resolve_scene_asset_statuses, validate_scene_asset_references,
 };
 pub use scene_loading::{LoadedScene, SceneAssetLoadError, load_scene_with_asset_diagnostics};
-pub use scene_renderer::{SceneMeshRenderer, SceneRenderError};
+pub use scene_renderer::{SceneEngine, SceneMeshRenderer, SceneRenderError};
 
 pub use zyne_assets::AssetRegistry;
 pub use zyne_core::{
