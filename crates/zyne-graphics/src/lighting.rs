@@ -85,15 +85,15 @@ mod tests {
         let lighting = LightingData::default();
         assert_eq!(lighting.ambient_color, [0.16, 0.16, 0.18]);
         assert_eq!(lighting.directional_lights.len(), 1);
-        assert!(lighting.point_lights.is_empty());
-        assert!(lighting.spot_lights.is_empty());
+        assert_eq!(lighting.point_lights.as_slice(), &[]);
+        assert_eq!(lighting.spot_lights.as_slice(), &[]);
     }
 
     #[test]
     fn scene_lighting_starts_without_direct_lights() {
         let lighting = LightingData::with_ambient([0.1, 0.2, 0.3]);
         assert_eq!(lighting.ambient_color, [0.1, 0.2, 0.3]);
-        assert!(lighting.directional_lights.is_empty());
+        assert_eq!(lighting.directional_lights.as_slice(), &[]);
         assert!(lighting.point_lights.is_empty());
         assert!(lighting.spot_lights.is_empty());
     }
