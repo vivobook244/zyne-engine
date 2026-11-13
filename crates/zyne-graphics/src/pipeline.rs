@@ -358,7 +358,11 @@ impl CubePipeline {
         let checker_texture = create_checker_texture(device, queue);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
-            bind_group_layouts: &[&camera_layout, &checker_texture.layout, &lighting_resources.layout],
+            bind_group_layouts: &[
+                &camera_layout,
+                &checker_texture.layout,
+                &lighting_resources.layout,
+            ],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
