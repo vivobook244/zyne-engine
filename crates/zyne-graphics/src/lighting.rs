@@ -94,8 +94,8 @@ mod tests {
         let lighting = LightingData::with_ambient([0.1, 0.2, 0.3]);
         assert_eq!(lighting.ambient_color, [0.1, 0.2, 0.3]);
         assert_eq!(lighting.directional_lights.as_slice(), &[]);
-        assert!(lighting.point_lights.is_empty());
-        assert!(lighting.spot_lights.is_empty());
+        assert_eq!(lighting.point_lights.as_slice(), &[]);
+        assert_eq!(lighting.spot_lights.as_slice(), &[]);
     }
 
     #[test]
