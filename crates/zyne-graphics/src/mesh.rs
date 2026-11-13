@@ -16,7 +16,11 @@ impl GpuMesh {
         index_buffer: wgpu::Buffer,
         index_count: u32,
     ) -> Self {
-        Self { vertex_buffer, index_buffer, index_count }
+        Self {
+            vertex_buffer,
+            index_buffer,
+            index_count,
+        }
     }
 
     /// Returns the number of indices submitted by the indexed draw call.
