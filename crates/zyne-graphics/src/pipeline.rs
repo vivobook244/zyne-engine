@@ -550,9 +550,13 @@ fn normal_matrix_from_model(
 
     let mut normal = [[0.0; 4]; 3];
     for column in 0..3 {
-        let divisor = if singular { 1.0 } else { scale[column] * scale[column] };
         for row in 0..3 {
-            normal[column][row] = source[column][row] / divisor;
+            normal[column][row] = if singular {
+                source[column][row]
+            } else {
+                // Divide sequentially to avoid overflowing scale * scale.
+                source[column][row] / scale[column] / scale[column]
+            };
         }
     }
     normal
