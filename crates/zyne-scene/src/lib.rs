@@ -395,8 +395,7 @@ mod tests {
 
     #[test]
     fn entity_document_preserves_all_light_components_in_ron() {
-        let mut entity =
-            SceneEntityDocument::new("Light Entity", Transform3d::identity()).unwrap();
+        let mut entity = SceneEntityDocument::new("Light Entity", Transform3d::identity()).unwrap();
         let directional = DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 2.0).unwrap();
         let point = PointLight::new([1.0, 0.5, 0.25], 3.0, 12.0).unwrap();
         let spot = SpotLight::new(
