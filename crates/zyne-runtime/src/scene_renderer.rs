@@ -7,7 +7,8 @@ use zyne_assets::{AssetCache, AssetRegistry, ResourceKind};
 use zyne_core::Engine;
 use zyne_core::ResourceId;
 use zyne_graphics::{
-    FrameOutcome, GpuMesh, GraphicsContext, GraphicsError, MeshData, MeshRenderBatch,
+    DirectionalLightData, FrameOutcome, GpuMesh, GraphicsContext, GraphicsError, LightingData,
+    MeshData, MeshRenderBatch, PointLightData, SpotLightData,
 };
 use zyne_math::Camera3d;
 use zyne_scene::Scene;
@@ -126,8 +127,9 @@ impl SceneMeshRenderer {
             })
             .collect::<Result<_, _>>()?;
 
+        let lighting = collect_scene_lighting(scene);
         graphics
-            .render_frame_with_mesh_batches(camera, &batches)
+            .render_frame_with_mesh_batches_and_lighting(camera, &batches, &lighting)
             .map_err(SceneRenderError::Graphics)
     }
 }
@@ -169,6 +171,74 @@ impl std::error::Error for SceneRenderError {
             Self::Graphics(error) => Some(error),
             Self::MissingCpuMesh { .. } | Self::MissingGpuMesh { .. } => None,
         }
+    }
+}
+
+fn collect_scene_lighting(scene: &Scene) -> LightingData {
+    let mut lighting = LightingData::with_ambient([0.16, 0.16, 0.18]);
+    for entity_id in scene.entity_ids() {
+        let Some(transform) = scene.entity_transform(entity_id) else {
+            continue;
+        };
+        let rotation = zyne_math::Transform3d::new(
+            [0.0; 3],
+            transform.rotation(),
+            [1.0; 3],
+        )
+        .expect("scene transforms contain validated rotations")
+        .to_matrix();
+
+        if let Some(light) = scene.entity_directional_light(entity_id) {
+            lighting.directional_lights.push(DirectionalLightData {
+                direction: transform_direction(rotation, light.direction()),
+                color: light.color(),
+                intensity: light.intensity(),
+            });
+        }
+        if let Some(light) = scene.entity_point_light(entity_id) {
+            lighting.point_lights.push(PointLightData {
+                position: transform.translation(),
+                color: light.color(),
+                intensity: light.intensity(),
+                range: light.range(),
+            });
+        }
+        if let Some(light) = scene.entity_spot_light(entity_id) {
+            lighting.spot_lights.push(SpotLightData {
+                position: transform.translation(),
+                direction: transform_direction(rotation, light.direction()),
+                color: light.color(),
+                intensity: light.intensity(),
+                range: light.range(),
+                inner_angle: light.inner_angle(),
+                outer_angle: light.outer_angle(),
+            });
+        }
+    }
+    lighting
+}
+
+fn transform_direction(matrix: [[f32; 4]; 4], direction: [f32; 3]) -> [f32; 3] {
+    let transformed = [
+        matrix[0][0] * direction[0]
+            + matrix[1][0] * direction[1]
+            + matrix[2][0] * direction[2],
+        matrix[0][1] * direction[0]
+            + matrix[1][1] * direction[1]
+            + matrix[2][1] * direction[2],
+        matrix[0][2] * direction[0]
+            + matrix[1][2] * direction[1]
+            + matrix[2][2] * direction[2],
+    ];
+    let length = transformed
+        .iter()
+        .map(|component| component * component)
+        .sum::<f32>()
+        .sqrt();
+    if length > f32::EPSILON {
+        transformed.map(|component| component / length)
+    } else {
+        direction
     }
 }
 
@@ -274,6 +344,65 @@ mod tests {
                 .zip([2.0, 0.0, 0.0])
                 .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         }));
+    }
+
+    #[test]
+    fn extracts_world_space_directional_point_and_spot_lights() {
+        use zyne_scene::{DirectionalLight, PointLight, SpotLight};
+
+        let mut scene = Scene::new("Lighting Extraction").unwrap();
+        let entity = scene
+            .spawn_entity(
+                "Light",
+                Transform3d::new(
+                    [3.0, 4.0, 5.0],
+                    [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0, std::f32::consts::FRAC_1_SQRT_2],
+                    [1.0; 3],
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        scene.set_entity_directional_light(
+            entity,
+            Some(DirectionalLight::new([0.0, 0.0, -1.0], [1.0; 3], 2.0).unwrap()),
+        );
+        scene.set_entity_point_light(
+            entity,
+            Some(PointLight::new([1.0; 3], 3.0, 8.0).unwrap()),
+        );
+        scene.set_entity_spot_light(
+            entity,
+            Some(
+                SpotLight::new(
+                    [0.0, 0.0, -1.0],
+                    [1.0; 3],
+                    4.0,
+                    10.0,
+                    15.0_f32.to_radians(),
+                    25.0_f32.to_radians(),
+                )
+                .unwrap(),
+            ),
+        );
+
+        let lighting = super::collect_scene_lighting(&scene);
+        assert_eq!(lighting.directional_lights.len(), 1);
+        assert_eq!(lighting.point_lights.len(), 1);
+        assert_eq!(lighting.spot_lights.len(), 1);
+        assert_eq!(lighting.point_lights[0].position, [3.0, 4.0, 5.0]);
+        assert!((lighting.directional_lights[0].direction[0] + 1.0).abs() < 1.0e-5);
+        assert!(lighting.directional_lights[0].direction[2].abs() < 1.0e-5);
+        assert!((lighting.spot_lights[0].direction[0] + 1.0).abs() < 1.0e-5);
+    }
+
+    #[test]
+    fn scene_without_lights_uses_ambient_only_lighting_snapshot() {
+        let scene = Scene::new("Ambient Only").unwrap();
+        let lighting = super::collect_scene_lighting(&scene);
+        assert_eq!(lighting.ambient_color, [0.16, 0.16, 0.18]);
+        assert!(lighting.directional_lights.is_empty());
+        assert!(lighting.point_lights.is_empty());
+        assert!(lighting.spot_lights.is_empty());
     }
 
     #[test]
