@@ -16,7 +16,7 @@ pub struct DirectionalLightData {
 }
 
 /// A point light snapshot in world space.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PointLightData {
     pub position: [f32; 3],
     pub color: [f32; 3],
@@ -25,7 +25,7 @@ pub struct PointLightData {
 }
 
 /// A spot light snapshot in world space.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct SpotLightData {
     pub position: [f32; 3],
     pub direction: [f32; 3],
