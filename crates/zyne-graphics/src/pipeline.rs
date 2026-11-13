@@ -315,6 +315,7 @@ pub(super) struct CubePipeline {
 }
 
 impl CubePipeline {
+    #[allow(clippy::too_many_lines)]
     pub(super) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -853,9 +854,9 @@ mod tests {
         assert_eq!(
             uniform.counts,
             [
-                MAX_DIRECTIONAL_LIGHTS as u32,
-                MAX_POINT_LIGHTS as u32,
-                MAX_SPOT_LIGHTS as u32,
+                u32::try_from(MAX_DIRECTIONAL_LIGHTS).unwrap_or(u32::MAX),
+                u32::try_from(MAX_POINT_LIGHTS).unwrap_or(u32::MAX),
+                u32::try_from(MAX_SPOT_LIGHTS).unwrap_or(u32::MAX),
                 0,
             ]
         );
