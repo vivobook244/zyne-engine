@@ -354,36 +354,11 @@ impl CubePipeline {
             }],
         });
 
-        let lighting_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ZYNE Lighting Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-        let lighting_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ZYNE Lighting Uniform"),
-            contents: bytemuck::bytes_of(&LightingUniform::from_data(&LightingData::default())),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        let lighting_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ZYNE Lighting Bind Group"),
-            layout: &lighting_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: lighting_buffer.as_entire_binding(),
-            }],
-        });
+        let lighting_resources = create_lighting_resources(device);
         let checker_texture = create_checker_texture(device, queue);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
-            bind_group_layouts: &[&camera_layout, &checker_texture.layout, &lighting_layout],
+            bind_group_layouts: &[&camera_layout, &checker_texture.layout, &lighting_resources.layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -442,8 +417,8 @@ impl CubePipeline {
             vertex_buffer,
             camera_buffer,
             camera_bind_group,
-            lighting_buffer,
-            lighting_bind_group,
+            lighting_buffer: lighting_resources.buffer,
+            lighting_bind_group: lighting_resources.bind_group,
             checker_texture,
             instance_buffer,
             instance_capacity: 1,
@@ -578,6 +553,46 @@ impl CubePipeline {
 
     pub(super) const fn instance_buffer(&self) -> &wgpu::Buffer {
         &self.instance_buffer
+    }
+}
+
+struct LightingResources {
+    layout: wgpu::BindGroupLayout,
+    buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+}
+
+fn create_lighting_resources(device: &wgpu::Device) -> LightingResources {
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ZYNE Lighting Bind Group Layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("ZYNE Lighting Uniform"),
+        contents: bytemuck::bytes_of(&LightingUniform::from_data(&LightingData::default())),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ZYNE Lighting Bind Group"),
+        layout: &layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    });
+    LightingResources {
+        layout,
+        buffer,
+        bind_group,
     }
 }
 
