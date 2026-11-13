@@ -60,6 +60,10 @@ pub struct DirectionalLight {
 
 impl DirectionalLight {
     /// Creates a directional light with a normalized ray direction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a zero or non-finite direction, invalid color, or invalid intensity.
     pub fn new(direction: [f32; 3], color: [f32; 3], intensity: f32) -> Result<Self, LightError> {
         let direction = normalize_direction(direction)?;
         validate_color(color)?;
@@ -113,6 +117,10 @@ pub struct PointLight {
 
 impl PointLight {
     /// Creates a point light with a finite positive influence range.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid color, intensity, or range values.
     pub fn new(color: [f32; 3], intensity: f32, range: f32) -> Result<Self, LightError> {
         validate_color(color)?;
         validate_intensity(intensity)?;
@@ -170,6 +178,10 @@ pub struct SpotLight {
 impl SpotLight {
     /// Creates a spot light. Cone angles are expressed in radians and may not
     /// exceed 90 degrees; the inner cone may equal the outer cone.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid direction, color, intensity, range, or cone angles.
     pub fn new(
         direction: [f32; 3],
         color: [f32; 3],
@@ -259,6 +271,7 @@ impl<'de> Deserialize<'de> for SpotLight {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn normalize_direction(direction: [f32; 3]) -> Result<[f32; 3], LightError> {
     if direction.iter().any(|component| !component.is_finite()) {
         return Err(LightError::NonFiniteDirection);
