@@ -181,8 +181,8 @@ fn collect_scene_lighting(scene: &Scene) -> LightingData {
             continue;
         };
         let rotation = zyne_math::Transform3d::new([0.0; 3], transform.rotation(), [1.0; 3])
-        .expect("scene transforms contain validated rotations")
-        .to_matrix();
+            .expect("scene transforms contain validated rotations")
+            .to_matrix();
 
         if let Some(light) = scene.entity_directional_light(entity_id) {
             lighting.directional_lights.push(DirectionalLightData {
