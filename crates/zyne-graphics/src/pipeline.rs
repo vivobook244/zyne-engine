@@ -931,6 +931,47 @@ mod tests {
     }
 
     #[test]
+    fn lighting_uniform_skips_invalid_values_before_gpu_upload() {
+        use super::LightingUniform;
+        use crate::lighting::{
+            DirectionalLightData, LightingData, PointLightData, SpotLightData,
+        };
+
+        let mut lighting = LightingData::with_ambient([f32::NAN, -1.0, 0.25]);
+        lighting.directional_lights = vec![
+            DirectionalLightData {
+                direction: [0.0; 3],
+                color: [1.0; 3],
+                intensity: 1.0,
+            },
+            DirectionalLightData {
+                direction: [0.0, -1.0, 0.0],
+                color: [1.0; 3],
+                intensity: 1.0,
+            },
+        ];
+        lighting.point_lights = vec![PointLightData {
+            position: [f32::INFINITY, 0.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+            range: 5.0,
+        }];
+        lighting.spot_lights = vec![SpotLightData {
+            position: [0.0; 3],
+            direction: [0.0, 0.0, -1.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+            range: 5.0,
+            inner_angle: 0.8,
+            outer_angle: 0.4,
+        }];
+
+        let uniform = LightingUniform::from_data(&lighting);
+        assert_eq!(uniform.ambient_color, [0.0, 0.0, 0.25, 1.0]);
+        assert_eq!(uniform.counts, [1, 0, 0, 0]);
+    }
+
+    #[test]
     fn cube_has_twelve_triangles_and_valid_colors() {
         let vertices = cube_vertices();
         assert_eq!(vertices.len(), 36);
