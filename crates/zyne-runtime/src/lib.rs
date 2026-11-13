@@ -6,6 +6,7 @@ mod application_config;
 mod camera_controller;
 pub mod diagnostics;
 mod event_queue;
+mod mesh_conversion;
 mod scene_assets;
 mod scene_loading;
 
@@ -13,6 +14,7 @@ pub use application::Application;
 pub use application_config::ApplicationConfig;
 pub use camera_controller::OrbitCameraController;
 pub use event_queue::EventQueue;
+pub use mesh_conversion::{PrimitiveMeshError, imported_primitive_to_mesh_data};
 pub use scene_assets::{
     MissingAssetReference, ResolvedSceneAssetReference, SceneAssetResolverError,
     SceneAssetRuntimeStatus, SceneAssetStatusReport, SceneAssetValidationReport,
