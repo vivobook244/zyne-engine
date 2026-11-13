@@ -109,7 +109,7 @@ impl<'de> Deserialize<'de> for DirectionalLight {
 }
 
 /// A point light emitted from its owning scene entity's world position.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct PointLight {
     color: [f32; 3],
     intensity: f32,
@@ -166,7 +166,7 @@ impl<'de> Deserialize<'de> for PointLight {
 }
 
 /// A spot light emitted from its owning entity, along a normalized direction.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct SpotLight {
     direction: [f32; 3],
     color: [f32; 3],
