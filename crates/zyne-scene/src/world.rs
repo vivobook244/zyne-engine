@@ -6,7 +6,10 @@ use bevy_ecs::{component::Component, entity::Entity, world::World};
 use zyne_core::ResourceId;
 use zyne_math::Transform3d;
 
-use crate::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId};
+use crate::{
+    DirectionalLight, PointLight, SceneDocument, SceneEntityDocument, SceneEntityId, SceneError,
+    SceneId, SpotLight,
+};
 
 #[derive(Component, Debug, Clone, Copy)]
 struct PersistentEntityId(SceneEntityId);
@@ -215,6 +218,123 @@ impl Scene {
         true
     }
 
+    /// Adds, replaces, or removes a directional light on an entity.
+    pub fn set_entity_directional_light(
+        &mut self,
+        id: SceneEntityId,
+        light: Option<DirectionalLight>,
+    ) -> bool {
+        let Some(&handle) = self.entities.get(&id) else {
+            return false;
+        };
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return false;
+        }
+        let mut entity = self.world.entity_mut(handle);
+        if let Some(light) = light {
+            entity.insert(light);
+        } else {
+            entity.remove::<DirectionalLight>();
+        }
+        true
+    }
+
+    /// Returns an entity's directional light, if present.
+    #[must_use]
+    pub fn entity_directional_light(&self, id: SceneEntityId) -> Option<DirectionalLight> {
+        let handle = *self.entities.get(&id)?;
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return None;
+        }
+        self.world.get::<DirectionalLight>(handle).copied()
+    }
+
+    /// Adds, replaces, or removes a point light on an entity.
+    pub fn set_entity_point_light(
+        &mut self,
+        id: SceneEntityId,
+        light: Option<PointLight>,
+    ) -> bool {
+        let Some(&handle) = self.entities.get(&id) else {
+            return false;
+        };
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return false;
+        }
+        let mut entity = self.world.entity_mut(handle);
+        if let Some(light) = light {
+            entity.insert(light);
+        } else {
+            entity.remove::<PointLight>();
+        }
+        true
+    }
+
+    /// Returns an entity's point light, if present.
+    #[must_use]
+    pub fn entity_point_light(&self, id: SceneEntityId) -> Option<PointLight> {
+        let handle = *self.entities.get(&id)?;
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return None;
+        }
+        self.world.get::<PointLight>(handle).copied()
+    }
+
+    /// Adds, replaces, or removes a spot light on an entity.
+    pub fn set_entity_spot_light(
+        &mut self,
+        id: SceneEntityId,
+        light: Option<SpotLight>,
+    ) -> bool {
+        let Some(&handle) = self.entities.get(&id) else {
+            return false;
+        };
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return false;
+        }
+        let mut entity = self.world.entity_mut(handle);
+        if let Some(light) = light {
+            entity.insert(light);
+        } else {
+            entity.remove::<SpotLight>();
+        }
+        true
+    }
+
+    /// Returns an entity's spot light, if present.
+    #[must_use]
+    pub fn entity_spot_light(&self, id: SceneEntityId) -> Option<SpotLight> {
+        let handle = *self.entities.get(&id)?;
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return None;
+        }
+        self.world.get::<SpotLight>(handle).copied()
+    }
+
     /// Extracts a validated, ECS-independent scene document.
     ///
     /// # Errors
@@ -403,6 +523,39 @@ mod tests {
             scene.entity_transforms(),
             vec![first_transform, second_transform]
         );
+    }
+
+    #[test]
+    fn entities_manage_directional_point_and_spot_light_components() {
+        use crate::{DirectionalLight, PointLight, SpotLight};
+
+        let mut scene = Scene::new("Lights").unwrap();
+        let entity = scene
+            .spawn_entity("Light Source", Transform3d::identity())
+            .unwrap();
+        let directional = DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 2.0).unwrap();
+        let point = PointLight::new([1.0, 0.5, 0.25], 3.0, 10.0).unwrap();
+        let spot = SpotLight::new(
+            [0.0, 0.0, -1.0],
+            [1.0; 3],
+            4.0,
+            12.0,
+            15.0_f32.to_radians(),
+            25.0_f32.to_radians(),
+        )
+        .unwrap();
+
+        assert!(scene.set_entity_directional_light(entity, Some(directional)));
+        assert!(scene.set_entity_point_light(entity, Some(point)));
+        assert!(scene.set_entity_spot_light(entity, Some(spot)));
+        assert_eq!(scene.entity_directional_light(entity), Some(directional));
+        assert_eq!(scene.entity_point_light(entity), Some(point));
+        assert_eq!(scene.entity_spot_light(entity), Some(spot));
+
+        assert!(scene.set_entity_point_light(entity, None));
+        assert_eq!(scene.entity_point_light(entity), None);
+        assert!(scene.despawn_entity(entity));
+        assert_eq!(scene.entity_directional_light(entity), None);
     }
 
     #[test]
