@@ -53,7 +53,7 @@ impl Application {
     /// Runs an engine and automatically renders its scene mesh references.
     ///
     /// The engine supplies a scene, its asset registry, and a loaded CPU mesh
-    /// cache through SceneEngine. Mesh uploads are retained by the runtime and
+    /// cache through `SceneEngine`. Mesh uploads are retained by the runtime and
     /// shared by all entities referencing the same mesh.
     ///
     /// # Errors
