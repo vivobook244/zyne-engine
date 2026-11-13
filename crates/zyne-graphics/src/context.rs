@@ -267,11 +267,9 @@ impl GraphicsContext {
                 .collect::<Vec<_>>()
         });
         let frame_transforms = batch_transforms.as_deref().or(transforms);
-        let instance_count = self.cube_pipeline.update_instances(
-            &self.device,
-            &self.queue,
-            frame_transforms,
-        )?;
+        let instance_count =
+            self.cube_pipeline
+                .update_instances(&self.device, &self.queue, frame_transforms)?;
         let mut batch_ranges = Vec::new();
         if let Some(batches) = mesh_batches {
             let mut first_instance = 0_u32;
