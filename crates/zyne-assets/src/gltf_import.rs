@@ -43,6 +43,69 @@ pub struct ImportedPrimitive {
     pub indices: Vec<u32>,
 }
 
+impl ImportedPrimitive {
+    /// Returns normalized vertex normals, generating area-weighted normals when
+    /// the source primitive does not provide them.
+    ///
+    /// Degenerate triangles do not contribute to generated normals. Vertices
+    /// without a usable normal receive the deterministic up direction.
+    #[must_use]
+    pub fn resolved_normals(&self) -> Vec<[f32; 3]> {
+        if let Some(normals) = &self.normals {
+            return normals.iter().copied().map(normalize_or_up).collect();
+        }
+
+        let mut accumulated = vec![[0.0_f64; 3]; self.positions.len()];
+        for triangle in self.indices.chunks_exact(3) {
+            let a = self.positions[triangle[0] as usize].map(f64::from);
+            let b = self.positions[triangle[1] as usize].map(f64::from);
+            let c = self.positions[triangle[2] as usize].map(f64::from);
+            let ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            let ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+            let face_normal = [
+                ab[1] * ac[2] - ab[2] * ac[1],
+                ab[2] * ac[0] - ab[0] * ac[2],
+                ab[0] * ac[1] - ab[1] * ac[0],
+            ];
+
+            if face_normal.iter().all(|component| component.is_finite())
+                && face_normal.iter().any(|component| *component != 0.0)
+            {
+                for &index in triangle {
+                    let normal = &mut accumulated[index as usize];
+                    for axis in 0..3 {
+                        normal[axis] += face_normal[axis];
+                    }
+                }
+            }
+        }
+
+        accumulated
+            .into_iter()
+            .map(|normal| normalize_f64_or_up(normal))
+            .collect()
+    }
+}
+
+fn normalize_or_up(normal: [f32; 3]) -> [f32; 3] {
+    normalize_f64_or_up(normal.map(f64::from))
+}
+
+fn normalize_f64_or_up(normal: [f64; 3]) -> [f32; 3] {
+    let length_squared = normal.iter().map(|component| component * component).sum::<f64>();
+    if !length_squared.is_finite() || length_squared <= f64::EPSILON {
+        return [0.0, 1.0, 0.0];
+    }
+
+    let inverse_length = length_squared.sqrt().recip();
+    let normalized = normal.map(|component| (component * inverse_length) as f32);
+    if normalized.iter().all(|component| component.is_finite()) {
+        normalized
+    } else {
+        [0.0, 1.0, 0.0]
+    }
+}
+
 /// Decoded image data in its source pixel format.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ImportedImage {
@@ -480,6 +543,69 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+
+    #[test]
+    fn generates_area_weighted_normals_for_missing_source_normals() {
+        let primitive = super::ImportedPrimitive {
+            index: 0,
+            material_index: None,
+            positions: vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            normals: None,
+            tex_coords_0: None,
+            indices: vec![0, 1, 2, 0, 3, 1],
+        };
+
+        let normals = primitive.resolved_normals();
+        let diagonal = std::f32::consts::FRAC_1_SQRT_2;
+        assert_eq!(normals[0], [0.0, diagonal, diagonal]);
+        assert_eq!(normals[1], [0.0, diagonal, diagonal]);
+        assert_eq!(normals[2], [0.0, 0.0, 1.0]);
+        assert_eq!(normals[3], [0.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn degenerate_and_unreferenced_vertices_receive_fallback_normals() {
+        let primitive = super::ImportedPrimitive {
+            index: 0,
+            material_index: None,
+            positions: vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            normals: None,
+            tex_coords_0: None,
+            indices: vec![0, 1, 2],
+        };
+
+        assert_eq!(primitive.resolved_normals(), vec![[0.0, 1.0, 0.0]; 4]);
+    }
+
+    #[test]
+    fn supplied_normals_are_normalized_without_mutating_imported_data() {
+        let source_normals = vec![[0.0, 0.0, 4.0], [0.0, 0.0, 0.0]];
+        let primitive = super::ImportedPrimitive {
+            index: 0,
+            material_index: None,
+            positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            normals: Some(source_normals.clone()),
+            tex_coords_0: None,
+            indices: Vec::new(),
+        };
+
+        assert_eq!(
+            primitive.resolved_normals(),
+            vec![[0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
+        );
+        assert_eq!(primitive.normals, Some(source_normals));
     }
 
     #[test]
