@@ -134,10 +134,16 @@ impl fmt::Display for SceneRenderError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MissingCpuMesh { resource_id } => {
-                write!(formatter, "mesh asset {resource_id} is not loaded in the CPU cache")
+                write!(
+                    formatter,
+                    "mesh asset {resource_id} is not loaded in the CPU cache"
+                )
             }
             Self::MissingGpuMesh { resource_id } => {
-                write!(formatter, "mesh asset {resource_id} has not been uploaded to the GPU")
+                write!(
+                    formatter,
+                    "mesh asset {resource_id} has not been uploaded to the GPU"
+                )
             }
             Self::Graphics(error) => write!(formatter, "scene mesh rendering failed: {error}"),
         }
@@ -224,7 +230,12 @@ mod tests {
         let texture_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
         register(&mut registry, mesh_id, ResourceKind::Mesh, "mesh.glb");
-        register(&mut registry, texture_id, ResourceKind::Texture, "texture.png");
+        register(
+            &mut registry,
+            texture_id,
+            ResourceKind::Texture,
+            "texture.png",
+        );
 
         scene
             .set_entity_asset_references(first, &[mesh_id, texture_id])
@@ -255,9 +266,7 @@ mod tests {
     #[test]
     fn ignores_unregistered_scene_asset_references() {
         let mut scene = Scene::new("Unregistered Mesh").unwrap();
-        let entity = scene
-            .spawn_entity("Prop", Transform3d::identity())
-            .unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         let missing_id = ResourceId::new();
         scene
             .set_entity_asset_references(entity, &[missing_id])
