@@ -362,7 +362,10 @@ impl std::error::Error for SceneError {}
 
 #[cfg(test)]
 mod tests {
-    use super::{SceneDocument, SceneEntityDocument, SceneEntityId, SceneError, SceneId};
+    use super::{
+        DirectionalLight, PointLight, SceneDocument, SceneEntityDocument, SceneEntityId, SceneError,
+        SceneId, SpotLight,
+    };
     use serde::Serialize;
     use uuid::Uuid;
     use zyne_core::ResourceId;
