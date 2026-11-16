@@ -14,5 +14,8 @@ zyne-core = { path = "../zyne-core" }
 zyne-math = { path = "../zyne-math" }
 zyne-platform = { path = "../zyne-platform" }
 
+[dev-dependencies]
+naga = { version = "=26.0.0", features = ["wgsl-in"] }
+
 [lints]
 workspace = true
