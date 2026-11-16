@@ -232,13 +232,9 @@ fn valid_spot_angles(inner_angle: f32, outer_angle: f32) -> bool {
 }
 
 fn directional_light_raw(light: DirectionalLightData) -> DirectionalLightRaw {
+    let direction = normalized_direction(light.direction);
     DirectionalLightRaw {
-        direction: [
-            normalized_direction(light.direction)[0],
-            normalized_direction(light.direction)[1],
-            normalized_direction(light.direction)[2],
-            0.0,
-        ],
+        direction: [direction[0], direction[1], direction[2], 0.0],
         color_intensity: [
             light.color[0],
             light.color[1],
@@ -266,6 +262,7 @@ fn point_light_raw(light: PointLightData) -> PointLightRaw {
 }
 
 fn spot_light_raw(light: SpotLightData) -> SpotLightRaw {
+    let direction = normalized_direction(light.direction);
     SpotLightRaw {
         position_range: [
             light.position[0],
@@ -274,9 +271,9 @@ fn spot_light_raw(light: SpotLightData) -> SpotLightRaw {
             light.range,
         ],
         direction_inner_cos: [
-            normalized_direction(light.direction)[0],
-            normalized_direction(light.direction)[1],
-            normalized_direction(light.direction)[2],
+            direction[0],
+            direction[1],
+            direction[2],
             light.inner_angle.cos(),
         ],
         color_intensity: [
