@@ -3058,13 +3058,13 @@ name = "zyne-graphics"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "naga",
  "pollster",
  "tracing",
  "wgpu",
  "zyne-core",
  "zyne-math",
  "zyne-platform",
- "naga",
 ]
 
 [[package]]
