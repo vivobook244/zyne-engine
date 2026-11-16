@@ -209,9 +209,18 @@ fn valid_direction(direction: [f32; 3]) -> bool {
     }
     direction
         .iter()
-        .map(|component| component * component)
-        .sum::<f32>()
-        > f32::EPSILON
+        .map(|component| f64::from(*component) * f64::from(*component))
+        .sum::<f64>()
+        > f64::from(f32::EPSILON)
+}
+
+fn normalized_direction(direction: [f32; 3]) -> [f32; 3] {
+    let length = direction
+        .iter()
+        .map(|component| f64::from(*component) * f64::from(*component))
+        .sum::<f64>()
+        .sqrt();
+    direction.map(|component| (f64::from(component) / length) as f32)
 }
 
 fn valid_spot_angles(inner_angle: f32, outer_angle: f32) -> bool {
@@ -225,9 +234,9 @@ fn valid_spot_angles(inner_angle: f32, outer_angle: f32) -> bool {
 fn directional_light_raw(light: DirectionalLightData) -> DirectionalLightRaw {
     DirectionalLightRaw {
         direction: [
-            light.direction[0],
-            light.direction[1],
-            light.direction[2],
+            normalized_direction(light.direction)[0],
+            normalized_direction(light.direction)[1],
+            normalized_direction(light.direction)[2],
             0.0,
         ],
         color_intensity: [
@@ -265,9 +274,9 @@ fn spot_light_raw(light: SpotLightData) -> SpotLightRaw {
             light.range,
         ],
         direction_inner_cos: [
-            light.direction[0],
-            light.direction[1],
-            light.direction[2],
+            normalized_direction(light.direction)[0],
+            normalized_direction(light.direction)[1],
+            normalized_direction(light.direction)[2],
             light.inner_angle.cos(),
         ],
         color_intensity: [
@@ -930,6 +939,35 @@ mod tests {
                 0,
             ]
         );
+    }
+
+    #[test]
+    fn lighting_uniform_normalizes_large_finite_directions_without_overflow() {
+        use super::LightingUniform;
+        use crate::lighting::{DirectionalLightData, LightingData, SpotLightData};
+
+        let mut lighting = LightingData::with_ambient([0.1; 3]);
+        lighting.directional_lights.push(DirectionalLightData {
+            direction: [f32::MAX, f32::MAX, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+        });
+        lighting.spot_lights.push(SpotLightData {
+            position: [0.0; 3],
+            direction: [f32::MAX, 0.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+            range: 5.0,
+            inner_angle: 0.2,
+            outer_angle: 0.4,
+        });
+
+        let uniform = LightingUniform::from_data(&lighting);
+        let diagonal = std::f32::consts::FRAC_1_SQRT_2;
+        assert_eq!(uniform.counts, [1, 0, 1, 0]);
+        assert!((uniform.directional_lights[0].direction[0] - diagonal).abs() < 1.0e-6);
+        assert!((uniform.directional_lights[0].direction[1] - diagonal).abs() < 1.0e-6);
+        assert_eq!(uniform.spot_lights[0].direction_inner_cos[..3], [1.0, 0.0, 0.0]);
     }
 
     #[test]
