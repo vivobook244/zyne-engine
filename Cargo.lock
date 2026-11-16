@@ -3064,6 +3064,7 @@ dependencies = [
  "zyne-core",
  "zyne-math",
  "zyne-platform",
+ "naga",
 ]
 
 [[package]]
