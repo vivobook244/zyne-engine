@@ -860,6 +860,20 @@ mod tests {
     };
 
     #[test]
+    fn basic_3d_shader_parses_and_passes_wgsl_validation() {
+        let source = include_str!("shaders/basic_3d.wgsl");
+        let module = naga::front::wgsl::parse_str(source)
+            .expect("basic_3d.wgsl should parse as valid WGSL syntax");
+
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        )
+        .validate(&module)
+        .expect("basic_3d.wgsl should pass Naga semantic validation");
+    }
+
+    #[test]
     fn lighting_uniform_uploads_supported_light_counts_and_parameters() {
         use super::LightingUniform;
         use crate::lighting::{DirectionalLightData, LightingData, PointLightData, SpotLightData};
