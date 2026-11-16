@@ -76,6 +76,14 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     return output;
 }
 
+fn safe_normalize(value: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
+    let length_squared = dot(value, value);
+    if length_squared > 1.0e-8 {
+        return value * inverseSqrt(length_squared);
+    }
+    return fallback;
+}
+
 fn blinn_phong(
     base_color: vec3<f32>,
     normal: vec3<f32>,
@@ -85,8 +93,15 @@ fn blinn_phong(
     intensity: f32,
 ) -> vec3<f32> {
     let diffuse_factor = max(dot(normal, light_direction), 0.0);
-    let halfway_direction = normalize(light_direction + view_direction);
-    let specular_factor = pow(max(dot(normal, halfway_direction), 0.0), 32.0);
+    var specular_factor = 0.0;
+    if diffuse_factor > 0.0 {
+        let halfway = light_direction + view_direction;
+        let halfway_length_squared = dot(halfway, halfway);
+        if halfway_length_squared > 1.0e-8 {
+            let halfway_direction = halfway * inverseSqrt(halfway_length_squared);
+            specular_factor = pow(max(dot(normal, halfway_direction), 0.0), 32.0);
+        }
+    }
     let diffuse = base_color * diffuse_factor;
     let specular = vec3<f32>(0.22) * specular_factor;
     return (diffuse + specular) * light_color * intensity;
@@ -97,12 +112,15 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let sampled_color = textureSample(checker_texture, checker_sampler, input.uv);
     let base_color = sampled_color.rgb * input.color;
     let normal = normalize(input.world_normal);
-    let view_direction = normalize(camera.camera_position.xyz - input.world_position);
+    let view_direction = safe_normalize(
+        camera.camera_position.xyz - input.world_position,
+        normal,
+    );
     var result = base_color * lighting.ambient_color.rgb;
 
     for (var i = 0u; i < lighting.counts.x; i = i + 1u) {
         let light = lighting.directional_lights[i];
-        let light_direction = normalize(-light.direction.xyz);
+        let light_direction = safe_normalize(-light.direction.xyz, normal);
         result += blinn_phong(
             base_color,
             normal,
@@ -118,7 +136,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         let to_light = light.position_range.xyz - input.world_position;
         let distance_squared = max(dot(to_light, to_light), 0.0001);
         let distance = sqrt(distance_squared);
-        let light_direction = to_light / distance;
+        let light_direction = safe_normalize(to_light, normal);
         let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
         let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
         result += blinn_phong(
@@ -136,13 +154,21 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         let from_light = input.world_position - light.position_range.xyz;
         let distance_squared = max(dot(from_light, from_light), 0.0001);
         let distance = sqrt(distance_squared);
-        let from_light_direction = from_light / distance;
-        let cone_cosine = dot(normalize(light.direction_inner_cos.xyz), from_light_direction);
-        let cone_factor = smoothstep(
-            light.outer_cos_padding.x,
-            light.direction_inner_cos.w,
-            cone_cosine,
+        let from_light_direction = safe_normalize(from_light, -light.direction_inner_cos.xyz);
+        let cone_cosine = dot(
+            safe_normalize(light.direction_inner_cos.xyz, vec3<f32>(0.0, 0.0, -1.0)),
+            from_light_direction,
         );
+        var cone_factor = 0.0;
+        let inner_cosine = light.direction_inner_cos.w;
+        let outer_cosine = light.outer_cos_padding.x;
+        if inner_cosine - outer_cosine <= 1.0e-6 {
+            if cone_cosine >= inner_cosine {
+                cone_factor = 1.0;
+            }
+        } else {
+            cone_factor = smoothstep(outer_cosine, inner_cosine, cone_cosine);
+        }
         let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
         let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
         result += blinn_phong(
