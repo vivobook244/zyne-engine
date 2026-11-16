@@ -111,7 +111,7 @@ fn blinn_phong(
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let sampled_color = textureSample(checker_texture, checker_sampler, input.uv);
     let base_color = sampled_color.rgb * input.color;
-    let normal = normalize(input.world_normal);
+    let normal = safe_normalize(input.world_normal, vec3<f32>(0.0, 1.0, 0.0));
     let view_direction = safe_normalize(
         camera.camera_position.xyz - input.world_position,
         normal,
