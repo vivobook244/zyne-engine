@@ -14,6 +14,9 @@ pub use gltf_import::{
     ImportError, ImportedAsset, ImportedImage, ImportedMesh, ImportedPrimitive, import_gltf,
 };
 pub use material::{BlinnPhongMaterial, MaterialError};
+
+/// Typed CPU-side cache for registered Blinn–Phong material assets.
+pub type MaterialCache = AssetCache<BlinnPhongMaterial>;
 pub use registry::{
     AssetMetadata, AssetRegistry, ImporterSettings, ProjectRelativePath, RegistryError,
     RegistryLoadError, ResourceKind,
