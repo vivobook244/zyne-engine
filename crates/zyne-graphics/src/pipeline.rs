@@ -215,12 +215,15 @@ fn valid_direction(direction: [f32; 3]) -> bool {
 }
 
 fn normalized_direction(direction: [f32; 3]) -> [f32; 3] {
-    let length = direction
+    // Scale before measuring length so large finite inputs cannot overflow
+    // and normalization stays entirely in f32 without lossy casts.
+    let scale = direction
         .iter()
-        .map(|component| f64::from(*component) * f64::from(*component))
-        .sum::<f64>()
-        .sqrt();
-    direction.map(|component| (f64::from(component) / length) as f32)
+        .map(|component| component.abs())
+        .fold(0.0_f32, f32::max);
+    let scaled = direction.map(|component| component / scale);
+    let length = scaled.iter().map(|component| component * component).sum::<f32>().sqrt();
+    scaled.map(|component| component / length)
 }
 
 fn valid_spot_angles(inner_angle: f32, outer_angle: f32) -> bool {
