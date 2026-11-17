@@ -978,7 +978,10 @@ mod tests {
         assert_eq!(uniform.counts, [1, 0, 1, 0]);
         assert!((uniform.directional_lights[0].direction[0] - diagonal).abs() < 1.0e-6);
         assert!((uniform.directional_lights[0].direction[1] - diagonal).abs() < 1.0e-6);
-        assert_eq!(uniform.spot_lights[0].direction_inner_cos[..3], [1.0, 0.0, 0.0]);
+        assert_eq!(
+            uniform.spot_lights[0].direction_inner_cos[..3],
+            [1.0, 0.0, 0.0]
+        );
     }
 
     #[test]
