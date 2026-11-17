@@ -222,7 +222,11 @@ fn normalized_direction(direction: [f32; 3]) -> [f32; 3] {
         .map(|component| component.abs())
         .fold(0.0_f32, f32::max);
     let scaled = direction.map(|component| component / scale);
-    let length = scaled.iter().map(|component| component * component).sum::<f32>().sqrt();
+    let length = scaled
+        .iter()
+        .map(|component| component * component)
+        .sum::<f32>()
+        .sqrt();
     scaled.map(|component| component / length)
 }
 
