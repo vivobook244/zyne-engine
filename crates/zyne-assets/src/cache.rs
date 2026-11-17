@@ -9,7 +9,7 @@ use std::fmt;
 
 use zyne_core::{Handle, ResourceId, ResourceStorage, ResourceStorageError};
 
-use crate::{AssetRegistry, ResourceKind};
+use crate::{AssetRegistry, BlinnPhongMaterial, ResourceKind};
 
 /// Lifecycle state of one resource in an asset cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -320,6 +320,14 @@ impl<T> AssetCache<T> {
     }
 }
 
+impl AssetCache<BlinnPhongMaterial> {
+    /// Creates an empty cache dedicated to material assets.
+    #[must_use]
+    pub fn new_material() -> Self {
+        Self::new(ResourceKind::Material)
+    }
+}
+
 /// Read-only lifecycle view implemented by every typed asset cache.
 pub trait AssetCacheStatus {
     /// Returns the resource kind owned by this cache.
@@ -439,6 +447,24 @@ mod tests {
         let mut registry = AssetRegistry::new();
         registry.register(metadata).unwrap();
         (registry, id)
+    }
+
+    #[test]
+    fn material_cache_loads_only_registered_material_assets() {
+        let (registry, id) = registry_with_asset(ResourceKind::Material);
+        let mut cache = AssetCache::new_material();
+
+        assert_eq!(cache.kind(), ResourceKind::Material);
+        cache.begin_loading(&registry, id).unwrap();
+        cache
+            .complete_loading(&registry, id, super::BlinnPhongMaterial::default())
+            .unwrap();
+
+        assert_eq!(
+            cache.get(id),
+            Some(&super::BlinnPhongMaterial::default())
+        );
+        assert_eq!(cache.len(), 1);
     }
 
     #[test]
