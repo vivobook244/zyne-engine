@@ -460,10 +460,7 @@ mod tests {
             .complete_loading(&registry, id, super::BlinnPhongMaterial::default())
             .unwrap();
 
-        assert_eq!(
-            cache.get(id),
-            Some(&super::BlinnPhongMaterial::default())
-        );
+        assert_eq!(cache.get(id), Some(&super::BlinnPhongMaterial::default()));
         assert_eq!(cache.len(), 1);
     }
 
