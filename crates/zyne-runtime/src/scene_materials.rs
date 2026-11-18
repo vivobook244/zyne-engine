@@ -1,8 +1,6 @@
 //! Resolution of persistent scene material assignments into CPU render snapshots.
 
-use zyne_assets::{
-    AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind,
-};
+use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind};
 use zyne_core::ResourceId;
 
 use crate::{Scene, SceneEntityId};
@@ -171,12 +169,7 @@ mod tests {
 
     use super::{SceneMaterialResolutionIssue, resolve_scene_materials};
 
-    fn register(
-        registry: &mut AssetRegistry,
-        id: ResourceId,
-        kind: ResourceKind,
-        path: &str,
-    ) {
+    fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
             .register(
                 AssetMetadata::new(
@@ -204,21 +197,26 @@ mod tests {
     #[test]
     fn resolves_loaded_material_assignments_for_multiple_entities() {
         let mut scene = Scene::new("Shared Material").unwrap();
-        let first = scene.spawn_entity("First", Transform3d::identity()).unwrap();
-        let second = scene.spawn_entity("Second", Transform3d::identity()).unwrap();
+        let first = scene
+            .spawn_entity("First", Transform3d::identity())
+            .unwrap();
+        let second = scene
+            .spawn_entity("Second", Transform3d::identity())
+            .unwrap();
         let material_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/stone.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/stone.ron",
+        );
         scene.set_entity_material_reference(first, Some(material_id));
         scene.set_entity_material_reference(second, Some(material_id));
 
-        let material = BlinnPhongMaterial::new(
-            [0.05, 0.05, 0.05],
-            [0.6, 0.7, 0.8],
-            [0.2, 0.2, 0.2],
-            48.0,
-        )
-        .unwrap();
+        let material =
+            BlinnPhongMaterial::new([0.05, 0.05, 0.05], [0.6, 0.7, 0.8], [0.2, 0.2, 0.2], 48.0)
+                .unwrap();
         let mut cache = AssetCache::new_material();
         load_material(&registry, &mut cache, material_id, material.clone());
 
@@ -239,11 +237,8 @@ mod tests {
         let missing_id = ResourceId::new();
         scene.set_entity_material_reference(entity, Some(missing_id));
 
-        let report = resolve_scene_materials(
-            &scene,
-            &AssetRegistry::new(),
-            &AssetCache::new_material(),
-        );
+        let report =
+            resolve_scene_materials(&scene, &AssetRegistry::new(), &AssetCache::new_material());
 
         assert!(report.resolved().is_empty());
         assert_eq!(report.unresolved().len(), 1);
@@ -259,11 +254,15 @@ mod tests {
         let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         let mesh_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, mesh_id, ResourceKind::Mesh, "meshes/prop.mesh");
+        register(
+            &mut registry,
+            mesh_id,
+            ResourceKind::Mesh,
+            "meshes/prop.mesh",
+        );
         scene.set_entity_material_reference(entity, Some(mesh_id));
 
-        let report =
-            resolve_scene_materials(&scene, &registry, &AssetCache::new_material());
+        let report = resolve_scene_materials(&scene, &registry, &AssetCache::new_material());
 
         assert_eq!(
             report.unresolved()[0].issue(),
@@ -279,7 +278,12 @@ mod tests {
         let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         let material_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/wood.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/wood.ron",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let report =
