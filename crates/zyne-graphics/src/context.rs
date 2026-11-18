@@ -11,7 +11,7 @@ use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
 use crate::{
-    FrameOutcome, GraphicsError, LightingData,
+    FrameOutcome, GraphicsError, LightingData, MaterialData, GpuMaterial,
     mesh::{GpuMesh, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
 };
@@ -158,6 +158,13 @@ impl GraphicsContext {
         Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count))
     }
 
+    /// Uploads renderer-facing material parameters for reuse across draws.
+    #[must_use]
+    pub fn create_material(&self, data: &MaterialData) -> GpuMaterial {
+        let (buffer, bind_group) = self.cube_pipeline.create_material_bind_group(&self.device, data);
+        GpuMaterial::new(buffer, bind_group)
+    }
+
     /// Acquires a surface frame, clears it, submits GPU work, and presents it.
     ///
     /// Lost and outdated surfaces are reconfigured and retried once. A timeout
@@ -297,7 +304,7 @@ impl GraphicsContext {
                     .checked_add(count)
                     .ok_or(GraphicsError::TooManyInstances)?;
                 if count > 0 {
-                    batch_ranges.push((batch.mesh(), first_instance..end_instance));
+                    batch_ranges.push((batch.mesh(), batch.material(), first_instance..end_instance));
                 }
                 first_instance = end_instance;
             }
@@ -343,18 +350,21 @@ impl GraphicsContext {
             render_pass.set_bind_group(2, self.cube_pipeline.lighting_bind_group(), &[]);
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
-                for (mesh, instances) in &batch_ranges {
+                for (mesh, material, instances) in &batch_ranges {
+                    render_pass.set_bind_group(3, material.map_or_else(|| self.cube_pipeline.default_material_bind_group(), |value| value.bind_group()), &[]);
                     render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                     render_pass
                         .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                     render_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
                 }
             } else if let Some(mesh) = mesh {
+                render_pass.set_bind_group(3, self.cube_pipeline.default_material_bind_group(), &[]);
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                 render_pass
                     .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
             } else if mesh_batches.is_none() {
+                render_pass.set_bind_group(3, self.cube_pipeline.default_material_bind_group(), &[]);
                 render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
                 render_pass.draw(0..36, 0..instance_count);
             }
