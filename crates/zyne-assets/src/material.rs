@@ -134,7 +134,7 @@ impl BlinnPhongMaterial {
 impl Default for BlinnPhongMaterial {
     fn default() -> Self {
         Self {
-            ambient: [0.1; 3],
+            ambient: [0.4; 3],
             diffuse: [0.8; 3],
             specular: [0.2; 3],
             shininess: 32.0,
@@ -207,7 +207,7 @@ mod tests {
     fn default_material_has_valid_blinn_phong_parameters() {
         let material = BlinnPhongMaterial::default();
 
-        assert_eq!(material.ambient(), [0.1; 3]);
+        assert_eq!(material.ambient(), [0.4; 3]);
         assert_eq!(material.diffuse(), [0.8; 3]);
         assert_eq!(material.specular(), [0.2; 3]);
         assert_eq!(material.shininess(), 32.0);
