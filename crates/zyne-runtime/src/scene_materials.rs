@@ -260,7 +260,7 @@ mod tests {
         let report =
             resolve_scene_materials(&scene, &AssetRegistry::new(), &AssetCache::new_material());
 
-        assert!(report.resolved().is_empty());
+        assert_eq!(report.resolved(), &[]);
         assert_eq!(report.unresolved().len(), 1);
         assert_eq!(
             report.unresolved()[0].issue(),
@@ -323,7 +323,7 @@ mod tests {
             resolve_scene_materials(&scene, &AssetRegistry::new(), &AssetCache::new_material());
 
         assert!(report.is_complete());
-        assert!(report.resolved().is_empty());
-        assert!(report.unresolved().is_empty());
+        assert_eq!(report.resolved(), &[]);
+        assert_eq!(report.unresolved(), &[]);
     }
 }
