@@ -77,6 +77,8 @@ pub struct SceneEntityDocument {
     #[serde(default)]
     asset_references: Vec<ResourceId>,
     #[serde(default)]
+    material_reference: Option<ResourceId>,
+    #[serde(default)]
     directional_light: Option<DirectionalLight>,
     #[serde(default)]
     point_light: Option<PointLight>,
@@ -113,6 +115,7 @@ impl SceneEntityDocument {
             name,
             transform,
             asset_references: Vec::new(),
+            material_reference: None,
             directional_light: None,
             point_light: None,
             spot_light: None,
@@ -138,6 +141,17 @@ impl SceneEntityDocument {
     #[must_use]
     pub fn asset_references(&self) -> &[ResourceId] {
         &self.asset_references
+    }
+
+    /// Returns the assigned material asset identity, if present.
+    #[must_use]
+    pub const fn material_reference(&self) -> Option<ResourceId> {
+        self.material_reference
+    }
+
+    /// Assigns or clears the material asset identity.
+    pub fn set_material_reference(&mut self, material: Option<ResourceId>) {
+        self.material_reference = material;
     }
 
     /// Returns the directional light attached to this entity document.
