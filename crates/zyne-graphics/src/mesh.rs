@@ -47,7 +47,10 @@ pub struct GpuMaterial {
 
 impl GpuMaterial {
     pub(crate) const fn new(uniform_buffer: wgpu::Buffer, bind_group: wgpu::BindGroup) -> Self {
-        Self { _uniform_buffer: uniform_buffer, bind_group }
+        Self {
+            _uniform_buffer: uniform_buffer,
+            bind_group,
+        }
     }
 
     pub(crate) const fn bind_group(&self) -> &wgpu::BindGroup {
@@ -66,13 +69,25 @@ impl<'a> MeshRenderBatch<'a> {
     /// Creates a batch for one mesh and its instance transforms.
     #[must_use]
     pub const fn new(mesh: &'a GpuMesh, transforms: &'a [Transform3d]) -> Self {
-        Self { mesh, transforms, material: None }
+        Self {
+            mesh,
+            transforms,
+            material: None,
+        }
     }
 
     /// Creates a batch using an explicit GPU material.
     #[must_use]
-    pub const fn with_material(mesh: &'a GpuMesh, transforms: &'a [Transform3d], material: &'a GpuMaterial) -> Self {
-        Self { mesh, transforms, material: Some(material) }
+    pub const fn with_material(
+        mesh: &'a GpuMesh,
+        transforms: &'a [Transform3d],
+        material: &'a GpuMaterial,
+    ) -> Self {
+        Self {
+            mesh,
+            transforms,
+            material: Some(material),
+        }
     }
 
     /// Returns the GPU material assigned to this batch, if any.
