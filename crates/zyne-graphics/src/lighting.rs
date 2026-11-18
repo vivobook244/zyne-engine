@@ -51,7 +51,7 @@ pub struct LightingData {
 impl Default for LightingData {
     fn default() -> Self {
         Self {
-            ambient_color: [0.16, 0.16, 0.18],
+            ambient_color: [0.30, 0.30, 0.32],
             directional_lights: vec![DirectionalLightData {
                 direction: [-0.4, -1.0, -0.3],
                 color: [1.0; 3],
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn default_lighting_has_a_soft_ambient_and_directional_key_light() {
         let lighting = LightingData::default();
-        assert_eq!(lighting.ambient_color, [0.16, 0.16, 0.18]);
+        assert_eq!(lighting.ambient_color, [0.30, 0.30, 0.32]);
         assert_eq!(lighting.directional_lights.len(), 1);
         assert_eq!(lighting.point_lights.as_slice(), &[]);
         assert_eq!(lighting.spot_lights.as_slice(), &[]);
