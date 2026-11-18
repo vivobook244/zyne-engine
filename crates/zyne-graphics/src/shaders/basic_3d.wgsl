@@ -127,7 +127,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         camera.camera_position.xyz - input.world_position,
         normal,
     );
-    var result = material.ambient.rgb * lighting.ambient_color.rgb;
+    var result = base_color * material.ambient.rgb * lighting.ambient_color.rgb;
 
     for (var i = 0u; i < lighting.counts.x; i = i + 1u) {
         let light = lighting.directional_lights[i];
