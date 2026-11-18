@@ -258,6 +258,9 @@ impl GraphicsContext {
         self.render_frame_internal(camera, None, None, Some(batches), Some(lighting))
     }
 
+    // Keep frame acquisition, resource updates, command encoding, and presentation
+    // together: splitting this lifecycle would obscure its ordering guarantees.
+    #[allow(clippy::too_many_lines)]
     fn render_frame_internal(
         &mut self,
         camera: Option<&Camera3d>,
