@@ -11,7 +11,10 @@ use zyne_platform::{
     PlatformEvent, PlatformWindow, WindowControl, WindowEvent, WindowEventHandler, WindowRunner,
 };
 
-use crate::{ApplicationConfig, EventQueue, InputState, SceneEngine, SceneMeshRenderer};
+use crate::{
+    ApplicationConfig, EventQueue, InputState, SceneEngine, SceneMaterialEngine,
+    SceneMaterialRenderer, SceneMeshRenderer,
+};
 
 const MAX_FIXED_UPDATES_PER_FRAME: u32 = 8;
 
@@ -72,6 +75,49 @@ impl Application {
                 .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
             renderer
                 .render_scene(graphics, engine.scene(), engine.asset_registry(), camera)
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            Ok(())
+        });
+        self.run_with_render_hook(engine, Some(hook))
+    }
+
+    /// Runs a scene engine with persistent mesh and material assignments.
+    ///
+    /// In addition to the requirements of SceneEngine, the engine provides a
+    /// loaded CPU material cache. Referenced materials are uploaded once and
+    /// reused by scene entities across frames.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first runtime, asset upload, graphics, or platform error.
+    pub fn run_scene_with_materials<E: SceneMaterialEngine>(self, engine: E) -> ZyneResult<()> {
+        let mut mesh_renderer = SceneMeshRenderer::new();
+        let mut material_renderer = SceneMaterialRenderer::new();
+        let hook: SceneRenderHook<E> = Box::new(move |engine, graphics, camera| {
+            mesh_renderer
+                .sync_meshes(
+                    graphics,
+                    engine.scene(),
+                    engine.asset_registry(),
+                    engine.mesh_cache(),
+                )
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            material_renderer
+                .sync_materials(
+                    graphics,
+                    engine.scene(),
+                    engine.asset_registry(),
+                    engine.material_cache(),
+                )
+                .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            mesh_renderer
+                .render_scene_with_materials(
+                    &material_renderer,
+                    graphics,
+                    engine.scene(),
+                    engine.asset_registry(),
+                    camera,
+                )
                 .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
             Ok(())
         });
