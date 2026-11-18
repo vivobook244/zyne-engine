@@ -15,7 +15,7 @@ pub use lighting::{
     PointLightData, SpotLightData,
 };
 pub use material::MaterialData;
-pub use mesh::{GpuMesh, MeshData, MeshError, MeshRenderBatch, MeshVertex};
+pub use mesh::{GpuMaterial, GpuMesh, MeshData, MeshError, MeshRenderBatch, MeshVertex};
 
 /// Result of attempting to render one window frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
