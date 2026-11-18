@@ -307,10 +307,10 @@ impl GraphicsContext {
                     .ok_or(GraphicsError::TooManyInstances)?;
                 if count > 0 {
                     batch_ranges.push((
-                    batch.mesh(),
-                    batch.material(),
-                    first_instance..end_instance,
-                ));
+                        batch.mesh(),
+                        batch.material(),
+                        first_instance..end_instance,
+                    ));
                 }
                 first_instance = end_instance;
             }
