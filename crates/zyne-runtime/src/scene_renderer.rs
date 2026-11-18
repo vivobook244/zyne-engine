@@ -164,7 +164,9 @@ impl SceneMeshRenderer {
             collect_scene_mesh_material_instances(scene, registry)
         {
             if !self.meshes.contains_key(&mesh_id) {
-                return Err(SceneRenderError::MissingGpuMesh { resource_id: mesh_id });
+                return Err(SceneRenderError::MissingGpuMesh {
+                    resource_id: mesh_id,
+                });
             }
             if let Some(resource_id) = material_id {
                 if !materials.materials.contains_key(&resource_id) {
@@ -190,7 +192,9 @@ impl SceneMeshRenderer {
                 let mesh = self
                     .meshes
                     .get(mesh_id)
-                    .ok_or(SceneRenderError::MissingGpuMesh { resource_id: *mesh_id })?;
+                    .ok_or(SceneRenderError::MissingGpuMesh {
+                        resource_id: *mesh_id,
+                    })?;
                 match material_id {
                     Some(resource_id) => {
                         let material = materials.materials.get(resource_id).ok_or(
@@ -307,7 +311,11 @@ impl fmt::Display for SceneRenderError {
                     "mesh asset {resource_id} has not been uploaded to the GPU"
                 )
             }
-            Self::UnresolvedMaterial { entity_id, resource_id, issue } => write!(
+            Self::UnresolvedMaterial {
+                entity_id,
+                resource_id,
+                issue,
+            } => write!(
                 formatter,
                 "material {resource_id} assigned to entity {entity_id:?} could not be resolved: {issue:?}"
             ),
@@ -539,8 +547,12 @@ mod tests {
         let second_material = ResourceId::new();
         let mut registry = AssetRegistry::new();
         register(&mut registry, mesh_id, ResourceKind::Mesh, "shared.mesh");
-        scene.set_entity_asset_references(first, &[mesh_id]).unwrap();
-        scene.set_entity_asset_references(second, &[mesh_id]).unwrap();
+        scene
+            .set_entity_asset_references(first, &[mesh_id])
+            .unwrap();
+        scene
+            .set_entity_asset_references(second, &[mesh_id])
+            .unwrap();
         scene.set_entity_material_reference(first, Some(first_material));
         scene.set_entity_material_reference(second, Some(second_material));
 
