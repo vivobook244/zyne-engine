@@ -9,6 +9,7 @@ mod event_queue;
 mod mesh_conversion;
 mod scene_assets;
 mod scene_loading;
+mod scene_materials;
 mod scene_renderer;
 
 pub use application::Application;
@@ -22,6 +23,10 @@ pub use scene_assets::{
     resolve_scene_asset_statuses, validate_scene_asset_references,
 };
 pub use scene_loading::{LoadedScene, SceneAssetLoadError, load_scene_with_asset_diagnostics};
+pub use scene_materials::{
+    ResolvedSceneMaterial, SceneMaterialResolutionIssue, SceneMaterialResolutionReport,
+    UnresolvedSceneMaterial, resolve_scene_materials,
+};
 pub use scene_renderer::{SceneEngine, SceneMeshRenderer, SceneRenderError};
 
 pub use zyne_assets::AssetRegistry;
