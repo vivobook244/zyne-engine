@@ -27,6 +27,12 @@ pub trait SceneEngine: Engine {
     fn mesh_cache(&self) -> &AssetCache<MeshData>;
 }
 
+/// Extended scene-engine contract for applications that render assigned materials.
+pub trait SceneMaterialEngine: SceneEngine {
+    /// Returns loaded CPU material data referenced by the scene.
+    fn material_cache(&self) -> &AssetCache<BlinnPhongMaterial>;
+}
+
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMeshRenderer {
