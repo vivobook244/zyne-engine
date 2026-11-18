@@ -455,7 +455,7 @@ mod tests {
     use zyne_math::Transform3d;
     use zyne_scene::Scene;
 
-    use super::collect_scene_mesh_instances;
+    use super::{collect_scene_mesh_instances, collect_scene_mesh_material_instances};
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
@@ -523,6 +523,38 @@ mod tests {
                 .zip([2.0, 0.0, 0.0])
                 .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         }));
+    }
+
+    #[test]
+    fn extracts_mesh_instances_with_distinct_material_assignments() {
+        let mut scene = Scene::new("Mesh Material Extraction").unwrap();
+        let first = scene
+            .spawn_entity("First", Transform3d::identity())
+            .unwrap();
+        let second = scene
+            .spawn_entity("Second", Transform3d::identity())
+            .unwrap();
+        let mesh_id = ResourceId::new();
+        let first_material = ResourceId::new();
+        let second_material = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, mesh_id, ResourceKind::Mesh, "shared.mesh");
+        scene.set_entity_asset_references(first, &[mesh_id]).unwrap();
+        scene.set_entity_asset_references(second, &[mesh_id]).unwrap();
+        scene.set_entity_material_reference(first, Some(first_material));
+        scene.set_entity_material_reference(second, Some(second_material));
+
+        let instances = collect_scene_mesh_material_instances(&scene, &registry);
+
+        assert_eq!(instances.len(), 2);
+        assert!(instances.iter().all(|(id, _, _)| *id == mesh_id));
+        let materials: Vec<_> = instances
+            .iter()
+            .filter_map(|(_, material_id, _)| *material_id)
+            .collect();
+        assert_eq!(materials.len(), 2);
+        assert!(materials.contains(&first_material));
+        assert!(materials.contains(&second_material));
     }
 
     #[test]
