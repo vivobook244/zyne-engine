@@ -28,6 +28,12 @@ struct Lighting {
     spot_lights: array<SpotLight, 8>,
 };
 
+struct Material {
+    ambient: vec4<f32>,
+    diffuse: vec4<f32>,
+    specular: vec4<f32>,
+};
+
 @group(0) @binding(0)
 var<uniform> camera: Camera;
 
@@ -39,6 +45,9 @@ var checker_sampler: sampler;
 
 @group(2) @binding(0)
 var<uniform> lighting: Lighting;
+
+@group(3) @binding(0)
+var<uniform> material: Material;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -91,6 +100,8 @@ fn blinn_phong(
     light_direction: vec3<f32>,
     light_color: vec3<f32>,
     intensity: f32,
+    specular_color: vec3<f32>,
+    shininess: f32,
 ) -> vec3<f32> {
     let diffuse_factor = max(dot(normal, light_direction), 0.0);
     var specular_factor = 0.0;
@@ -99,24 +110,24 @@ fn blinn_phong(
         let halfway_length_squared = dot(halfway, halfway);
         if halfway_length_squared > 1.0e-8 {
             let halfway_direction = halfway * inverseSqrt(halfway_length_squared);
-            specular_factor = pow(max(dot(normal, halfway_direction), 0.0), 32.0);
+            specular_factor = pow(max(dot(normal, halfway_direction), 0.0), shininess);
         }
     }
     let diffuse = base_color * diffuse_factor;
-    let specular = vec3<f32>(0.22) * specular_factor;
+    let specular = specular_color * specular_factor;
     return (diffuse + specular) * light_color * intensity;
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let sampled_color = textureSample(checker_texture, checker_sampler, input.uv);
-    let base_color = sampled_color.rgb * input.color;
+    let base_color = sampled_color.rgb * input.color * material.diffuse.rgb;
     let normal = safe_normalize(input.world_normal, vec3<f32>(0.0, 1.0, 0.0));
     let view_direction = safe_normalize(
         camera.camera_position.xyz - input.world_position,
         normal,
     );
-    var result = base_color * lighting.ambient_color.rgb;
+    var result = material.ambient.rgb * lighting.ambient_color.rgb;
 
     for (var i = 0u; i < lighting.counts.x; i = i + 1u) {
         let light = lighting.directional_lights[i];
@@ -128,6 +139,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             light_direction,
             light.color_intensity.rgb,
             light.color_intensity.w,
+            material.specular.rgb,
+            material.specular.w,
         );
     }
 
@@ -146,6 +159,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             light_direction,
             light.color_intensity.rgb,
             light.color_intensity.w * attenuation,
+            material.specular.rgb,
+            material.specular.w,
         );
     }
 
@@ -178,6 +193,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             -from_light_direction,
             light.color_intensity.rgb,
             light.color_intensity.w * attenuation * cone_factor,
+            material.specular.rgb,
+            material.specular.w,
         );
     }
 
