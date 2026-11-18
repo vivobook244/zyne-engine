@@ -306,7 +306,11 @@ impl GraphicsContext {
                     .checked_add(count)
                     .ok_or(GraphicsError::TooManyInstances)?;
                 if count > 0 {
-                    batch_ranges.push((batch.mesh(), batch.material(), first_instance..end_instance));
+                    batch_ranges.push((
+                    batch.mesh(),
+                    batch.material(),
+                    first_instance..end_instance,
+                ));
                 }
                 first_instance = end_instance;
             }
@@ -377,7 +381,11 @@ impl GraphicsContext {
                     .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
             } else if mesh_batches.is_none() {
-                render_pass.set_bind_group(3, self.cube_pipeline.default_material_bind_group(), &[]);
+                render_pass.set_bind_group(
+                    3,
+                    self.cube_pipeline.default_material_bind_group(),
+                    &[],
+                );
                 render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
                 render_pass.draw(0..36, 0..instance_count);
             }
