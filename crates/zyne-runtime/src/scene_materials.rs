@@ -286,8 +286,7 @@ mod tests {
         );
         scene.set_entity_material_reference(entity, Some(material_id));
 
-        let report =
-            resolve_scene_materials(&scene, &registry, &AssetCache::new_material());
+        let report = resolve_scene_materials(&scene, &registry, &AssetCache::new_material());
 
         assert_eq!(
             report.unresolved()[0].issue(),
@@ -300,11 +299,8 @@ mod tests {
         let mut scene = Scene::new("No Material").unwrap();
         scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
 
-        let report = resolve_scene_materials(
-            &scene,
-            &AssetRegistry::new(),
-            &AssetCache::new_material(),
-        );
+        let report =
+            resolve_scene_materials(&scene, &AssetRegistry::new(), &AssetCache::new_material());
 
         assert!(report.is_complete());
         assert!(report.resolved().is_empty());
