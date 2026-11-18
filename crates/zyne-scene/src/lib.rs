@@ -424,12 +424,15 @@ mod tests {
             30.0_f32.to_radians(),
         )
         .unwrap();
+        let material_id = ResourceId::new();
+        entity.set_material_reference(Some(material_id));
         entity.set_directional_light(Some(directional));
         entity.set_point_light(Some(point));
         entity.set_spot_light(Some(spot));
 
         let encoded = ron::ser::to_string(&entity).unwrap();
         let decoded: SceneEntityDocument = ron::de::from_str(&encoded).unwrap();
+        assert_eq!(decoded.material_reference(), Some(material_id));
         assert_eq!(decoded.directional_light(), Some(directional));
         assert_eq!(decoded.point_light(), Some(point));
         assert_eq!(decoded.spot_light(), Some(spot));
