@@ -11,7 +11,7 @@ use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
 use crate::{
-    FrameOutcome, GraphicsError, LightingData, MaterialData, GpuMaterial,
+    FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
 };
@@ -161,7 +161,9 @@ impl GraphicsContext {
     /// Uploads renderer-facing material parameters for reuse across draws.
     #[must_use]
     pub fn create_material(&self, data: &MaterialData) -> GpuMaterial {
-        let (buffer, bind_group) = self.cube_pipeline.create_material_bind_group(&self.device, data);
+        let (buffer, bind_group) = self
+            .cube_pipeline
+            .create_material_bind_group(&self.device, data);
         GpuMaterial::new(buffer, bind_group)
     }
 
@@ -351,14 +353,25 @@ impl GraphicsContext {
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
                 for (mesh, material, instances) in &batch_ranges {
-                    render_pass.set_bind_group(3, material.map_or_else(|| self.cube_pipeline.default_material_bind_group(), |value| value.bind_group()), &[]);
+                    render_pass.set_bind_group(
+                        3,
+                        material.map_or_else(
+                            || self.cube_pipeline.default_material_bind_group(),
+                            |value| value.bind_group(),
+                        ),
+                        &[],
+                    );
                     render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                     render_pass
                         .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                     render_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
                 }
             } else if let Some(mesh) = mesh {
-                render_pass.set_bind_group(3, self.cube_pipeline.default_material_bind_group(), &[]);
+                render_pass.set_bind_group(
+                    3,
+                    self.cube_pipeline.default_material_bind_group(),
+                    &[],
+                );
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                 render_pass
                     .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
