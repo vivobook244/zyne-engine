@@ -23,6 +23,9 @@ struct LocalTransform(Transform3d);
 #[derive(Component, Debug, Clone, Default)]
 struct EntityAssetReferences(Vec<ResourceId>);
 
+#[derive(Component, Debug, Clone, Copy, Default)]
+struct EntityMaterialReference(Option<ResourceId>);
+
 /// An in-memory scene that owns its ECS world.
 pub struct Scene {
     id: SceneId,
@@ -116,6 +119,7 @@ impl Scene {
                 EntityName(document.name().to_owned()),
                 LocalTransform(*document.transform()),
                 EntityAssetReferences::default(),
+                EntityMaterialReference::default(),
             ))
             .id();
         self.entities.insert(id, handle);
@@ -164,6 +168,45 @@ impl Scene {
         self.world
             .get::<EntityAssetReferences>(handle)
             .map(|references| references.0.as_slice())
+    }
+
+    /// Returns the assigned material asset identity, if present.
+    #[must_use]
+    pub fn entity_material_reference(&self, id: SceneEntityId) -> Option<ResourceId> {
+        let handle = *self.entities.get(&id)?;
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return None;
+        }
+        self.world.get::<EntityMaterialReference>(handle).map(|value| value.0).flatten()
+    }
+
+    /// Assigns or clears an entity's persistent material asset identity.
+    ///
+    /// Returns false when the entity does not exist.
+    pub fn set_entity_material_reference(
+        &mut self,
+        id: SceneEntityId,
+        material: Option<ResourceId>,
+    ) -> bool {
+        let Some(&handle) = self.entities.get(&id) else {
+            return false;
+        };
+        if self
+            .world
+            .get::<PersistentEntityId>(handle)
+            .is_none_or(|persistent_id| persistent_id.0 != id)
+        {
+            return false;
+        }
+        let Some(mut reference) = self.world.get_mut::<EntityMaterialReference>(handle) else {
+            return false;
+        };
+        reference.0 = material;
+        true
     }
 
     /// Replaces an entity's persistent asset references.
@@ -347,6 +390,7 @@ impl Scene {
                     entity.add_asset_reference(*resource_id)?;
                 }
             }
+            entity.set_material_reference(self.entity_material_reference(id));
             entity.set_directional_light(self.entity_directional_light(id));
             entity.set_point_light(self.entity_point_light(id));
             entity.set_spot_light(self.entity_spot_light(id));
@@ -371,6 +415,7 @@ impl Scene {
             if !references.is_empty() {
                 scene.set_entity_asset_references(entity.id(), references)?;
             }
+            scene.set_entity_material_reference(entity.id(), entity.material_reference());
             scene.set_entity_directional_light(entity.id(), entity.directional_light());
             scene.set_entity_point_light(entity.id(), entity.point_light());
             scene.set_entity_spot_light(entity.id(), entity.spot_light());
