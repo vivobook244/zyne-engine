@@ -3,15 +3,17 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use zyne_assets::{AssetCache, AssetRegistry, ResourceKind};
+use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind};
 use zyne_core::Engine;
 use zyne_core::ResourceId;
 use zyne_graphics::{
-    DirectionalLightData, FrameOutcome, GpuMesh, GraphicsContext, GraphicsError, LightingData,
-    MeshData, MeshRenderBatch, PointLightData, SpotLightData,
+    DirectionalLightData, FrameOutcome, GpuMaterial, GpuMesh, GraphicsContext, GraphicsError,
+    LightingData, MeshData, MeshRenderBatch, PointLightData, SpotLightData,
 };
 use zyne_math::Camera3d;
-use zyne_scene::Scene;
+use zyne_scene::{Scene, SceneEntityId};
+
+use crate::{SceneMaterialResolutionIssue, resolve_scene_materials};
 
 /// Engine contract for applications that render a live ECS scene.
 pub trait SceneEngine: Engine {
@@ -29,6 +31,73 @@ pub trait SceneEngine: Engine {
 #[derive(Default)]
 pub struct SceneMeshRenderer {
     meshes: HashMap<ResourceId, GpuMesh>,
+}
+
+/// Owns GPU material uploads referenced by a scene.
+#[derive(Default)]
+pub struct SceneMaterialRenderer {
+    materials: HashMap<ResourceId, GpuMaterial>,
+}
+
+impl SceneMaterialRenderer {
+    /// Creates an empty scene material renderer.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Uploads referenced material assets that are not resident on the GPU yet.
+    ///
+    /// Shared material references are uploaded only once and reused by all entities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a scene assignment cannot be resolved or GPU material
+    /// creation fails in the graphics backend.
+    pub fn sync_materials(
+        &mut self,
+        graphics: &GraphicsContext,
+        scene: &Scene,
+        registry: &AssetRegistry,
+        material_cache: &AssetCache<BlinnPhongMaterial>,
+    ) -> Result<usize, SceneRenderError> {
+        let report = resolve_scene_materials(scene, registry, material_cache);
+        if let Some(unresolved) = report.unresolved().first() {
+            return Err(SceneRenderError::UnresolvedMaterial {
+                entity_id: unresolved.entity_id(),
+                resource_id: unresolved.resource_id(),
+                issue: unresolved.issue(),
+            });
+        }
+
+        let mut uploaded = 0;
+        for resolved in report.resolved() {
+            if self.materials.contains_key(&resolved.resource_id()) {
+                continue;
+            }
+            let gpu_material = graphics.create_material(&resolved.render_data());
+            self.materials.insert(resolved.resource_id(), gpu_material);
+            uploaded += 1;
+        }
+        Ok(uploaded)
+    }
+
+    /// Removes a GPU material upload and returns whether one was resident.
+    pub fn unload_material(&mut self, resource_id: ResourceId) -> bool {
+        self.materials.remove(&resource_id).is_some()
+    }
+
+    /// Returns the number of GPU material uploads owned by this renderer.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.materials.len()
+    }
+
+    /// Returns whether this renderer has no uploaded materials.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.materials.is_empty()
+    }
 }
 
 impl SceneMeshRenderer {
@@ -70,6 +139,76 @@ impl SceneMeshRenderer {
             uploaded += 1;
         }
         Ok(uploaded)
+    }
+
+    /// Draws scene mesh instances using their persistent material assignments.
+    ///
+    /// Instances are grouped by mesh and material so shared combinations use
+    /// one instanced indexed draw while different materials remain independent.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a mesh or material has not been uploaded or the
+    /// graphics context cannot render the frame.
+    pub fn render_scene_with_materials(
+        &self,
+        materials: &SceneMaterialRenderer,
+        graphics: &mut GraphicsContext,
+        scene: &Scene,
+        registry: &AssetRegistry,
+        camera: Option<&Camera3d>,
+    ) -> Result<FrameOutcome, SceneRenderError> {
+        let mut grouped: HashMap<(ResourceId, Option<ResourceId>), Vec<zyne_math::Transform3d>> =
+            HashMap::new();
+        for (mesh_id, material_id, transform) in
+            collect_scene_mesh_material_instances(scene, registry)
+        {
+            if !self.meshes.contains_key(&mesh_id) {
+                return Err(SceneRenderError::MissingGpuMesh { resource_id: mesh_id });
+            }
+            if let Some(resource_id) = material_id {
+                if !materials.materials.contains_key(&resource_id) {
+                    return Err(SceneRenderError::MissingGpuMaterial { resource_id });
+                }
+            }
+            grouped
+                .entry((mesh_id, material_id))
+                .or_default()
+                .push(transform);
+        }
+
+        let mut groups: Vec<_> = grouped.into_iter().collect();
+        groups.sort_unstable_by_key(|((mesh_id, material_id), _)| {
+            (
+                *mesh_id.as_uuid().as_bytes(),
+                material_id.map_or([0; 16], |id| *id.as_uuid().as_bytes()),
+            )
+        });
+        let batches: Vec<_> = groups
+            .iter()
+            .map(|((mesh_id, material_id), transforms)| {
+                let mesh = self
+                    .meshes
+                    .get(mesh_id)
+                    .ok_or(SceneRenderError::MissingGpuMesh { resource_id: *mesh_id })?;
+                match material_id {
+                    Some(resource_id) => {
+                        let material = materials.materials.get(resource_id).ok_or(
+                            SceneRenderError::MissingGpuMaterial {
+                                resource_id: *resource_id,
+                            },
+                        )?;
+                        Ok(MeshRenderBatch::with_material(mesh, transforms, material))
+                    }
+                    None => Ok(MeshRenderBatch::new(mesh, transforms)),
+                }
+            })
+            .collect::<Result<_, SceneRenderError>>()?;
+
+        let lighting = collect_scene_lighting(scene);
+        graphics
+            .render_frame_with_mesh_batches_and_lighting(camera, &batches, &lighting)
+            .map_err(SceneRenderError::Graphics)
     }
 
     /// Removes a GPU mesh upload and returns whether one was resident.
@@ -141,6 +280,14 @@ pub enum SceneRenderError {
     MissingCpuMesh { resource_id: ResourceId },
     /// A referenced mesh has not been uploaded to this renderer.
     MissingGpuMesh { resource_id: ResourceId },
+    /// A scene material reference could not be resolved from the CPU asset cache.
+    UnresolvedMaterial {
+        entity_id: SceneEntityId,
+        resource_id: ResourceId,
+        issue: SceneMaterialResolutionIssue,
+    },
+    /// A referenced material has not been uploaded to this renderer.
+    MissingGpuMaterial { resource_id: ResourceId },
     /// The graphics backend rejected an upload or frame.
     Graphics(GraphicsError),
 }
@@ -160,7 +307,15 @@ impl fmt::Display for SceneRenderError {
                     "mesh asset {resource_id} has not been uploaded to the GPU"
                 )
             }
-            Self::Graphics(error) => write!(formatter, "scene mesh rendering failed: {error}"),
+            Self::UnresolvedMaterial { entity_id, resource_id, issue } => write!(
+                formatter,
+                "material {resource_id} assigned to entity {entity_id:?} could not be resolved: {issue:?}"
+            ),
+            Self::MissingGpuMaterial { resource_id } => write!(
+                formatter,
+                "material asset {resource_id} has not been uploaded to the GPU"
+            ),
+            Self::Graphics(error) => write!(formatter, "scene rendering failed: {error}"),
         }
     }
 }
@@ -169,7 +324,10 @@ impl std::error::Error for SceneRenderError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Graphics(error) => Some(error),
-            Self::MissingCpuMesh { .. } | Self::MissingGpuMesh { .. } => None,
+            Self::MissingCpuMesh { .. }
+            | Self::MissingGpuMesh { .. }
+            | Self::UnresolvedMaterial { .. }
+            | Self::MissingGpuMaterial { .. } => None,
         }
     }
 }
@@ -254,6 +412,37 @@ fn collect_scene_mesh_instances(
         }
     }
     instances.sort_unstable_by_key(|(id, _)| *id.as_uuid().as_bytes());
+    instances
+}
+
+fn collect_scene_mesh_material_instances(
+    scene: &Scene,
+    registry: &AssetRegistry,
+) -> Vec<(ResourceId, Option<ResourceId>, zyne_math::Transform3d)> {
+    let mut instances = Vec::new();
+    for entity_id in scene.entity_ids() {
+        let Some(transform) = scene.entity_transform(entity_id) else {
+            continue;
+        };
+        let Some(references) = scene.entity_asset_references(entity_id) else {
+            continue;
+        };
+        let material_id = scene.entity_material_reference(entity_id);
+        for resource_id in references {
+            if registry
+                .find(*resource_id)
+                .is_some_and(|metadata| metadata.kind() == ResourceKind::Mesh)
+            {
+                instances.push((*resource_id, material_id, transform));
+            }
+        }
+    }
+    instances.sort_unstable_by_key(|(mesh_id, material_id, _)| {
+        (
+            *mesh_id.as_uuid().as_bytes(),
+            material_id.map_or([0; 16], |id| *id.as_uuid().as_bytes()),
+        )
+    });
     instances
 }
 
