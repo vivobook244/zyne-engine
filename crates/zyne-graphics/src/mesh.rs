@@ -39,17 +39,46 @@ impl GpuMesh {
     }
 }
 
+/// A material uniform uploaded to a specific graphics device.
+pub struct GpuMaterial {
+    _uniform_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+}
+
+impl GpuMaterial {
+    pub(crate) const fn new(uniform_buffer: wgpu::Buffer, bind_group: wgpu::BindGroup) -> Self {
+        Self { _uniform_buffer: uniform_buffer, bind_group }
+    }
+
+    pub(crate) const fn bind_group(&self) -> &wgpu::BindGroup {
+        &self.bind_group
+    }
+}
+
 /// One uploaded mesh and the transforms of its scene instances.
 pub struct MeshRenderBatch<'a> {
     mesh: &'a GpuMesh,
     transforms: &'a [Transform3d],
+    material: Option<&'a GpuMaterial>,
 }
 
 impl<'a> MeshRenderBatch<'a> {
     /// Creates a batch for one mesh and its instance transforms.
     #[must_use]
     pub const fn new(mesh: &'a GpuMesh, transforms: &'a [Transform3d]) -> Self {
-        Self { mesh, transforms }
+        Self { mesh, transforms, material: None }
+    }
+
+    /// Creates a batch using an explicit GPU material.
+    #[must_use]
+    pub const fn with_material(mesh: &'a GpuMesh, transforms: &'a [Transform3d], material: &'a GpuMaterial) -> Self {
+        Self { mesh, transforms, material: Some(material) }
+    }
+
+    /// Returns the GPU material assigned to this batch, if any.
+    #[must_use]
+    pub const fn material(&self) -> Option<&'a GpuMaterial> {
+        self.material
     }
 
     /// Returns the uploaded mesh used by this batch.
