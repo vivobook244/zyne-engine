@@ -57,7 +57,7 @@ impl MaterialData {
 
 impl Default for MaterialData {
     fn default() -> Self {
-        Self::new([0.1; 3], [0.8; 3], [0.2; 3], 32.0)
+        Self::new([0.4; 3], [0.8; 3], [0.2; 3], 32.0)
     }
 }
 
@@ -69,7 +69,7 @@ mod tests {
     fn default_material_matches_asset_material_defaults() {
         let material = MaterialData::default();
 
-        assert_eq!(material.ambient(), [0.1; 3]);
+        assert_eq!(material.ambient(), [0.4; 3]);
         assert_eq!(material.diffuse(), [0.8; 3]);
         assert_eq!(material.specular(), [0.2; 3]);
         assert_eq!(material.shininess(), 32.0);
