@@ -2,6 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
+use crate::MaterialData;
 use crate::lighting::{
     DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
     PointLightData, SpotLightData,
@@ -67,6 +68,25 @@ impl InstanceRaw {
         Self {
             model,
             normal_matrix: normal_matrix_from_model(model, transform.scale(), rotation),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct MaterialUniform {
+    ambient: [f32; 4],
+    diffuse: [f32; 4],
+    specular: [f32; 4],
+}
+
+impl MaterialUniform {
+    fn from_data(data: &MaterialData) -> Self {
+        let valid = |value: f32| if value.is_finite() && value >= 0.0 { value } else { 0.0 };
+        Self {
+            ambient: [valid(data.ambient()[0]), valid(data.ambient()[1]), valid(data.ambient()[2]), 1.0],
+            diffuse: [valid(data.diffuse()[0]), valid(data.diffuse()[1]), valid(data.diffuse()[2]), 1.0],
+            specular: [valid(data.specular()[0]), valid(data.specular()[1]), valid(data.specular()[2]), if data.shininess().is_finite() { data.shininess().clamp(1.0, 256.0) } else { 32.0 }],
         }
     }
 }
@@ -390,6 +410,9 @@ pub(super) struct CubePipeline {
     camera_bind_group: wgpu::BindGroup,
     lighting_buffer: wgpu::Buffer,
     lighting_bind_group: wgpu::BindGroup,
+    material_layout: wgpu::BindGroupLayout,
+    default_material_buffer: wgpu::Buffer,
+    default_material_bind_group: wgpu::BindGroup,
     checker_texture: CheckerTexture,
     instance_buffer: wgpu::Buffer,
     instance_capacity: usize,
@@ -437,6 +460,7 @@ impl CubePipeline {
         });
 
         let lighting_resources = create_lighting_resources(device);
+        let material_resources = create_material_resources(device, &MaterialData::default());
         let checker_texture = create_checker_texture(device, queue);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
@@ -444,6 +468,7 @@ impl CubePipeline {
                 &camera_layout,
                 &checker_texture.layout,
                 &lighting_resources.layout,
+                &material_resources.layout,
             ],
             push_constant_ranges: &[],
         });
@@ -505,6 +530,9 @@ impl CubePipeline {
             camera_bind_group,
             lighting_buffer: lighting_resources.buffer,
             lighting_bind_group: lighting_resources.bind_group,
+            material_layout: material_resources.layout,
+            default_material_buffer: material_resources.buffer,
+            default_material_bind_group: material_resources.bind_group,
             checker_texture,
             instance_buffer,
             instance_capacity: 1,
@@ -637,9 +665,62 @@ impl CubePipeline {
         &self.lighting_bind_group
     }
 
+    pub(super) fn create_material_bind_group(
+        &self,
+        device: &wgpu::Device,
+        data: &MaterialData,
+    ) -> (wgpu::Buffer, wgpu::BindGroup) {
+        let uniform = MaterialUniform::from_data(data);
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Material Uniform"),
+            contents: bytemuck::bytes_of(&uniform),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ZYNE Material Bind Group"),
+            layout: &self.material_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+        });
+        (buffer, bind_group)
+    }
+
+    pub(super) const fn default_material_bind_group(&self) -> &wgpu::BindGroup {
+        &self.default_material_bind_group
+    }
+
     pub(super) const fn instance_buffer(&self) -> &wgpu::Buffer {
         &self.instance_buffer
     }
+}
+
+struct MaterialResources {
+    layout: wgpu::BindGroupLayout,
+    buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+}
+
+fn create_material_resources(device: &wgpu::Device, data: &MaterialData) -> MaterialResources {
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ZYNE Material Bind Group Layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+            count: None,
+        }],
+    });
+    let uniform = MaterialUniform::from_data(data);
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("ZYNE Default Material Uniform"),
+        contents: bytemuck::bytes_of(&uniform),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ZYNE Default Material Bind Group"),
+        layout: &layout,
+        entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+    });
+    MaterialResources { layout, buffer, bind_group }
 }
 
 struct LightingResources {
