@@ -750,7 +750,10 @@ fn create_material_resources(device: &wgpu::Device, data: &MaterialData) -> Mate
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("ZYNE Default Material Bind Group"),
         layout: &layout,
-        entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
     });
     MaterialResources {
         layout,
