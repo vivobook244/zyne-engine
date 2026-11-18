@@ -31,6 +31,17 @@ impl ResolvedSceneMaterial {
     pub const fn material(&self) -> &BlinnPhongMaterial {
         &self.material
     }
+
+    /// Converts this asset material into renderer-facing CPU data.
+    #[must_use]
+    pub fn render_data(&self) -> zyne_graphics::MaterialData {
+        zyne_graphics::MaterialData::new(
+            self.material.ambient(),
+            self.material.diffuse(),
+            self.material.specular(),
+            self.material.shininess(),
+        )
+    }
 }
 
 /// Why a scene material assignment could not be resolved.
@@ -228,6 +239,15 @@ mod tests {
         assert_eq!(report.resolved()[1].resource_id(), material_id);
         assert_eq!(report.resolved()[0].material(), &material);
         assert_eq!(report.resolved()[1].material(), &material);
+        assert_eq!(
+            report.resolved()[0].render_data(),
+            zyne_graphics::MaterialData::new(
+                [0.05, 0.05, 0.05],
+                [0.6, 0.7, 0.8],
+                [0.2, 0.2, 0.2],
+                48.0,
+            )
+        );
     }
 
     #[test]
