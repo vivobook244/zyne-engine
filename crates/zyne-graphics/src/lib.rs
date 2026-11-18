@@ -4,11 +4,13 @@
 mod context;
 mod error;
 mod lighting;
+mod material;
 mod mesh;
 mod pipeline;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;
+pub use material::MaterialData;
 pub use lighting::{
     DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
     PointLightData, SpotLightData,
