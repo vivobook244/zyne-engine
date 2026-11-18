@@ -77,12 +77,8 @@ mod tests {
 
     #[test]
     fn stores_renderer_facing_material_parameters() {
-        let material = MaterialData::new(
-            [0.05, 0.06, 0.07],
-            [0.8, 0.7, 0.6],
-            [0.3, 0.4, 0.5],
-            48.0,
-        );
+        let material =
+            MaterialData::new([0.05, 0.06, 0.07], [0.8, 0.7, 0.6], [0.3, 0.4, 0.5], 48.0);
 
         assert_eq!(material.ambient(), [0.05, 0.06, 0.07]);
         assert_eq!(material.diffuse(), [0.8, 0.7, 0.6]);
