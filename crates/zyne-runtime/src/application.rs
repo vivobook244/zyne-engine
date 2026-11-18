@@ -83,7 +83,7 @@ impl Application {
 
     /// Runs a scene engine with persistent mesh and material assignments.
     ///
-    /// In addition to the requirements of SceneEngine, the engine provides a
+    /// In addition to the requirements of `SceneEngine`, the engine provides a
     /// loaded CPU material cache. Referenced materials are uploaded once and
     /// reused by scene entities across frames.
     ///
