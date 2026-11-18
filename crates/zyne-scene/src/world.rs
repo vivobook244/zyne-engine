@@ -181,7 +181,7 @@ impl Scene {
         {
             return None;
         }
-        self.world.get::<EntityMaterialReference>(handle).map(|value| value.0).flatten()
+        self.world.get::<EntityMaterialReference>(handle).and_then(|value| value.0)
     }
 
     /// Assigns or clears an entity's persistent material asset identity.
@@ -663,6 +663,22 @@ mod tests {
             decoded.entity_asset_references(entity_id),
             Some(&[first, second][..])
         );
+    }
+
+    #[test]
+    fn scene_preserves_material_assignment_through_ron_round_trip() {
+        let mut scene = Scene::new("Material Scene").unwrap();
+        let entity_id = scene
+            .spawn_entity("Crate", Transform3d::identity())
+            .unwrap();
+        let material_id = ResourceId::new();
+
+        assert!(scene.set_entity_material_reference(entity_id, Some(material_id)));
+        let decoded = Scene::from_ron(&scene.to_ron().unwrap()).unwrap();
+        assert_eq!(decoded.entity_material_reference(entity_id), Some(material_id));
+
+        assert!(scene.set_entity_material_reference(entity_id, None));
+        assert_eq!(scene.entity_material_reference(entity_id), None);
     }
 
     #[test]
