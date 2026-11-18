@@ -27,7 +27,9 @@ pub use scene_materials::{
     ResolvedSceneMaterial, SceneMaterialResolutionIssue, SceneMaterialResolutionReport,
     UnresolvedSceneMaterial, resolve_scene_materials,
 };
-pub use scene_renderer::{SceneEngine, SceneMaterialRenderer, SceneMeshRenderer, SceneRenderError};
+pub use scene_renderer::{
+    SceneEngine, SceneMaterialEngine, SceneMaterialRenderer, SceneMeshRenderer, SceneRenderError,
+};
 
 pub use zyne_assets::AssetRegistry;
 pub use zyne_core::{
