@@ -82,11 +82,36 @@ struct MaterialUniform {
 
 impl MaterialUniform {
     fn from_data(data: &MaterialData) -> Self {
-        let valid = |value: f32| if value.is_finite() && value >= 0.0 { value } else { 0.0 };
+        let valid = |value: f32| {
+            if value.is_finite() && value >= 0.0 {
+                value
+            } else {
+                0.0
+            }
+        };
         Self {
-            ambient: [valid(data.ambient()[0]), valid(data.ambient()[1]), valid(data.ambient()[2]), 1.0],
-            diffuse: [valid(data.diffuse()[0]), valid(data.diffuse()[1]), valid(data.diffuse()[2]), 1.0],
-            specular: [valid(data.specular()[0]), valid(data.specular()[1]), valid(data.specular()[2]), if data.shininess().is_finite() { data.shininess().clamp(1.0, 256.0) } else { 32.0 }],
+            ambient: [
+                valid(data.ambient()[0]),
+                valid(data.ambient()[1]),
+                valid(data.ambient()[2]),
+                1.0,
+            ],
+            diffuse: [
+                valid(data.diffuse()[0]),
+                valid(data.diffuse()[1]),
+                valid(data.diffuse()[2]),
+                1.0,
+            ],
+            specular: [
+                valid(data.specular()[0]),
+                valid(data.specular()[1]),
+                valid(data.specular()[2]),
+                if data.shininess().is_finite() {
+                    data.shininess().clamp(1.0, 256.0)
+                } else {
+                    32.0
+                },
+            ],
         }
     }
 }
@@ -679,7 +704,10 @@ impl CubePipeline {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ZYNE Material Bind Group"),
             layout: &self.material_layout,
-            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
         });
         (buffer, bind_group)
     }
@@ -705,7 +733,11 @@ fn create_material_resources(device: &wgpu::Device, data: &MaterialData) -> Mate
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
             count: None,
         }],
     });
@@ -720,7 +752,11 @@ fn create_material_resources(device: &wgpu::Device, data: &MaterialData) -> Mate
         layout: &layout,
         entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
     });
-    MaterialResources { layout, buffer, bind_group }
+    MaterialResources {
+        layout,
+        buffer,
+        bind_group,
+    }
 }
 
 struct LightingResources {
