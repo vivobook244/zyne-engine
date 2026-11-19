@@ -76,29 +76,62 @@ impl SceneMaterialEngine for MaterialShowcaseEngine {
 
 fn main() -> ZyneResult<()> {
     zyne_runtime::diagnostics::init_logging()?;
-
     let application = Application::new(ApplicationConfig::default())?;
-    let mut asset_registry = AssetRegistry::new();
+    application.run_scene_with_materials(build_engine()?)
+}
+
+struct ShowcaseAssets {
+    registry: AssetRegistry,
+    mesh_cache: AssetCache<MeshData>,
+    material_cache: AssetCache<BlinnPhongMaterial>,
+    mesh_id: ResourceId,
+    matte_id: ResourceId,
+    glossy_id: ResourceId,
+    metal_like_id: ResourceId,
+}
+
+fn build_engine() -> ZyneResult<MaterialShowcaseEngine> {
+    let assets = build_assets()?;
+    let scene = build_scene(
+        assets.mesh_id,
+        assets.matte_id,
+        assets.glossy_id,
+        assets.metal_like_id,
+    )?;
+    let camera_controller =
+        OrbitCameraController::new([0.0, 0.0, 0.0], 8.5, 16.0 / 9.0).map_err(subsystem_error)?;
+
+    Ok(MaterialShowcaseEngine {
+        camera_controller,
+        scene,
+        asset_registry: assets.registry,
+        mesh_cache: assets.mesh_cache,
+        material_cache: assets.material_cache,
+    })
+}
+
+fn build_assets() -> ZyneResult<ShowcaseAssets> {
+    let mut registry = AssetRegistry::new();
     let mut mesh_cache = AssetCache::<MeshData>::new(ResourceKind::Mesh);
     let mut material_cache = AssetCache::<BlinnPhongMaterial>::new_material();
 
     let mesh_id = ResourceId::new();
     register_asset(
-        &mut asset_registry,
+        &mut registry,
         mesh_id,
         "Showcase Cube",
         ResourceKind::Mesh,
         "meshes/showcase_cube.mesh",
     )?;
     mesh_cache
-        .begin_loading(&asset_registry, mesh_id)
+        .begin_loading(&registry, mesh_id)
         .map_err(subsystem_error)?;
     mesh_cache
-        .complete_loading(&asset_registry, mesh_id, cube_mesh()?)
+        .complete_loading(&registry, mesh_id, cube_mesh()?)
         .map_err(subsystem_error)?;
 
     let matte_id = load_material(
-        &mut asset_registry,
+        &mut registry,
         &mut material_cache,
         "Matte",
         "materials/matte.ron",
@@ -111,7 +144,7 @@ fn main() -> ZyneResult<()> {
         .map_err(subsystem_error)?,
     )?;
     let glossy_id = load_material(
-        &mut asset_registry,
+        &mut registry,
         &mut material_cache,
         "Glossy",
         "materials/glossy.ron",
@@ -124,7 +157,7 @@ fn main() -> ZyneResult<()> {
         .map_err(subsystem_error)?,
     )?;
     let metal_like_id = load_material(
-        &mut asset_registry,
+        &mut registry,
         &mut material_cache,
         "Metal Like",
         "materials/metal_like.ron",
@@ -137,6 +170,23 @@ fn main() -> ZyneResult<()> {
         .map_err(subsystem_error)?,
     )?;
 
+    Ok(ShowcaseAssets {
+        registry,
+        mesh_cache,
+        material_cache,
+        mesh_id,
+        matte_id,
+        glossy_id,
+        metal_like_id,
+    })
+}
+
+fn build_scene(
+    mesh_id: ResourceId,
+    matte_id: ResourceId,
+    glossy_id: ResourceId,
+    metal_like_id: ResourceId,
+) -> ZyneResult<Scene> {
     let mut scene = Scene::new("ZYNE Material Visual Showcase").map_err(subsystem_error)?;
 
     let matte = scene
@@ -177,16 +227,7 @@ fn main() -> ZyneResult<()> {
         .map_err(subsystem_error)?;
     scene.set_entity_directional_light(light, Some(directional_light));
 
-    let camera_controller =
-        OrbitCameraController::new([0.0, 0.0, 0.0], 8.5, 16.0 / 9.0).map_err(subsystem_error)?;
-
-    application.run_scene_with_materials(MaterialShowcaseEngine {
-        camera_controller,
-        scene,
-        asset_registry,
-        mesh_cache,
-        material_cache,
-    })
+    Ok(scene)
 }
 
 fn register_asset(
