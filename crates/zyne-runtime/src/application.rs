@@ -346,6 +346,7 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
     let fixed_delta_seconds = fixed_delta as f32;
     let mut fixed_updates = 0;
+    let fixed_update_started = Instant::now();
 
     while state.accumulator >= fixed_delta && fixed_updates < MAX_FIXED_UPDATES_PER_FRAME {
         let fixed_update_result = {
@@ -362,8 +363,12 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         fixed_updates += 1;
     }
 
+    let fixed_update_elapsed = fixed_update_started.elapsed();
+
     if state.accumulator >= fixed_delta {
         tracing::warn!(
+            fixed_updates,
+            fixed_update_elapsed_ms = fixed_update_elapsed.as_secs_f64() * 1_000.0,
             remaining_seconds = state.accumulator,
             "fixed update catch-up limit reached; dropping excess simulation time"
         );
@@ -373,6 +378,7 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
     // The engine callback contract uses f32 seconds; timing remains f64 internally.
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
     let frame_delta_seconds = delta as f32;
+    let variable_update_started = Instant::now();
     let update_result = {
         let RuntimeState {
             engine,
@@ -383,8 +389,17 @@ fn update_runtime<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()> {
         engine.on_update_with_input(context, frame_delta_seconds, input)
     };
     update_result?;
+    tracing::trace!(
+        variable_update_elapsed_us = variable_update_started.elapsed().as_secs_f64() * 1_000_000.0,
+        "variable update callback completed"
+    );
 
+    let render_started = Instant::now();
     render_runtime_frame(state)?;
+    tracing::trace!(
+        render_elapsed_ms = render_started.elapsed().as_secs_f64() * 1_000.0,
+        "runtime frame rendered"
+    );
 
     // Keep transient input available while the runtime waits for the next frame.
     // Clear it only after callbacks have observed the current frame's events.
