@@ -1586,6 +1586,43 @@ mod tests {
     }
 
     #[test]
+    fn shadow_instances_use_each_objects_world_transform() {
+        let first_transform = Transform3d::new(
+            [2.0, 0.0, -1.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [1.0; 3],
+        )
+        .expect("first object transform should be valid");
+        let second_transform = Transform3d::new(
+            [-3.0, 1.5, 4.0],
+            [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0, std::f32::consts::FRAC_1_SQRT_2],
+            [2.0, 0.5, 1.5],
+        )
+        .expect("second object transform should be valid");
+
+        // The shadow vertex entry point consumes the same per-instance model
+        // attributes as the lit vertex entry point. Keep each object's world
+        // transform intact when building the shared instance stream.
+        let instances = [first_transform, second_transform].map(InstanceRaw::from_transform);
+
+        assert_eq!(instances[0].model, first_transform.to_matrix());
+        assert_eq!(instances[1].model, second_transform.to_matrix());
+        assert_ne!(instances[0].model, instances[1].model);
+        assert!(
+            instances
+                .iter()
+                .flat_map(|instance| instance.model.iter().flatten())
+                .all(|value| value.is_finite())
+        );
+        assert!(
+            instances
+                .iter()
+                .flat_map(|instance| instance.normal_matrix.iter().flatten())
+                .all(|value| value.is_finite())
+        );
+    }
+
+    #[test]
     fn normal_matrix_uses_inverse_transpose_for_non_uniform_scale() {
         let transform = Transform3d::new([0.0; 3], [0.0, 0.0, 0.0, 1.0], [2.0, 4.0, 0.5])
             .expect("non-uniform scale should be valid");
