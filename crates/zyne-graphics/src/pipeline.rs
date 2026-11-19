@@ -949,9 +949,9 @@ fn directional_shadow_matrix_for_bounds(
     let direction = normalized_direction(direction);
     let (center, radius) = bounds.map_or(([0.0; 3], 10.0), |bounds| {
         let center = [
-            (bounds.min[0] + bounds.max[0]) * 0.5,
-            (bounds.min[1] + bounds.max[1]) * 0.5,
-            (bounds.min[2] + bounds.max[2]) * 0.5,
+            f32::midpoint(bounds.min[0], bounds.max[0]),
+            f32::midpoint(bounds.min[1], bounds.max[1]),
+            f32::midpoint(bounds.min[2], bounds.max[2]),
         ];
         let extent = [
             (bounds.max[0] - bounds.min[0]) * 0.5,

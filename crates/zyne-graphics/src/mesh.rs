@@ -267,12 +267,14 @@ impl MeshData {
         Ok(Self { vertices, indices })
     }
 
-    /// Returns the validated vertex data.
+    /// Returns the local-space bounds of the validated vertex data.
     #[must_use]
     pub(crate) fn bounds(&self) -> MeshBounds {
         MeshBounds::from_vertices(&self.vertices)
     }
 
+    /// Returns the validated vertex data.
+    #[must_use]
     pub fn vertices(&self) -> &[MeshVertex] {
         &self.vertices
     }
