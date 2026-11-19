@@ -444,6 +444,7 @@ pub(super) struct CubePipeline {
     camera_buffer: wgpu::Buffer,
     shadow_camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    shadow_camera_bind_group: wgpu::BindGroup,
     lighting_buffer: wgpu::Buffer,
     lighting_bind_group: wgpu::BindGroup,
     material_layout: wgpu::BindGroupLayout,
@@ -495,16 +496,6 @@ impl CubePipeline {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
             ],
         });
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -531,13 +522,31 @@ impl CubePipeline {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&shadow_resources.sampler),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: shadow_resources.camera_buffer.as_entire_binding(),
-                },
             ],
         });
 
+        let shadow_camera_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ZYNE Shadow Camera Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+        let shadow_camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ZYNE Shadow Camera Bind Group"),
+            layout: &shadow_camera_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: shadow_resources.camera_buffer.as_entire_binding(),
+            }],
+        });
         let lighting_resources = create_lighting_resources(device);
         let material_resources = create_material_resources(device, &MaterialData::default());
         let checker_texture = create_checker_texture(device, queue);
@@ -590,9 +599,15 @@ impl CubePipeline {
             multiview: None,
             cache: None,
         });
+        let shadow_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("ZYNE Directional Shadow Pipeline Layout"),
+                bind_group_layouts: &[&shadow_camera_layout],
+                push_constant_ranges: &[],
+            });
         let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ZYNE Directional Shadow Pipeline"),
-            layout: Some(&pipeline_layout),
+            layout: Some(&shadow_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_shadow"),
@@ -646,6 +661,7 @@ impl CubePipeline {
             camera_buffer,
             shadow_camera_buffer: shadow_resources.camera_buffer,
             camera_bind_group,
+            shadow_camera_bind_group,
             lighting_buffer: lighting_resources.buffer,
             lighting_bind_group: lighting_resources.bind_group,
             material_layout: material_resources.layout,
@@ -794,6 +810,10 @@ impl CubePipeline {
 
     pub(super) const fn shadow_pipeline(&self) -> &wgpu::RenderPipeline {
         &self.shadow_pipeline
+    }
+
+    pub(super) const fn shadow_camera_bind_group(&self) -> &wgpu::BindGroup {
+        &self.shadow_camera_bind_group
     }
 
     pub(super) const fn shadow_view(&self) -> &wgpu::TextureView {
