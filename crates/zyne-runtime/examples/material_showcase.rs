@@ -210,8 +210,15 @@ fn build_scene(
                 .map_err(subsystem_error)?,
         )
         .map_err(subsystem_error)?;
+    let ground = scene
+        .spawn_entity(
+            "Shadow Receiver Ground",
+            Transform3d::new([0.0, -0.75, 0.0], [0.0, 0.0, 0.0, 1.0], [8.0, 0.1, 8.0])
+                .map_err(subsystem_error)?,
+        )
+        .map_err(subsystem_error)?;
 
-    for entity in [matte, glossy, metal_like] {
+    for entity in [matte, glossy, metal_like, ground] {
         scene
             .set_entity_asset_references(entity, &[mesh_id])
             .map_err(subsystem_error)?;
@@ -219,6 +226,7 @@ fn build_scene(
     scene.set_entity_material_reference(matte, Some(matte_id));
     scene.set_entity_material_reference(glossy, Some(glossy_id));
     scene.set_entity_material_reference(metal_like, Some(metal_like_id));
+    scene.set_entity_material_reference(ground, Some(matte_id));
 
     let light = scene
         .spawn_entity("Showcase Key Light", Transform3d::identity())
