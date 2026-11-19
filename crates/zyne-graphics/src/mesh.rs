@@ -2,6 +2,68 @@ use bytemuck::{Pod, Zeroable};
 use std::{error::Error, fmt};
 use zyne_math::Transform3d;
 
+/// An axis-aligned mesh bound in local or world space.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MeshBounds {
+    pub(crate) min: [f32; 3],
+    pub(crate) max: [f32; 3],
+}
+
+impl MeshBounds {
+    pub(crate) const fn new(min: [f32; 3], max: [f32; 3]) -> Self {
+        Self { min, max }
+    }
+
+    pub(crate) fn union(self, other: Self) -> Self {
+        let mut min = self.min;
+        let mut max = self.max;
+        for axis in 0..3 {
+            min[axis] = min[axis].min(other.min[axis]);
+            max[axis] = max[axis].max(other.max[axis]);
+        }
+        Self { min, max }
+    }
+
+    /// Transforms all eight corners and returns a conservative world-space AABB.
+    pub(crate) fn transformed(self, transform: zyne_math::Transform3d) -> Self {
+        let matrix = transform.to_matrix();
+        let mut result = Self {
+            min: [f32::INFINITY; 3],
+            max: [f32::NEG_INFINITY; 3],
+        };
+        for x in [self.min[0], self.max[0]] {
+            for y in [self.min[1], self.max[1]] {
+                for z in [self.min[2], self.max[2]] {
+                    let point = [
+                        matrix[0][0] * x + matrix[1][0] * y + matrix[2][0] * z + matrix[3][0],
+                        matrix[0][1] * x + matrix[1][1] * y + matrix[2][1] * z + matrix[3][1],
+                        matrix[0][2] * x + matrix[1][2] * y + matrix[2][2] * z + matrix[3][2],
+                    ];
+                    for axis in 0..3 {
+                        result.min[axis] = result.min[axis].min(point[axis]);
+                        result.max[axis] = result.max[axis].max(point[axis]);
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    fn from_vertices(vertices: &[MeshVertex]) -> Self {
+        let mut result = Self {
+            min: vertices[0].position,
+            max: vertices[0].position,
+        };
+        for vertex in &vertices[1..] {
+            for axis in 0..3 {
+                result.min[axis] = result.min[axis].min(vertex.position[axis]);
+                result.max[axis] = result.max[axis].max(vertex.position[axis]);
+            }
+        }
+        result
+    }
+}
+
 /// A mesh uploaded to a specific graphics device.
 ///
 /// GPU meshes are created by `GraphicsContext::create_mesh` and reused across frames.
@@ -9,6 +71,7 @@ pub struct GpuMesh {
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) index_buffer: wgpu::Buffer,
     index_count: u32,
+    bounds: MeshBounds,
 }
 
 impl GpuMesh {
@@ -16,11 +79,13 @@ impl GpuMesh {
         vertex_buffer: wgpu::Buffer,
         index_buffer: wgpu::Buffer,
         index_count: u32,
+        bounds: MeshBounds,
     ) -> Self {
         Self {
             vertex_buffer,
             index_buffer,
             index_count,
+            bounds,
         }
     }
 
@@ -28,6 +93,10 @@ impl GpuMesh {
     #[must_use]
     pub const fn index_count(&self) -> u32 {
         self.index_count
+    }
+
+    pub(crate) const fn bounds(&self) -> MeshBounds {
+        self.bounds
     }
 
     pub(crate) const fn vertex_buffer(&self) -> &wgpu::Buffer {
@@ -200,6 +269,10 @@ impl MeshData {
 
     /// Returns the validated vertex data.
     #[must_use]
+    pub(crate) fn bounds(&self) -> MeshBounds {
+        MeshBounds::from_vertices(&self.vertices)
+    }
+
     pub fn vertices(&self) -> &[MeshVertex] {
         &self.vertices
     }

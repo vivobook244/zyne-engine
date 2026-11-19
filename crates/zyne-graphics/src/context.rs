@@ -12,9 +12,20 @@ use zyne_platform::PlatformWindow;
 
 use crate::{
     FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
-    mesh::{GpuMesh, MeshData, MeshRenderBatch},
+    mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
 };
+
+fn merge_transformed_bounds(
+    target: &mut Option<MeshBounds>,
+    local_bounds: MeshBounds,
+    transforms: &[Transform3d],
+) {
+    for transform in transforms {
+        let world_bounds = local_bounds.transformed(*transform);
+        *target = Some((*target).map_or(world_bounds, |current| current.union(world_bounds)));
+    }
+}
 
 const DEFAULT_CLEAR_COLOR: Color = Color {
     r: 0.055,
@@ -155,7 +166,7 @@ impl GraphicsContext {
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count))
+        Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count, data.bounds()))
     }
 
     /// Uploads renderer-facing material parameters for reuse across draws.
@@ -288,8 +299,6 @@ impl GraphicsContext {
         );
 
         self.cube_pipeline.update_lighting(&self.queue, lighting);
-        self.cube_pipeline
-            .update_shadow_camera(&self.queue, lighting);
 
         let batch_transforms = mesh_batches.map(|batches| {
             batches
@@ -298,6 +307,36 @@ impl GraphicsContext {
                 .collect::<Vec<_>>()
         });
         let frame_transforms = batch_transforms.as_deref().or(transforms);
+        let shadow_bounds = if let Some(batches) = mesh_batches {
+            let mut bounds = None;
+            for batch in batches {
+                merge_transformed_bounds(
+                    &mut bounds,
+                    batch.mesh().bounds(),
+                    batch.transforms(),
+                );
+            }
+            bounds
+        } else if let Some(mesh) = mesh {
+            let mut bounds = None;
+            merge_transformed_bounds(
+                &mut bounds,
+                mesh.bounds(),
+                frame_transforms.unwrap_or(&[]),
+            );
+            bounds
+        } else {
+            let cube_bounds = MeshBounds::new([-0.7; 3], [0.7; 3]);
+            let mut bounds = None;
+            if let Some(transforms) = frame_transforms {
+                merge_transformed_bounds(&mut bounds, cube_bounds, transforms);
+            } else {
+                bounds = Some(cube_bounds);
+            }
+            bounds
+        };
+        self.cube_pipeline
+            .update_shadow_camera(&self.queue, lighting, shadow_bounds);
         let instance_count =
             self.cube_pipeline
                 .update_instances(&self.device, &self.queue, frame_transforms)?;

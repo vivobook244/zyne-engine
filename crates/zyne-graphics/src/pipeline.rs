@@ -3,6 +3,7 @@ use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
 use crate::MaterialData;
+use crate::mesh::MeshBounds;
 use crate::lighting::{
     DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
     PointLightData, SpotLightData,
@@ -733,6 +734,7 @@ impl CubePipeline {
         &self,
         queue: &wgpu::Queue,
         lighting: Option<&LightingData>,
+        bounds: Option<MeshBounds>,
     ) {
         let default_lighting;
         let lighting = if let Some(lighting) = lighting {
@@ -743,7 +745,7 @@ impl CubePipeline {
         };
         let direction = directional_shadow_direction(lighting);
         let uniform = ShadowCameraUniform {
-            view_projection: directional_shadow_matrix(direction),
+            view_projection: directional_shadow_matrix_for_bounds(direction, bounds),
         };
         queue.write_buffer(&self.shadow_camera_buffer, 0, bytemuck::bytes_of(&uniform));
     }
@@ -937,8 +939,38 @@ fn directional_shadow_direction(lighting: &LightingData) -> [f32; 3] {
 }
 
 fn directional_shadow_matrix(direction: [f32; 3]) -> [[f32; 4]; 4] {
+    directional_shadow_matrix_for_bounds(direction, None)
+}
+
+fn directional_shadow_matrix_for_bounds(
+    direction: [f32; 3],
+    bounds: Option<MeshBounds>,
+) -> [[f32; 4]; 4] {
     let direction = normalized_direction(direction);
-    let light_position = direction.map(|component| -component * 18.0);
+    let (center, radius) = bounds.map_or(([0.0; 3], 10.0), |bounds| {
+        let center = [
+            (bounds.min[0] + bounds.max[0]) * 0.5,
+            (bounds.min[1] + bounds.max[1]) * 0.5,
+            (bounds.min[2] + bounds.max[2]) * 0.5,
+        ];
+        let extent = [
+            (bounds.max[0] - bounds.min[0]) * 0.5,
+            (bounds.max[1] - bounds.min[1]) * 0.5,
+            (bounds.max[2] - bounds.min[2]) * 0.5,
+        ];
+        let radius = dot_vector(extent, extent).sqrt().max(1.0);
+        (center, radius)
+    });
+    let margin = (radius * 0.1).max(0.5);
+    let near = 0.1;
+    let light_distance = radius + margin + near;
+    let far = light_distance + radius + margin;
+    let half_extent = radius + margin;
+    let light_position = [
+        center[0] - direction[0] * light_distance,
+        center[1] - direction[1] * light_distance,
+        center[2] - direction[2] * light_distance,
+    ];
     let world_up = if direction[1].abs() > 0.95 {
         [0.0, 0.0, 1.0]
     } else {
@@ -957,11 +989,9 @@ fn directional_shadow_matrix(direction: [f32; 3]) -> [[f32; 4]; 4] {
             1.0,
         ],
     ];
-    let near = 0.1;
-    let far = 40.0;
     let projection = [
-        [0.1, 0.0, 0.0, 0.0],
-        [0.0, 0.1, 0.0, 0.0],
+        [1.0 / half_extent, 0.0, 0.0, 0.0],
+        [0.0, 1.0 / half_extent, 0.0, 0.0],
         [0.0, 0.0, 1.0 / (near - far), 0.0],
         [0.0, 0.0, near / (near - far), 1.0],
     ];
@@ -1248,6 +1278,51 @@ mod tests {
         CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels,
         cube_vertices, multiply_column_major, rotation_y,
     };
+
+    #[test]
+    fn shadow_camera_fits_scene_bounds() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let bounds = MeshBounds::new([-4.0, -2.0, -3.0], [5.0, 3.0, 6.0]);
+        let matrix = directional_shadow_matrix_for_bounds([-0.4, -1.0, -0.3], Some(bounds));
+        for x in [bounds.min[0], bounds.max[0]] {
+            for y in [bounds.min[1], bounds.max[1]] {
+                for z in [bounds.min[2], bounds.max[2]] {
+                    let point = [x, y, z, 1.0];
+                    let clip = std::array::from_fn::<_, 4, _>(|row| {
+                        (0..4)
+                            .map(|column| matrix[column][row] * point[column])
+                            .sum::<f32>()
+                    });
+                    assert!(clip[0].abs() <= 1.001, "x clip coordinate: {}", clip[0]);
+                    assert!(clip[1].abs() <= 1.001, "y clip coordinate: {}", clip[1]);
+                    assert!(
+                        (0.0..=1.001).contains(&clip[2]),
+                        "z clip coordinate: {}",
+                        clip[2]
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn shadow_camera_tracks_scene_bounds_center_and_scale() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let first = directional_shadow_matrix_for_bounds(
+            [-0.4, -1.0, -0.3],
+            Some(MeshBounds::new([-1.0; 3], [1.0; 3])),
+        );
+        let second = directional_shadow_matrix_for_bounds(
+            [-0.4, -1.0, -0.3],
+            Some(MeshBounds::new([19.0, -1.0, 4.0], [31.0, 5.0, 16.0])),
+        );
+        assert_ne!(first, second);
+        assert!(second.iter().flatten().all(|value| value.is_finite()));
+    }
 
     #[test]
     fn shadow_camera_tracks_directional_light_changes() {
