@@ -1595,7 +1595,12 @@ mod tests {
         .expect("first object transform should be valid");
         let second_transform = Transform3d::new(
             [-3.0, 1.5, 4.0],
-            [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0, std::f32::consts::FRAC_1_SQRT_2],
+            [
+                0.0,
+                std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+                std::f32::consts::FRAC_1_SQRT_2,
+            ],
             [2.0, 0.5, 1.5],
         )
         .expect("second object transform should be valid");
