@@ -966,14 +966,6 @@ fn directional_shadow_matrix_for_bounds(
     let light_distance = radius + margin + near;
     let far = light_distance + radius + margin;
     let half_extent = radius + margin;
-    let light_position = [
-        center[0] - direction[0] * light_distance,
-        center[1] - direction[1] * light_distance,
-        center[2] - direction[2] * light_distance,
-    ];
-    let texel_world_size = (2.0 * half_extent) / SHADOW_MAP_SIZE as f32;
-    let snapped_right = snap_to_shadow_texel(dot_vector(right_vector(direction, world_up), center), texel_world_size);
-    let snapped_up = snap_to_shadow_texel(dot_vector(cross_vector(right_vector(direction, world_up), direction), center), texel_world_size);
     let world_up = if direction[1].abs() > 0.95 {
         [0.0, 0.0, 1.0]
     } else {
@@ -981,6 +973,14 @@ fn directional_shadow_matrix_for_bounds(
     };
     let right = right_vector(direction, world_up);
     let up = cross_vector(right, direction);
+    let light_position = [
+        center[0] - direction[0] * light_distance,
+        center[1] - direction[1] * light_distance,
+        center[2] - direction[2] * light_distance,
+    ];
+    let texel_world_size = (2.0 * half_extent) / SHADOW_MAP_SIZE as f32;
+    let snapped_right = snap_to_shadow_texel(dot_vector(right, center), texel_world_size);
+    let snapped_up = snap_to_shadow_texel(dot_vector(up, center), texel_world_size);
     let view = [
         [right[0], up[0], -direction[0], 0.0],
         [right[1], up[1], -direction[1], 0.0],
