@@ -1277,19 +1277,21 @@ mod tests {
         use super::{directional_shadow_direction, directional_shadow_matrix};
         use crate::lighting::{DirectionalLightData, LightingData};
 
-        let mut lighting = LightingData::default();
-        lighting.directional_lights = vec![
-            DirectionalLightData {
-                direction: [0.0; 3],
-                color: [1.0; 3],
-                intensity: 1.0,
-            },
-            DirectionalLightData {
-                direction: [1.0, -2.0, 0.5],
-                color: [1.0; 3],
-                intensity: 1.0,
-            },
-        ];
+        let lighting = LightingData {
+            directional_lights: vec![
+                DirectionalLightData {
+                    direction: [0.0; 3],
+                    color: [1.0; 3],
+                    intensity: 1.0,
+                },
+                DirectionalLightData {
+                    direction: [1.0, -2.0, 0.5],
+                    color: [1.0; 3],
+                    intensity: 1.0,
+                },
+            ],
+            ..Default::default()
+        };
 
         let selected = directional_shadow_direction(&lighting);
         let expected = directional_shadow_matrix([1.0, -2.0, 0.5]);
