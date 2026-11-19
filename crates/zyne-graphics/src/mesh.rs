@@ -366,6 +366,41 @@ mod tests {
     }
 
     #[test]
+    fn transformed_bounds_cover_rotated_non_uniformly_scaled_mesh() {
+        use super::MeshBounds;
+        use zyne_math::Transform3d;
+
+        let local_bounds = MeshBounds::new([0.0; 3], [1.0, 1.0, 0.0]);
+        let half_angle = std::f32::consts::FRAC_PI_4;
+        let transform = Transform3d::new(
+            [3.0, 4.0, 5.0],
+            [0.0, 0.0, half_angle.sin(), half_angle.cos()],
+            [2.0, 3.0, 1.0],
+        )
+        .expect("transform should be valid");
+
+        let world_bounds = local_bounds.transformed(transform);
+        for (actual, expected) in world_bounds.min.into_iter().zip([0.0, 4.0, 5.0]) {
+            assert!((actual - expected).abs() < 1.0e-5);
+        }
+        for (actual, expected) in world_bounds.max.into_iter().zip([3.0, 6.0, 5.0]) {
+            assert!((actual - expected).abs() < 1.0e-5);
+        }
+    }
+
+    #[test]
+    fn bounds_union_contains_both_mesh_regions() {
+        use super::MeshBounds;
+
+        let first = MeshBounds::new([-2.0, -1.0, 0.0], [1.0, 2.0, 3.0]);
+        let second = MeshBounds::new([4.0, -3.0, -2.0], [5.0, 1.0, 6.0]);
+        let combined = first.union(second);
+
+        assert_eq!(combined.min, [-2.0, -3.0, -2.0]);
+        assert_eq!(combined.max, [5.0, 2.0, 6.0]);
+    }
+
+    #[test]
     fn accepts_triangle_and_normalizes_vertex_normals() {
         let (vertices, indices) = triangle();
         let mesh = MeshData::new(vertices, indices).expect("triangle should be valid");

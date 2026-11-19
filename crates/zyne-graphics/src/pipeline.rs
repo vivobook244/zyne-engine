@@ -971,20 +971,23 @@ fn directional_shadow_matrix_for_bounds(
         center[1] - direction[1] * light_distance,
         center[2] - direction[2] * light_distance,
     ];
+    let texel_world_size = (2.0 * half_extent) / SHADOW_MAP_SIZE as f32;
+    let snapped_right = snap_to_shadow_texel(dot_vector(right_vector(direction, world_up), center), texel_world_size);
+    let snapped_up = snap_to_shadow_texel(dot_vector(cross_vector(right_vector(direction, world_up), direction), center), texel_world_size);
     let world_up = if direction[1].abs() > 0.95 {
         [0.0, 0.0, 1.0]
     } else {
         [0.0, 1.0, 0.0]
     };
-    let right = normalize_vector(cross_vector(direction, world_up));
+    let right = right_vector(direction, world_up);
     let up = cross_vector(right, direction);
     let view = [
         [right[0], up[0], -direction[0], 0.0],
         [right[1], up[1], -direction[1], 0.0],
         [right[2], up[2], -direction[2], 0.0],
         [
-            -dot_vector(right, light_position),
-            -dot_vector(up, light_position),
+            -snapped_right,
+            -snapped_up,
             dot_vector(direction, light_position),
             1.0,
         ],
@@ -996,6 +999,14 @@ fn directional_shadow_matrix_for_bounds(
         [0.0, 0.0, near / (near - far), 1.0],
     ];
     multiply_column_major(projection, view)
+}
+
+fn right_vector(direction: [f32; 3], world_up: [f32; 3]) -> [f32; 3] {
+    normalize_vector(cross_vector(direction, world_up))
+}
+
+fn snap_to_shadow_texel(value: f32, texel_world_size: f32) -> f32 {
+    (value / texel_world_size).round() * texel_world_size
 }
 
 fn normalize_vector(value: [f32; 3]) -> [f32; 3] {
@@ -1278,6 +1289,39 @@ mod tests {
         CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels,
         cube_vertices, multiply_column_major, rotation_y,
     };
+
+    #[test]
+    fn shadow_camera_is_stable_under_sub_texel_scene_motion() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let bounds = MeshBounds::new([-1.0; 3], [1.0; 3]);
+        let tiny_motion = MeshBounds::new([-0.9999, -1.0, -1.0], [1.0001, 1.0, 1.0]);
+        let stable = directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(bounds));
+        let after_tiny_motion =
+            directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(tiny_motion));
+
+        assert_eq!(
+            stable, after_tiny_motion,
+            "sub-texel movement should not shift the shadow projection"
+        );
+    }
+
+    #[test]
+    fn shadow_camera_updates_after_scene_crosses_shadow_texel() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let bounds = MeshBounds::new([-1.0; 3], [1.0; 3]);
+        let moved = MeshBounds::new([-0.99, -1.0, -1.0], [1.01, 1.0, 1.0]);
+        let first = directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(bounds));
+        let second = directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(moved));
+
+        assert_ne!(
+            first, second,
+            "shadow projection should advance when the scene crosses a texel boundary"
+        );
+    }
 
     #[test]
     fn shadow_camera_fits_scene_bounds() {
