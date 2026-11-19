@@ -346,7 +346,7 @@ impl GraphicsContext {
                 occlusion_query_set: None,
             });
             shadow_pass.set_pipeline(self.cube_pipeline.shadow_pipeline());
-            shadow_pass.set_bind_group(4, self.cube_pipeline.shadow_bind_group(), &[]);
+            shadow_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             shadow_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
                 for (mesh, _, instances) in &batch_ranges {
@@ -395,7 +395,6 @@ impl GraphicsContext {
             render_pass.set_bind_group(0, self.cube_pipeline.camera_bind_group(), &[]);
             render_pass.set_bind_group(1, self.cube_pipeline.texture_bind_group(), &[]);
             render_pass.set_bind_group(2, self.cube_pipeline.lighting_bind_group(), &[]);
-            render_pass.set_bind_group(4, self.cube_pipeline.shadow_bind_group(), &[]);
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
                 for (mesh, material, instances) in &batch_ranges {
