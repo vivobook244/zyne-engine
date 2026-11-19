@@ -136,8 +136,7 @@ fn main() -> ZyneResult<()> {
         .map_err(subsystem_error)?,
     )?;
 
-    let mut scene = Scene::new("ZYNE Material Visual Showcase")
-        .map_err(subsystem_error)?;
+    let mut scene = Scene::new("ZYNE Material Visual Showcase").map_err(subsystem_error)?;
 
     let matte = scene
         .spawn_entity(
@@ -173,16 +172,12 @@ fn main() -> ZyneResult<()> {
     let light = scene
         .spawn_entity("Showcase Key Light", Transform3d::identity())
         .map_err(subsystem_error)?;
-    let directional_light = DirectionalLight::new(
-        [0.35, -0.8, -0.55],
-        [1.0, 0.96, 0.88],
-        2.2,
-    )
-    .map_err(subsystem_error)?;
+    let directional_light = DirectionalLight::new([0.35, -0.8, -0.55], [1.0, 0.96, 0.88], 2.2)
+        .map_err(subsystem_error)?;
     scene.set_entity_directional_light(light, Some(directional_light));
 
-    let camera_controller = OrbitCameraController::new([0.0, 0.0, 0.0], 8.5, 16.0 / 9.0)
-        .map_err(subsystem_error)?;
+    let camera_controller =
+        OrbitCameraController::new([0.0, 0.0, 0.0], 8.5, 16.0 / 9.0).map_err(subsystem_error)?;
 
     application.run_scene_with_materials(MaterialShowcaseEngine {
         camera_controller,
@@ -220,9 +215,7 @@ fn load_material(
 ) -> ZyneResult<ResourceId> {
     let id = ResourceId::new();
     register_asset(registry, id, name, ResourceKind::Material, source_path)?;
-    cache
-        .begin_loading(registry, id)
-        .map_err(subsystem_error)?;
+    cache.begin_loading(registry, id).map_err(subsystem_error)?;
     cache
         .complete_loading(registry, id, material)
         .map_err(subsystem_error)?;
