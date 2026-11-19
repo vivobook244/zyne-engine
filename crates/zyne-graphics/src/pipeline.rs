@@ -496,6 +496,16 @@ impl CubePipeline {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -522,6 +532,10 @@ impl CubePipeline {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&shadow_resources.sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: shadow_resources.camera_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -529,7 +543,7 @@ impl CubePipeline {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("ZYNE Shadow Camera Bind Group Layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
+                    binding: 3,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -543,7 +557,7 @@ impl CubePipeline {
             label: Some("ZYNE Shadow Camera Bind Group"),
             layout: &shadow_camera_layout,
             entries: &[wgpu::BindGroupEntry {
-                binding: 0,
+                binding: 3,
                 resource: shadow_resources.camera_buffer.as_entire_binding(),
             }],
         });
