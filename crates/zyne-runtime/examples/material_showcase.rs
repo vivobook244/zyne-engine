@@ -38,6 +38,7 @@ impl Engine for MaterialShowcaseEngine {
     ) -> ZyneResult<()> {
         self.camera_controller
             .update(input)
+            .map(|_| ())
             .map_err(|error| ZyneError::Subsystem(error.to_string()))
     }
 
