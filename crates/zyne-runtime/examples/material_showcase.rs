@@ -293,13 +293,8 @@ fn cube_mesh() -> ZyneResult<MeshData> {
         let base = u32::try_from(face_index * 4)
             .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
         let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
-        for index in 0..4 {
-            vertices.push(MeshVertex::new(
-                positions[index],
-                [1.0; 3],
-                uvs[index],
-                normal,
-            ));
+        for (position, uv) in positions.into_iter().zip(uvs) {
+            vertices.push(MeshVertex::new(position, [1.0; 3], uv, normal));
         }
         indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
     }
