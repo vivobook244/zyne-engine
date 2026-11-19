@@ -1587,12 +1587,8 @@ mod tests {
 
     #[test]
     fn shadow_instances_use_each_objects_world_transform() {
-        let first_transform = Transform3d::new(
-            [2.0, 0.0, -1.0],
-            [0.0, 0.0, 0.0, 1.0],
-            [1.0; 3],
-        )
-        .expect("first object transform should be valid");
+        let first_transform = Transform3d::new([2.0, 0.0, -1.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3])
+            .expect("first object transform should be valid");
         let second_transform = Transform3d::new(
             [-3.0, 1.5, 4.0],
             [
