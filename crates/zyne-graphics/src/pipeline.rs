@@ -676,15 +676,13 @@ impl CubePipeline {
             .directional_lights
             .first()
             .filter(|light| valid_direction(light.direction))
-            .map_or([-0.4, -1.0, -0.3], |light| normalized_direction(light.direction));
+            .map_or([-0.4, -1.0, -0.3], |light| {
+                normalized_direction(light.direction)
+            });
         let uniform = ShadowCameraUniform {
             view_projection: directional_shadow_matrix(direction),
         };
-        queue.write_buffer(
-            &self.shadow_camera_buffer,
-            0,
-            bytemuck::bytes_of(&uniform),
-        );
+        queue.write_buffer(&self.shadow_camera_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 
     pub(super) fn update_lighting(&self, queue: &wgpu::Queue, lighting: Option<&LightingData>) {
