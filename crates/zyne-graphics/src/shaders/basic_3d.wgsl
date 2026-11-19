@@ -34,6 +34,10 @@ struct Material {
     specular: vec4<f32>,
 };
 
+struct ShadowCamera {
+    view_projection: mat4x4<f32>,
+};
+
 @group(0) @binding(0)
 var<uniform> camera: Camera;
 
@@ -48,6 +52,15 @@ var<uniform> lighting: Lighting;
 
 @group(3) @binding(0)
 var<uniform> material: Material;
+
+@group(4) @binding(0)
+var shadow_map: texture_depth_2d;
+
+@group(4) @binding(1)
+var shadow_sampler: sampler_comparison;
+
+@group(4) @binding(2)
+var<uniform> shadow_camera: ShadowCamera;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -69,6 +82,7 @@ struct VertexOutput {
     @location(1) uv: vec2<f32>,
     @location(2) world_normal: vec3<f32>,
     @location(3) world_position: vec3<f32>,
+    @location(4) shadow_position: vec4<f32>,
 };
 
 @vertex
@@ -82,7 +96,15 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     output.uv = input.uv;
     output.world_normal = normalize(normal_matrix * input.normal);
     output.world_position = world_position.xyz;
+    output.shadow_position = shadow_camera.view_projection * world_position;
     return output;
+}
+
+@vertex
+fn vs_shadow(input: VertexInput) -> @builtin(position) vec4<f32> {
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    let world_position = model * vec4<f32>(input.position, 1.0);
+    return shadow_camera.view_projection * world_position;
 }
 
 fn safe_normalize(value: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
@@ -91,6 +113,35 @@ fn safe_normalize(value: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
         return value * inverseSqrt(length_squared);
     }
     return fallback;
+}
+
+fn shadow_visibility(shadow_position: vec4<f32>) -> f32 {
+    if shadow_position.w <= 0.0 {
+        return 1.0;
+    }
+    let projected = shadow_position.xyz / shadow_position.w;
+    let uv = vec2<f32>(projected.x * 0.5 + 0.5, 0.5 - projected.y * 0.5);
+    if projected.z <= 0.0 || projected.z >= 1.0
+        || uv.x <= 0.0 || uv.x >= 1.0
+        || uv.y <= 0.0 || uv.y >= 1.0 {
+        return 1.0;
+    }
+    let dimensions = vec2<f32>(textureDimensions(shadow_map));
+    let texel = 1.0 / dimensions;
+    let compare_depth = projected.z - 0.0015;
+    var visibility = 0.0;
+    for (var y = -1; y <= 1; y = y + 1) {
+        for (var x = -1; x <= 1; x = x + 1) {
+            let offset = vec2<f32>(f32(x), f32(y)) * texel;
+            visibility += textureSampleCompare(
+                shadow_map,
+                shadow_sampler,
+                uv + offset,
+                compare_depth,
+            );
+        }
+    }
+    return visibility / 9.0;
 }
 
 fn blinn_phong(
@@ -132,7 +183,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     for (var i = 0u; i < lighting.counts.x; i = i + 1u) {
         let light = lighting.directional_lights[i];
         let light_direction = safe_normalize(-light.direction.xyz, normal);
-        result += blinn_phong(
+        let direct_light = blinn_phong(
             base_color,
             normal,
             view_direction,
@@ -142,6 +193,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             material.specular.rgb,
             material.specular.w,
         );
+        if i == 0u {
+            result += direct_light * shadow_visibility(input.shadow_position);
+        } else {
+            result += direct_light;
+        }
     }
 
     for (var i = 0u; i < lighting.counts.y; i = i + 1u) {
