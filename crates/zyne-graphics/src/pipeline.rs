@@ -438,8 +438,8 @@ pub(super) struct CubePipeline {
     pipeline: wgpu::RenderPipeline,
     shadow_pipeline: wgpu::RenderPipeline,
     shadow_view: wgpu::TextureView,
-    shadow_texture: wgpu::Texture,
-    shadow_sampler: wgpu::Sampler,
+    _shadow_texture: wgpu::Texture,
+    _shadow_sampler: wgpu::Sampler,
     shadow_camera_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     vertex_buffer: wgpu::Buffer,
@@ -600,8 +600,8 @@ impl CubePipeline {
             pipeline,
             shadow_pipeline,
             shadow_view: shadow_resources.view,
-            shadow_texture: shadow_resources.texture,
-            shadow_sampler: shadow_resources.sampler,
+            _shadow_texture: shadow_resources.texture,
+            _shadow_sampler: shadow_resources.sampler,
             shadow_camera_buffer: shadow_resources.camera_buffer,
             shadow_bind_group: shadow_resources.bind_group,
             vertex_buffer,
@@ -1170,7 +1170,6 @@ fn identity_matrix() -> [[f32; 4]; 4] {
     ]
 }
 
-#[cfg(test)]
 fn multiply_column_major(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let mut result = [[0.0; 4]; 4];
 
