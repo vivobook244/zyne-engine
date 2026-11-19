@@ -885,6 +885,7 @@ struct ShadowResources {
 }
 
 const SHADOW_MAP_SIZE: u32 = 2048;
+const SHADOW_MAP_SIZE_F32: f32 = 2048.0;
 
 fn create_shadow_resources(device: &wgpu::Device) -> ShadowResources {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -978,7 +979,7 @@ fn directional_shadow_matrix_for_bounds(
         center[1] - direction[1] * light_distance,
         center[2] - direction[2] * light_distance,
     ];
-    let texel_world_size = (2.0 * half_extent) / SHADOW_MAP_SIZE as f32;
+    let texel_world_size = (2.0 * half_extent) / SHADOW_MAP_SIZE_F32;
     let snapped_right = snap_to_shadow_texel(dot_vector(right, center), texel_world_size);
     let snapped_up = snap_to_shadow_texel(dot_vector(up, center), texel_world_size);
     let view = [
