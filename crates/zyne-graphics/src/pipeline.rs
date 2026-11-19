@@ -741,13 +741,7 @@ impl CubePipeline {
             default_lighting = LightingData::default();
             &default_lighting
         };
-        let direction = lighting
-            .directional_lights
-            .first()
-            .filter(|light| valid_direction(light.direction))
-            .map_or([-0.4, -1.0, -0.3], |light| {
-                normalized_direction(light.direction)
-            });
+        let direction = directional_shadow_direction(lighting);
         let uniform = ShadowCameraUniform {
             view_projection: directional_shadow_matrix(direction),
         };
@@ -930,6 +924,16 @@ fn create_shadow_resources(device: &wgpu::Device) -> ShadowResources {
         sampler,
         camera_buffer,
     }
+}
+
+fn directional_shadow_direction(lighting: &LightingData) -> [f32; 3] {
+    lighting
+        .directional_lights
+        .iter()
+        .find(|light| valid_direction(light.direction))
+        .map_or([-0.4, -1.0, -0.3], |light| {
+            normalized_direction(light.direction)
+        })
 }
 
 fn directional_shadow_matrix(direction: [f32; 3]) -> [[f32; 4]; 4] {
@@ -1244,6 +1248,63 @@ mod tests {
         CHECKER_TEXTURE_SIZE, Camera3d, InstanceRaw, Transform3d, checker_texture_pixels,
         cube_vertices, multiply_column_major, rotation_y,
     };
+
+    #[test]
+    fn shadow_camera_tracks_directional_light_changes() {
+        use super::{directional_shadow_direction, directional_shadow_matrix};
+        use crate::lighting::{DirectionalLightData, LightingData};
+
+        let mut lighting = LightingData::default();
+        lighting.directional_lights.push(DirectionalLightData {
+            direction: [0.0, -1.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+        });
+        let first = directional_shadow_matrix(directional_shadow_direction(&lighting));
+
+        lighting.directional_lights[0].direction = [1.0, -1.0, 0.5];
+        let second = directional_shadow_matrix(directional_shadow_direction(&lighting));
+
+        assert_ne!(first, second, "moving the light must update the shadow camera");
+        assert!(second.iter().flatten().all(|value| value.is_finite()));
+    }
+
+    #[test]
+    fn shadow_camera_skips_invalid_directional_lights() {
+        use super::{directional_shadow_direction, directional_shadow_matrix};
+        use crate::lighting::{DirectionalLightData, LightingData};
+
+        let mut lighting = LightingData::default();
+        lighting.directional_lights = vec![
+            DirectionalLightData {
+                direction: [0.0; 3],
+                color: [1.0; 3],
+                intensity: 1.0,
+            },
+            DirectionalLightData {
+                direction: [1.0, -2.0, 0.5],
+                color: [1.0; 3],
+                intensity: 1.0,
+            },
+        ];
+
+        let selected = directional_shadow_direction(&lighting);
+        let expected = directional_shadow_matrix([1.0, -2.0, 0.5]);
+        assert_eq!(directional_shadow_matrix(selected), expected);
+    }
+
+    #[test]
+    fn shadow_camera_matrix_remains_finite_for_vertical_light_directions() {
+        use super::directional_shadow_matrix;
+
+        for direction in [[0.0, 1.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]] {
+            let matrix = directional_shadow_matrix(direction);
+            assert!(
+                matrix.iter().flatten().all(|value| value.is_finite()),
+                "shadow matrix must remain finite for {direction:?}"
+            );
+        }
+    }
 
     #[test]
     fn basic_3d_shader_parses_and_passes_wgsl_validation() {
