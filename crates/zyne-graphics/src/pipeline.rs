@@ -3,11 +3,11 @@ use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
 use crate::MaterialData;
-use crate::mesh::MeshBounds;
 use crate::lighting::{
     DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
     PointLightData, SpotLightData,
 };
+use crate::mesh::MeshBounds;
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const CHECKER_TEXTURE_SIZE: u32 = 64;

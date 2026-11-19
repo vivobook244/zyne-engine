@@ -166,7 +166,12 @@ impl GraphicsContext {
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        Ok(GpuMesh::new(vertex_buffer, index_buffer, index_count, data.bounds()))
+        Ok(GpuMesh::new(
+            vertex_buffer,
+            index_buffer,
+            index_count,
+            data.bounds(),
+        ))
     }
 
     /// Uploads renderer-facing material parameters for reuse across draws.
@@ -310,20 +315,12 @@ impl GraphicsContext {
         let shadow_bounds = if let Some(batches) = mesh_batches {
             let mut bounds = None;
             for batch in batches {
-                merge_transformed_bounds(
-                    &mut bounds,
-                    batch.mesh().bounds(),
-                    batch.transforms(),
-                );
+                merge_transformed_bounds(&mut bounds, batch.mesh().bounds(), batch.transforms());
             }
             bounds
         } else if let Some(mesh) = mesh {
             let mut bounds = None;
-            merge_transformed_bounds(
-                &mut bounds,
-                mesh.bounds(),
-                frame_transforms.unwrap_or(&[]),
-            );
+            merge_transformed_bounds(&mut bounds, mesh.bounds(), frame_transforms.unwrap_or(&[]));
             bounds
         } else {
             let cube_bounds = MeshBounds::new([-0.7; 3], [0.7; 3]);
