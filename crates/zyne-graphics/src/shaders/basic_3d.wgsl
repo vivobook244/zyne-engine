@@ -115,10 +115,15 @@ fn safe_normalize(value: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
     return fallback;
 }
 
-fn shadow_visibility(shadow_position: vec4<f32>) -> f32 {
+fn shadow_visibility(
+    shadow_position: vec4<f32>,
+    surface_normal: vec3<f32>,
+    light_direction: vec3<f32>,
+) -> f32 {
     if shadow_position.w <= 0.0 {
         return 1.0;
     }
+
     let projected = shadow_position.xyz / shadow_position.w;
     let uv = vec2<f32>(projected.x * 0.5 + 0.5, 0.5 - projected.y * 0.5);
     if projected.z <= 0.0 || projected.z >= 1.0
@@ -126,22 +131,38 @@ fn shadow_visibility(shadow_position: vec4<f32>) -> f32 {
         || uv.y <= 0.0 || uv.y >= 1.0 {
         return 1.0;
     }
-    let dimensions = vec2<f32>(textureDimensions(shadow_map));
-    let texel = 1.0 / dimensions;
-    let compare_depth = projected.z - 0.0015;
+
+    // Increase the receiver bias at grazing angles while keeping it small
+    // for surfaces facing the light to reduce detached ("peter-panning") shadows.
+    let normal_light_cosine = max(dot(surface_normal, light_direction), 0.0);
+    let depth_bias = mix(0.0012, 0.00035, normal_light_cosine);
+    let compare_depth = projected.z - depth_bias;
+    let texel = 1.0 / vec2<f32>(textureDimensions(shadow_map));
     var visibility = 0.0;
+    var sample_count = 0.0;
+
+    // Keep the 3x3 PCF footprint, but do not repeat edge texels outside the map.
     for (var y = -1; y <= 1; y = y + 1) {
         for (var x = -1; x <= 1; x = x + 1) {
             let offset = vec2<f32>(f32(x), f32(y)) * texel;
-            visibility += textureSampleCompare(
-                shadow_map,
-                shadow_sampler,
-                uv + offset,
-                compare_depth,
-            );
+            let sample_uv = uv + offset;
+            if sample_uv.x >= 0.0 && sample_uv.x <= 1.0
+                && sample_uv.y >= 0.0 && sample_uv.y <= 1.0 {
+                visibility += textureSampleCompare(
+                    shadow_map,
+                    shadow_sampler,
+                    sample_uv,
+                    compare_depth,
+                );
+                sample_count += 1.0;
+            }
         }
     }
-    return visibility / 9.0;
+
+    if sample_count <= 0.0 {
+        return 1.0;
+    }
+    return visibility / sample_count;
 }
 
 fn blinn_phong(
@@ -194,7 +215,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             material.specular.w,
         );
         if i == 0u {
-            result += direct_light * shadow_visibility(input.shadow_position);
+            result += direct_light * shadow_visibility(input.shadow_position, normal, light_direction);
         } else {
             result += direct_light;
         }
