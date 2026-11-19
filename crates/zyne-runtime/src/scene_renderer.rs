@@ -347,7 +347,7 @@ impl std::error::Error for SceneRenderError {
 }
 
 fn collect_scene_lighting(scene: &Scene) -> LightingData {
-    let mut lighting = LightingData::with_ambient([0.16, 0.16, 0.18]);
+    let mut lighting = LightingData::with_ambient([0.30, 0.30, 0.32]);
     for entity_id in scene.entity_ids() {
         let Some(transform) = scene.entity_transform(entity_id) else {
             continue;
@@ -630,7 +630,7 @@ mod tests {
     fn scene_without_lights_uses_ambient_only_lighting_snapshot() {
         let scene = Scene::new("Ambient Only").unwrap();
         let lighting = super::collect_scene_lighting(&scene);
-        assert_eq!(lighting.ambient_color, [0.16, 0.16, 0.18]);
+        assert_eq!(lighting.ambient_color, [0.30, 0.30, 0.32]);
         assert_eq!(lighting.directional_lights.as_slice(), &[]);
         assert_eq!(lighting.point_lights.as_slice(), &[]);
         assert_eq!(lighting.spot_lights.as_slice(), &[]);
