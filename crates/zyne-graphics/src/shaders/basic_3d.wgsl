@@ -53,13 +53,13 @@ var<uniform> lighting: Lighting;
 @group(3) @binding(0)
 var<uniform> material: Material;
 
-@group(4) @binding(0)
+@group(0) @binding(1)
 var shadow_map: texture_depth_2d;
 
-@group(4) @binding(1)
+@group(0) @binding(2)
 var shadow_sampler: sampler_comparison;
 
-@group(4) @binding(2)
+@group(0) @binding(3)
 var<uniform> shadow_camera: ShadowCamera;
 
 struct VertexInput {
