@@ -125,6 +125,12 @@ struct CameraUniform {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
+struct ShadowCameraUniform {
+    view_projection: [[f32; 4]; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct DirectionalLightRaw {
     direction: [f32; 4],
     color_intensity: [f32; 4],
@@ -430,6 +436,12 @@ fn cube_vertices() -> [Vertex; 36] {
 /// A perspective-projected, depth-tested cube pipeline.
 pub(super) struct CubePipeline {
     pipeline: wgpu::RenderPipeline,
+    shadow_pipeline: wgpu::RenderPipeline,
+    shadow_view: wgpu::TextureView,
+    shadow_texture: wgpu::Texture,
+    shadow_sampler: wgpu::Sampler,
+    shadow_camera_buffer: wgpu::Buffer,
+    shadow_bind_group: wgpu::BindGroup,
     vertex_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -487,6 +499,7 @@ impl CubePipeline {
         let lighting_resources = create_lighting_resources(device);
         let material_resources = create_material_resources(device, &MaterialData::default());
         let checker_texture = create_checker_texture(device, queue);
+        let shadow_resources = create_shadow_resources(device);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE 3D Cube Pipeline Layout"),
             bind_group_layouts: &[
@@ -494,6 +507,7 @@ impl CubePipeline {
                 &checker_texture.layout,
                 &lighting_resources.layout,
                 &material_resources.layout,
+                &shadow_resources.layout,
             ],
             push_constant_ranges: &[],
         });
@@ -536,6 +550,40 @@ impl CubePipeline {
             multiview: None,
             cache: None,
         });
+        let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("ZYNE Directional Shadow Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_shadow"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[Vertex::layout(), InstanceRaw::layout()],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState {
+                    constant: 2,
+                    slope_scale: 2.0,
+                    clamp: 0.0,
+                },
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: None,
+            multiview: None,
+            cache: None,
+        });
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ZYNE Cube Vertices"),
             contents: bytemuck::cast_slice(&cube_vertices()),
@@ -550,6 +598,12 @@ impl CubePipeline {
 
         Self {
             pipeline,
+            shadow_pipeline,
+            shadow_view: shadow_resources.view,
+            shadow_texture: shadow_resources.texture,
+            shadow_sampler: shadow_resources.sampler,
+            shadow_camera_buffer: shadow_resources.camera_buffer,
+            shadow_bind_group: shadow_resources.bind_group,
             vertex_buffer,
             camera_buffer,
             camera_bind_group,
@@ -604,6 +658,33 @@ impl CubePipeline {
             ],
         };
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    pub(super) fn update_shadow_camera(
+        &self,
+        queue: &wgpu::Queue,
+        lighting: Option<&LightingData>,
+    ) {
+        let default_lighting;
+        let lighting = if let Some(lighting) = lighting {
+            lighting
+        } else {
+            default_lighting = LightingData::default();
+            &default_lighting
+        };
+        let direction = lighting
+            .directional_lights
+            .first()
+            .filter(|light| valid_direction(light.direction))
+            .map_or([-0.4, -1.0, -0.3], |light| normalized_direction(light.direction));
+        let uniform = ShadowCameraUniform {
+            view_projection: directional_shadow_matrix(direction),
+        };
+        queue.write_buffer(
+            &self.shadow_camera_buffer,
+            0,
+            bytemuck::bytes_of(&uniform),
+        );
     }
 
     pub(super) fn update_lighting(&self, queue: &wgpu::Queue, lighting: Option<&LightingData>) {
@@ -674,6 +755,18 @@ impl CubePipeline {
         &self.pipeline
     }
 
+    pub(super) const fn shadow_pipeline(&self) -> &wgpu::RenderPipeline {
+        &self.shadow_pipeline
+    }
+
+    pub(super) const fn shadow_view(&self) -> &wgpu::TextureView {
+        &self.shadow_view
+    }
+
+    pub(super) const fn shadow_bind_group(&self) -> &wgpu::BindGroup {
+        &self.shadow_bind_group
+    }
+
     pub(super) const fn vertex_buffer(&self) -> &wgpu::Buffer {
         &self.vertex_buffer
     }
@@ -719,6 +812,159 @@ impl CubePipeline {
     pub(super) const fn instance_buffer(&self) -> &wgpu::Buffer {
         &self.instance_buffer
     }
+}
+
+struct ShadowResources {
+    layout: wgpu::BindGroupLayout,
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+    camera_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+}
+
+const SHADOW_MAP_SIZE: u32 = 2048;
+
+fn create_shadow_resources(device: &wgpu::Device) -> ShadowResources {
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ZYNE Directional Shadow Bind Group Layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Depth,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
+    });
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ZYNE Directional Shadow Map"),
+        size: wgpu::Extent3d {
+            width: SHADOW_MAP_SIZE,
+            height: SHADOW_MAP_SIZE,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: DEPTH_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("ZYNE Shadow Comparison Sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        compare: Some(wgpu::CompareFunction::LessEqual),
+        ..Default::default()
+    });
+    let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("ZYNE Shadow Camera Uniform"),
+        contents: bytemuck::bytes_of(&ShadowCameraUniform {
+            view_projection: directional_shadow_matrix([-0.4, -1.0, -0.3]),
+        }),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ZYNE Directional Shadow Bind Group"),
+        layout: &layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: camera_buffer.as_entire_binding(),
+            },
+        ],
+    });
+    ShadowResources {
+        layout,
+        texture,
+        view,
+        sampler,
+        camera_buffer,
+        bind_group,
+    }
+}
+
+fn directional_shadow_matrix(direction: [f32; 3]) -> [[f32; 4]; 4] {
+    let direction = normalized_direction(direction);
+    let light_position = direction.map(|component| -component * 18.0);
+    let world_up = if direction[1].abs() > 0.95 {
+        [0.0, 0.0, 1.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let right = normalize_vector(cross_vector(direction, world_up));
+    let up = cross_vector(right, direction);
+    let view = [
+        [right[0], up[0], -direction[0], 0.0],
+        [right[1], up[1], -direction[1], 0.0],
+        [right[2], up[2], -direction[2], 0.0],
+        [
+            -dot_vector(right, light_position),
+            -dot_vector(up, light_position),
+            dot_vector(direction, light_position),
+            1.0,
+        ],
+    ];
+    let near = 0.1;
+    let far = 40.0;
+    let projection = [
+        [0.1, 0.0, 0.0, 0.0],
+        [0.0, 0.1, 0.0, 0.0],
+        [0.0, 0.0, 1.0 / (near - far), 0.0],
+        [0.0, 0.0, near / (near - far), 1.0],
+    ];
+    multiply_column_major(projection, view)
+}
+
+fn normalize_vector(value: [f32; 3]) -> [f32; 3] {
+    let length = dot_vector(value, value).sqrt().max(1.0e-8);
+    value.map(|component| component / length)
+}
+
+fn dot_vector(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross_vector(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
 
 struct MaterialResources {
