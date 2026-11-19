@@ -288,7 +288,8 @@ impl GraphicsContext {
         );
 
         self.cube_pipeline.update_lighting(&self.queue, lighting);
-        self.cube_pipeline.update_shadow_camera(&self.queue, lighting);
+        self.cube_pipeline
+            .update_shadow_camera(&self.queue, lighting);
 
         let batch_transforms = mesh_batches.map(|batches| {
             batches
@@ -350,18 +351,14 @@ impl GraphicsContext {
             if !batch_ranges.is_empty() {
                 for (mesh, _, instances) in &batch_ranges {
                     shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                    shadow_pass.set_index_buffer(
-                        mesh.index_buffer().slice(..),
-                        wgpu::IndexFormat::Uint32,
-                    );
+                    shadow_pass
+                        .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                     shadow_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
                 }
             } else if let Some(mesh) = mesh {
                 shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                shadow_pass.set_index_buffer(
-                    mesh.index_buffer().slice(..),
-                    wgpu::IndexFormat::Uint32,
-                );
+                shadow_pass
+                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
                 shadow_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
             } else if mesh_batches.is_none() {
                 shadow_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
