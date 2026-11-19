@@ -1265,7 +1265,10 @@ mod tests {
         lighting.directional_lights[0].direction = [1.0, -1.0, 0.5];
         let second = directional_shadow_matrix(directional_shadow_direction(&lighting));
 
-        assert_ne!(first, second, "moving the light must update the shadow camera");
+        assert_ne!(
+            first, second,
+            "moving the light must update the shadow camera"
+        );
         assert!(second.iter().flatten().all(|value| value.is_finite()));
     }
 
