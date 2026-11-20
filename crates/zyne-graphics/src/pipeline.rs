@@ -264,9 +264,7 @@ fn valid_direction(direction: [f32; 3]) -> bool {
 }
 
 fn valid_directional_light(light: DirectionalLightData) -> bool {
-    valid_direction(light.direction)
-        && valid_color(light.color)
-        && valid_intensity(light.intensity)
+    valid_direction(light.direction) && valid_color(light.color) && valid_intensity(light.intensity)
 }
 
 fn normalized_direction(direction: [f32; 3]) -> [f32; 3] {
