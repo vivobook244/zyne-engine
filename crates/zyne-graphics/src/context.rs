@@ -14,9 +14,7 @@ use crate::{
     FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
-    presentation::{
-        HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev,
-    },
+    presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev},
 };
 
 fn merge_transformed_bounds(
