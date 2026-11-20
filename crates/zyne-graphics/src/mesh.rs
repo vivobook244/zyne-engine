@@ -17,9 +17,13 @@ impl MeshBounds {
     pub(crate) fn union(self, other: Self) -> Self {
         let mut min = self.min;
         let mut max = self.max;
-        for axis in 0..3 {
-            min[axis] = min[axis].min(other.min[axis]);
-            max[axis] = max[axis].max(other.max[axis]);
+        for ((min_value, max_value), (other_min, other_max)) in min
+            .iter_mut()
+            .zip(max.iter_mut())
+            .zip(other.min.iter().zip(other.max.iter()))
+        {
+            *min_value = (*min_value).min(*other_min);
+            *max_value = (*max_value).max(*other_max);
         }
         Self { min, max }
     }
@@ -39,9 +43,14 @@ impl MeshBounds {
                         matrix[0][1] * x + matrix[1][1] * y + matrix[2][1] * z + matrix[3][1],
                         matrix[0][2] * x + matrix[1][2] * y + matrix[2][2] * z + matrix[3][2],
                     ];
-                    for axis in 0..3 {
-                        result.min[axis] = result.min[axis].min(point[axis]);
-                        result.max[axis] = result.max[axis].max(point[axis]);
+                    for ((min_value, max_value), value) in result
+                        .min
+                        .iter_mut()
+                        .zip(result.max.iter_mut())
+                        .zip(point)
+                    {
+                        *min_value = (*min_value).min(value);
+                        *max_value = (*max_value).max(value);
                     }
                 }
             }
@@ -55,9 +64,14 @@ impl MeshBounds {
             max: vertices[0].position,
         };
         for vertex in &vertices[1..] {
-            for axis in 0..3 {
-                result.min[axis] = result.min[axis].min(vertex.position[axis]);
-                result.max[axis] = result.max[axis].max(vertex.position[axis]);
+            for ((min_value, max_value), value) in result
+                .min
+                .iter_mut()
+                .zip(result.max.iter_mut())
+                .zip(vertex.position)
+            {
+                *min_value = (*min_value).min(value);
+                *max_value = (*max_value).max(value);
             }
         }
         result
