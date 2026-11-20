@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-Each phase must produce a verifiable result before the next phase expands the architecture. The current rendering milestone is [Phase 5.5.1 — HDR Foundation](development/PHASE-5-5-1-HDR-FOUNDATION.md); its acceptance checks and remaining Phase 5 work are tracked there.
+Each phase must produce a verifiable result before the next phase expands the architecture. The current rendering milestone is [Phase 5.5.2 — Tone Mapping](development/PHASE-5-5-2-TONE-MAPPING.md); its acceptance checks and remaining Phase 5 work are tracked there.
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|
