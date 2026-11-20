@@ -513,6 +513,7 @@ mod tests {
     use super::{ImportError, import_gltf};
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const POSITIONS: [u8; 36] = [
@@ -520,6 +521,8 @@ mod tests {
         0, 128, 63, 0, 0, 0, 0,
     ];
     const PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==";
+
+    static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 
     struct TestDirectory(PathBuf);
 
@@ -529,8 +532,11 @@ mod tests {
                 .duration_since(UNIX_EPOCH)
                 .expect("system clock should be after Unix epoch")
                 .as_nanos();
-            let path =
-                std::env::temp_dir().join(format!("zyne-assets-{}-{nonce}", std::process::id()));
+            let sequence = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "zyne-assets-{}-{nonce}-{sequence}",
+                std::process::id()
+            ));
             fs::create_dir_all(&path).expect("temporary test directory should be created");
             Self(path)
         }
