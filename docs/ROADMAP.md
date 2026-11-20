@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-The current rendering milestone, [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md), is complete. The next Phase 5.5 rendering increment will be scoped after reviewing the remaining renderer and lighting gaps; no Phase 5.5.4 scope is assumed yet.
+The current rendering milestone, [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md), is complete. The next rendering increment is [Phase 5.5.4 — Material Texture Integration](development/PHASE-5-5-4-MATERIAL-TEXTURE-INTEGRATION.md), scoped from the renderer audit.
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|
