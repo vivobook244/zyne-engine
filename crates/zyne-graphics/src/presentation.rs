@@ -36,11 +36,10 @@ impl HdrRenderTarget {
     }
 }
 
-/// Presents the HDR scene texture without applying tone mapping.
+/// Presents the HDR scene texture through exposure compensation and tone mapping.
 ///
-/// The pass intentionally performs a direct load/store of linear values. Values
-/// outside the SDR display range are preserved in the HDR target and will be
-/// mapped to the display range by the dedicated tone-mapping milestone.
+/// Scene-linear values are multiplied by the configured exposure scale before
+/// the fitted ACES operator maps them into the display range.
 pub(super) const MIN_EXPOSURE_EV: f32 = -16.0;
 pub(super) const MAX_EXPOSURE_EV: f32 = 16.0;
 
