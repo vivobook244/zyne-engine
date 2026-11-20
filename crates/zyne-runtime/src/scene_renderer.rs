@@ -576,6 +576,36 @@ mod tests {
     }
 
     #[test]
+    fn directional_shadow_owner_follows_scene_creation_order() {
+        use zyne_scene::DirectionalLight;
+
+        let mut scene = Scene::new("Directional Shadow Order").unwrap();
+        let key = scene
+            .spawn_entity("Key Light", Transform3d::identity())
+            .unwrap();
+        let fill = scene
+            .spawn_entity("Fill Light", Transform3d::identity())
+            .unwrap();
+        scene.set_entity_directional_light(
+            key,
+            Some(DirectionalLight::new([0.0, -1.0, 0.0], [1.0; 3], 2.0).unwrap()),
+        );
+        scene.set_entity_directional_light(
+            fill,
+            Some(DirectionalLight::new([1.0, -1.0, 0.0], [1.0; 3], 0.5).unwrap()),
+        );
+
+        let lighting = super::collect_scene_lighting(&scene);
+
+        assert_eq!(lighting.directional_lights.len(), 2);
+        assert_eq!(lighting.directional_lights[0].direction, [0.0, -1.0, 0.0]);
+        assert_eq!(
+            lighting.directional_lights[1].direction,
+            [std::f32::consts::FRAC_1_SQRT_2, -std::f32::consts::FRAC_1_SQRT_2, 0.0]
+        );
+    }
+
+    #[test]
     fn extracts_world_space_directional_point_and_spot_lights() {
         use zyne_scene::{DirectionalLight, PointLight, SpotLight};
 
