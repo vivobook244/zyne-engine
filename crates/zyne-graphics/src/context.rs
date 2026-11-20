@@ -15,7 +15,7 @@ use crate::{
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
     presentation::{
-        HDR_FORMAT, HdrRenderTarget, MAX_EXPOSURE_EV, MIN_EXPOSURE_EV, PresentationPipeline,
+        HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev,
     },
 };
 
@@ -230,9 +230,7 @@ impl GraphicsContext {
     ///
     /// Returns an error when the value is non-finite or outside the supported range.
     pub fn set_exposure_ev(&mut self, exposure_ev: f32) -> Result<(), GraphicsError> {
-        if !exposure_ev.is_finite()
-            || !(MIN_EXPOSURE_EV..=MAX_EXPOSURE_EV).contains(&exposure_ev)
-        {
+        if !is_valid_exposure_ev(exposure_ev) {
             return Err(GraphicsError::InvalidExposure(exposure_ev));
         }
 
