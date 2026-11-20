@@ -44,6 +44,10 @@ impl HdrRenderTarget {
 pub(super) const MIN_EXPOSURE_EV: f32 = -16.0;
 pub(super) const MAX_EXPOSURE_EV: f32 = 16.0;
 
+pub(super) fn is_valid_exposure_ev(value: f32) -> bool {
+    value.is_finite() && (MIN_EXPOSURE_EV..=MAX_EXPOSURE_EV).contains(&value)
+}
+
 pub(super) struct PresentationPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -167,11 +171,27 @@ impl PresentationPipeline {
 
 #[cfg(test)]
 mod tests {
-    use super::HDR_FORMAT;
+    use super::{HDR_FORMAT, MAX_EXPOSURE_EV, MIN_EXPOSURE_EV, is_valid_exposure_ev};
 
     #[test]
     fn scene_target_uses_half_precision_floating_point_color() {
         assert_eq!(HDR_FORMAT, wgpu::TextureFormat::Rgba16Float);
+    }
+
+    #[test]
+    fn exposure_ev_accepts_supported_finite_values() {
+        assert!(is_valid_exposure_ev(MIN_EXPOSURE_EV));
+        assert!(is_valid_exposure_ev(0.0));
+        assert!(is_valid_exposure_ev(MAX_EXPOSURE_EV));
+    }
+
+    #[test]
+    fn exposure_ev_rejects_non_finite_and_out_of_range_values() {
+        assert!(!is_valid_exposure_ev(f32::NAN));
+        assert!(!is_valid_exposure_ev(f32::INFINITY));
+        assert!(!is_valid_exposure_ev(f32::NEG_INFINITY));
+        assert!(!is_valid_exposure_ev(MIN_EXPOSURE_EV - 0.01));
+        assert!(!is_valid_exposure_ev(MAX_EXPOSURE_EV + 0.01));
     }
 
     #[test]
