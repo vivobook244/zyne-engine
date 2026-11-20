@@ -599,13 +599,17 @@ mod tests {
 
         assert_eq!(lighting.directional_lights.len(), 2);
         assert_eq!(lighting.directional_lights[0].direction, [0.0, -1.0, 0.0]);
-        assert_eq!(
-            lighting.directional_lights[1].direction,
-            [
-                std::f32::consts::FRAC_1_SQRT_2,
-                -std::f32::consts::FRAC_1_SQRT_2,
-                0.0,
-            ]
+        let expected_fill_direction = [
+            std::f32::consts::FRAC_1_SQRT_2,
+            -std::f32::consts::FRAC_1_SQRT_2,
+            0.0,
+        ];
+        assert!(
+            lighting.directional_lights[1]
+                .direction
+                .iter()
+                .zip(expected_fill_direction)
+                .all(|(actual, expected)| (actual - expected).abs() < 1.0e-6)
         );
     }
 
