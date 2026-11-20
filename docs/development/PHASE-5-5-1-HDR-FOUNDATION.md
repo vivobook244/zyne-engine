@@ -1,6 +1,6 @@
 # Phase 5.5.1 — HDR Foundation
 
-**Status:** IMPLEMENTED — CI VALIDATION PENDING  
+**Status:** IMPLEMENTED — CI VALIDATED; PHYSICAL GPU VISUAL VALIDATION PENDING  
 **Branch:** `main`  
 **Prerequisite:** Phase 5.4.5 — Lighting Documentation  
 **Goal:** Preserve scene-linear lighting output in a floating-point render target before display presentation, without changing the forward-rendering or Blinn–Phong contracts.
@@ -25,8 +25,15 @@
 - [x] Keep the directional shadow pass and depth buffer behavior intact.
 - [x] Recreate HDR resources on non-zero surface resize.
 - [x] Add a WGSL parser/validator test for the presentation shader.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI (GitHub Actions run [#547](https://github.com/vivobook244/zyne-engine/actions/runs/44689089627), commit `e316c56`).
 - [ ] Confirm the material showcase still renders correctly on a physical GPU.
+
+## Validation record
+
+- Commit: `e316c56f5b6517bf62e09e8de5a06dbb8e8e270c`.
+- CI run: [Rust CI #547](https://github.com/vivobook244/zyne-engine/actions/runs/44689089627) — successful on `ubuntu-latest` and `windows-latest`.
+- Both jobs completed metadata validation, formatting, strict Clippy, tests, workspace check, and the headless lifecycle smoke example.
+- Physical-GPU material showcase validation remains open and must be recorded after a local run.
 
 ## Color pipeline contract
 
