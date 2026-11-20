@@ -125,7 +125,7 @@ Shadow visibility is evaluated for the first uploaded directional light. The cur
 
 ## Current scope and non-goals
 
-The current lighting implementation is Blinn–Phong forward shading with one directional shadow map. The renderer now writes scene-linear lighting into an RGBA16Float HDR target and applies a fitted ACES tone-mapping curve during final presentation. This does not imply support for physically based rendering (PBR), multiple shadow maps, point-light shadows, spot-light shadows, image-based lighting, or automatic exposure; those remain separate renderer work.
+The current lighting implementation is Blinn–Phong forward shading with one directional shadow map. The renderer now writes scene-linear lighting into an RGBA16Float HDR target and applies a fitted ACES tone-mapping curve during final presentation. This does not imply support for physically based rendering (PBR), multiple shadow maps, point-light shadows, spot-light shadows, image-based lighting, or automatic exposure adaptation. Fixed EV exposure compensation is available in the presentation pass; automatic exposure adaptation remains future work.
 
 ## Related implementation
 
