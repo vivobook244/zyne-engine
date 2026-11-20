@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-Each phase must produce a verifiable result before the next phase expands the architecture. The current rendering milestone is [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md); its acceptance checks and remaining Phase 5 work are tracked there.
+The current rendering milestone, [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md), is complete. The next Phase 5.5 rendering increment will be scoped after reviewing the remaining renderer and lighting gaps; no Phase 5.5.4 scope is assumed yet.
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|
