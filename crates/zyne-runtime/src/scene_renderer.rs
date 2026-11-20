@@ -601,7 +601,11 @@ mod tests {
         assert_eq!(lighting.directional_lights[0].direction, [0.0, -1.0, 0.0]);
         assert_eq!(
             lighting.directional_lights[1].direction,
-            [std::f32::consts::FRAC_1_SQRT_2, -std::f32::consts::FRAC_1_SQRT_2, 0.0]
+            [
+                std::f32::consts::FRAC_1_SQRT_2,
+                -std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ]
         );
     }
 
