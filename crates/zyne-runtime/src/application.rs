@@ -436,6 +436,13 @@ fn render_runtime_frame<E: Engine>(state: &mut RuntimeState<E>) -> ZyneResult<()
         ..
     } = state;
     if let Some(graphics) = graphics.as_mut() {
+        if let Some(exposure_ev) = engine.presentation_exposure_ev() {
+            if (graphics.exposure_ev() - exposure_ev).abs() > f32::EPSILON {
+                graphics
+                    .set_exposure_ev(exposure_ev)
+                    .map_err(|error| ZyneError::Subsystem(error.to_string()))?;
+            }
+        }
         if let Some(render_hook) = render_hook.as_mut() {
             render_hook(engine, graphics, camera.as_ref())?;
         } else {

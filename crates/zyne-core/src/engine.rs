@@ -72,6 +72,14 @@ pub trait Engine {
         self.on_update(context, delta_seconds)
     }
 
+    /// Returns an optional presentation exposure override in EV stops.
+    ///
+    /// The runtime applies this value before the presentation pass. Returning
+    /// `None` preserves the graphics context's current exposure setting.
+    fn presentation_exposure_ev(&self) -> Option<f32> {
+        None
+    }
+
     /// Returns an optional camera for the current viewport.
     ///
     /// The runtime supplies the current surface aspect ratio so cameras can

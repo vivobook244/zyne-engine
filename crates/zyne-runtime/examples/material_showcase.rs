@@ -17,12 +17,14 @@ struct MaterialShowcaseEngine {
     asset_registry: AssetRegistry,
     mesh_cache: AssetCache<MeshData>,
     material_cache: AssetCache<BlinnPhongMaterial>,
+    exposure_ev: f32,
 }
 
 impl Engine for MaterialShowcaseEngine {
     fn on_start(&mut self, _context: &EngineContext) -> ZyneResult<()> {
         tracing::info!("ZYNE material showcase started");
-        tracing::info!("Use the mouse to orbit the camera and scroll to zoom");
+        tracing::info!("Mouse: orbit camera; scroll: zoom");
+        tracing::info!("Exposure: Arrow Up/Down adjusts by 0.5 EV; Digit0 resets");
         Ok(())
     }
 
@@ -36,10 +38,25 @@ impl Engine for MaterialShowcaseEngine {
         _delta_seconds: f32,
         input: &InputState,
     ) -> ZyneResult<()> {
+        if input.just_key_pressed(zyne_runtime::KeyCode::ArrowUp) {
+            self.exposure_ev = (self.exposure_ev + 0.5).min(4.0);
+            tracing::info!(exposure_ev = self.exposure_ev, "showcase exposure changed");
+        } else if input.just_key_pressed(zyne_runtime::KeyCode::ArrowDown) {
+            self.exposure_ev = (self.exposure_ev - 0.5).max(-4.0);
+            tracing::info!(exposure_ev = self.exposure_ev, "showcase exposure changed");
+        } else if input.just_key_pressed(zyne_runtime::KeyCode::Digit0) {
+            self.exposure_ev = 0.0;
+            tracing::info!(exposure_ev = self.exposure_ev, "showcase exposure reset");
+        }
+
         self.camera_controller
             .update(input)
             .map(|_| ())
             .map_err(|error| ZyneError::Subsystem(error.to_string()))
+    }
+
+    fn presentation_exposure_ev(&self) -> Option<f32> {
+        Some(self.exposure_ev)
     }
 
     fn camera(&self, _context: &EngineContext, aspect_ratio: f32) -> Option<Camera3d> {
@@ -107,6 +124,7 @@ fn build_engine() -> ZyneResult<MaterialShowcaseEngine> {
         asset_registry: assets.registry,
         mesh_cache: assets.mesh_cache,
         material_cache: assets.material_cache,
+        exposure_ev: 0.0,
     })
 }
 
