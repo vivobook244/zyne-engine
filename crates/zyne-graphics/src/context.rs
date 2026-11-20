@@ -14,7 +14,7 @@ use crate::{
     FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
-    presentation::{HdrRenderTarget, PresentationPipeline, HDR_FORMAT},
+    presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline},
 };
 
 fn merge_transformed_bounds(
@@ -107,8 +107,7 @@ impl GraphicsContext {
         let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
         let cube_pipeline = CubePipeline::new(&device, &queue, HDR_FORMAT);
-        let hdr_target =
-            HdrRenderTarget::new(&device, surface_config.width, surface_config.height);
+        let hdr_target = HdrRenderTarget::new(&device, surface_config.width, surface_config.height);
         let presentation_pipeline = PresentationPipeline::new(&device, surface_config.format);
         let presentation_bind_group =
             presentation_pipeline.create_bind_group(&device, hdr_target.view());
