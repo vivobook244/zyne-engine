@@ -75,7 +75,7 @@ impl Scene {
         self.entity_order.clone()
     }
 
-    /// Extracts live local transforms in deterministic persistent-ID order.
+    /// Extracts live local transforms in scene creation order.
     ///
     /// The returned data contains no ECS handles or component references.
     #[must_use]
@@ -552,6 +552,24 @@ mod tests {
             .spawn_entity_with_id(first, "First", Transform3d::identity())
             .unwrap();
         assert_eq!(scene.entity_ids(), vec![second, first]);
+    }
+
+    #[test]
+    fn preserves_entity_creation_order_through_ron_round_trip() {
+        let mut scene = Scene::new("Ordered Scene").unwrap();
+        let second = SceneEntityId::from_uuid(Uuid::from_u128(2));
+        let first = SceneEntityId::from_uuid(Uuid::from_u128(1));
+        scene
+            .spawn_entity_with_id(second, "Second", Transform3d::identity())
+            .unwrap();
+        scene
+            .spawn_entity_with_id(first, "First", Transform3d::identity())
+            .unwrap();
+
+        let serialized = scene.to_ron().unwrap();
+        let loaded = Scene::from_ron(&serialized).unwrap();
+
+        assert_eq!(loaded.entity_ids(), vec![second, first]);
     }
 
     #[test]
