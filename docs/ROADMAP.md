@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-Each phase must produce a verifiable result before the next phase expands the architecture. Detailed task checklists and progress status are tracked in [Phase 0 — Project Foundation](development/PHASE-0-FOUNDATION.md).
+Each phase must produce a verifiable result before the next phase expands the architecture. The current rendering milestone is [Phase 5.5.1 — HDR Foundation](development/PHASE-5-5-1-HDR-FOUNDATION.md); its acceptance checks and remaining Phase 5 work are tracked there.
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|

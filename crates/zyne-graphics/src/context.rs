@@ -14,6 +14,7 @@ use crate::{
     FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
+    presentation::{HdrRenderTarget, PresentationPipeline, HDR_FORMAT},
 };
 
 fn merge_transformed_bounds(
@@ -44,6 +45,9 @@ pub struct GraphicsContext {
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
     cube_pipeline: CubePipeline,
+    hdr_target: HdrRenderTarget,
+    presentation_pipeline: PresentationPipeline,
+    presentation_bind_group: wgpu::BindGroup,
     #[allow(dead_code)]
     depth_texture: wgpu::Texture,
     depth_view: wgpu::TextureView,
@@ -79,6 +83,17 @@ impl GraphicsContext {
         .map_err(|error| GraphicsError::AdapterRequest(error.to_string()))?;
 
         let adapter_info = adapter.get_info();
+        let hdr_format_features = adapter.get_texture_format_features(HDR_FORMAT);
+        if !hdr_format_features
+            .allowed_usages
+            .contains(TextureUsages::RENDER_ATTACHMENT)
+            || !hdr_format_features
+                .allowed_usages
+                .contains(TextureUsages::TEXTURE_BINDING)
+        {
+            return Err(GraphicsError::HdrFormatUnsupported);
+        }
+
         let descriptor = DeviceDescriptor {
             label: Some("ZYNE GPU Device"),
             required_features: Features::empty(),
@@ -91,7 +106,12 @@ impl GraphicsContext {
         let capabilities = surface.get_capabilities(&adapter);
         let surface_config = build_surface_configuration(&capabilities, size.width, size.height)?;
         surface.configure(&device, &surface_config);
-        let cube_pipeline = CubePipeline::new(&device, &queue, surface_config.format);
+        let cube_pipeline = CubePipeline::new(&device, &queue, HDR_FORMAT);
+        let hdr_target =
+            HdrRenderTarget::new(&device, surface_config.width, surface_config.height);
+        let presentation_pipeline = PresentationPipeline::new(&device, surface_config.format);
+        let presentation_bind_group =
+            presentation_pipeline.create_bind_group(&device, hdr_target.view());
         let (depth_texture, depth_view) =
             create_depth_texture(&device, surface_config.width, surface_config.height);
 
@@ -116,6 +136,9 @@ impl GraphicsContext {
             surface,
             surface_config,
             cube_pipeline,
+            hdr_target,
+            presentation_pipeline,
+            presentation_bind_group,
             depth_texture,
             depth_view,
             surface_suspended: false,
@@ -404,7 +427,7 @@ impl GraphicsContext {
 
         {
             let color_attachments = [Some(RenderPassColorAttachment {
-                view: &view,
+                view: self.hdr_target.view(),
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -466,6 +489,28 @@ impl GraphicsContext {
                 render_pass.set_vertex_buffer(0, self.cube_pipeline.vertex_buffer().slice(..));
                 render_pass.draw(0..36, 0..instance_count);
             }
+        }
+
+        {
+            let color_attachments = [Some(RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: LoadOp::Clear(DEFAULT_CLEAR_COLOR),
+                    store: StoreOp::Store,
+                },
+            })];
+            let mut presentation_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("ZYNE HDR Presentation Pass"),
+                color_attachments: &color_attachments,
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            presentation_pass.set_pipeline(self.presentation_pipeline.pipeline());
+            presentation_pass.set_bind_group(0, &self.presentation_bind_group, &[]);
+            presentation_pass.draw(0..3, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));
@@ -575,6 +620,14 @@ impl GraphicsContext {
         );
         self.depth_texture = depth_texture;
         self.depth_view = depth_view;
+        self.hdr_target = HdrRenderTarget::new(
+            &self.device,
+            self.surface_config.width,
+            self.surface_config.height,
+        );
+        self.presentation_bind_group = self
+            .presentation_pipeline
+            .create_bind_group(&self.device, self.hdr_target.view());
         self.surface_suspended = false;
 
         tracing::info!(width, height, "graphics surface reconfigured");

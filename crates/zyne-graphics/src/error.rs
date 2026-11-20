@@ -9,6 +9,8 @@ pub enum GraphicsError {
     AdapterRequest(String),
     /// The selected adapter could not provide a logical device and queue.
     DeviceRequest(String),
+    /// The selected adapter cannot render to and sample an RGBA16-float HDR target.
+    HdrFormatUnsupported,
     /// The surface did not expose a usable color format.
     NoSurfaceFormats,
     /// The surface did not expose a usable presentation mode.
@@ -45,6 +47,9 @@ impl fmt::Display for GraphicsError {
                     "failed to create GPU device and queue: {message}"
                 )
             }
+            Self::HdrFormatUnsupported => formatter.write_str(
+                "the selected GPU adapter does not support the required RGBA16-float HDR target usages",
+            ),
             Self::NoSurfaceFormats => {
                 formatter.write_str("the window surface exposes no supported color formats")
             }

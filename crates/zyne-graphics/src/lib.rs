@@ -7,6 +7,7 @@ mod lighting;
 mod material;
 mod mesh;
 mod pipeline;
+mod presentation;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;

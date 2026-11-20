@@ -462,7 +462,7 @@ impl CubePipeline {
     pub(super) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        surface_format: wgpu::TextureFormat,
+        render_target_format: wgpu::TextureFormat,
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ZYNE 3D Cube Shader"),
@@ -607,7 +607,7 @@ impl CubePipeline {
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: surface_format,
+                    format: render_target_format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
