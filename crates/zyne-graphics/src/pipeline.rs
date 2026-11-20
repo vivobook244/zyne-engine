@@ -1650,9 +1650,7 @@ mod tests {
 
     #[test]
     fn lighting_uniform_layout_matches_wgsl_uniform_buffer_contract() {
-        use super::{
-            DirectionalLightRaw, LightingUniform, PointLightRaw, SpotLightRaw,
-        };
+        use super::{DirectionalLightRaw, LightingUniform, PointLightRaw, SpotLightRaw};
         use std::mem::{offset_of, size_of};
 
         // WGSL lays out every vec4 and fixed-size light array on 16-byte
