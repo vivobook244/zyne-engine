@@ -235,8 +235,8 @@ fn build_scene(
         .map_err(subsystem_error)?;
     scene.set_entity_directional_light(light, Some(directional_light));
 
-    // The first valid directional light owns the current shadow map. This
-    // lower-intensity fill light exercises additive multi-light shading.
+    // Scene creation order is preserved during light extraction. The key light
+    // therefore owns the shadow map; this fill light remains unshadowed.
     let fill_light = scene
         .spawn_entity("Showcase Fill Light (Unshadowed)", Transform3d::identity())
         .map_err(subsystem_error)?;
