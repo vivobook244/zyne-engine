@@ -23,6 +23,8 @@ pub enum GraphicsError {
     SurfaceAcquisition(String),
     /// The GPU ran out of memory while acquiring a surface frame.
     SurfaceOutOfMemory,
+    /// Presentation exposure is non-finite or outside the supported EV range.
+    InvalidExposure(f32),
     /// Scene instance count exceeds the supported GPU buffer or draw range.
     TooManyInstances,
     /// A mesh vertex or index buffer exceeds the device's supported size.
@@ -65,6 +67,9 @@ impl fmt::Display for GraphicsError {
             }
             Self::SurfaceOutOfMemory => {
                 formatter.write_str("GPU ran out of memory while acquiring a surface frame")
+            }
+            Self::InvalidExposure(value) => {
+                write!(formatter, "presentation exposure must be finite and between -16 and +16 EV, got {value}")
             }
             Self::TooManyInstances => {
                 formatter.write_str("scene contains too many render instances for this GPU")
