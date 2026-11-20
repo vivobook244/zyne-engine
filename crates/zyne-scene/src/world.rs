@@ -32,6 +32,7 @@ pub struct Scene {
     name: String,
     world: World,
     entities: HashMap<SceneEntityId, Entity>,
+    entity_order: Vec<SceneEntityId>,
 }
 
 impl Scene {
@@ -65,11 +66,13 @@ impl Scene {
         self.entities.contains_key(&id)
     }
 
+    /// Returns live entity IDs in their scene creation order.
+    ///
+    /// This order is preserved by scene document serialization and is suitable
+    /// for deterministic systems whose behavior depends on entity ordering.
     #[must_use]
     pub fn entity_ids(&self) -> Vec<SceneEntityId> {
-        let mut ids: Vec<_> = self.entities.keys().copied().collect();
-        ids.sort_unstable_by_key(|id| *id.as_uuid().as_bytes());
-        ids
+        self.entity_order.clone()
     }
 
     /// Extracts live local transforms in deterministic persistent-ID order.
@@ -123,6 +126,7 @@ impl Scene {
             ))
             .id();
         self.entities.insert(id, handle);
+        self.entity_order.push(id);
         Ok(id)
     }
 
@@ -130,6 +134,7 @@ impl Scene {
         let Some(handle) = self.entities.remove(&id) else {
             return false;
         };
+        self.entity_order.retain(|entity_id| *entity_id != id);
         self.world.despawn(handle)
     }
 
@@ -452,6 +457,7 @@ impl Scene {
             name: document.name().to_owned(),
             world: World::new(),
             entities: HashMap::new(),
+            entity_order: Vec::new(),
         }
     }
 }
@@ -535,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn sorts_entity_ids_deterministically() {
+    fn preserves_entity_creation_order_deterministically() {
         let mut scene = Scene::new("Main").unwrap();
         let second = SceneEntityId::from_uuid(Uuid::from_u128(2));
         let first = SceneEntityId::from_uuid(Uuid::from_u128(1));
@@ -545,11 +551,11 @@ mod tests {
         scene
             .spawn_entity_with_id(first, "First", Transform3d::identity())
             .unwrap();
-        assert_eq!(scene.entity_ids(), vec![first, second]);
+        assert_eq!(scene.entity_ids(), vec![second, first]);
     }
 
     #[test]
-    fn extracts_entity_transforms_in_persistent_id_order() {
+    fn extracts_entity_transforms_in_creation_order() {
         let mut scene = Scene::new("Render Extraction").unwrap();
         let second_id = SceneEntityId::from_uuid(Uuid::from_u128(2));
         let first_id = SceneEntityId::from_uuid(Uuid::from_u128(1));
@@ -566,7 +572,7 @@ mod tests {
 
         assert_eq!(
             scene.entity_transforms(),
-            vec![first_transform, second_transform]
+            vec![second_transform, first_transform]
         );
     }
 
