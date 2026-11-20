@@ -5,6 +5,15 @@ struct VertexOutput {
 @group(0) @binding(0)
 var hdr_scene: texture_2d<f32>;
 
+// Narkowicz's fitted ACES approximation. The input and output remain in
+// linear-light space; an sRGB surface performs the display transfer.
+fn tone_map_aces_fitted(color: vec3<f32>) -> vec3<f32> {
+    let x = max(color, vec3<f32>(0.0));
+    let numerator = x * (2.51 * x + vec3<f32>(0.03));
+    let denominator = x * (2.43 * x + vec3<f32>(0.59)) + vec3<f32>(0.14);
+    return clamp(numerator / denominator, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var positions = array<vec2<f32>, 3>(
@@ -22,5 +31,6 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let pixel = vec2<i32>(input.position.xy);
     let hdr_color = textureLoad(hdr_scene, pixel, 0);
-    return vec4<f32>(hdr_color.rgb, 1.0);
+    let display_color = tone_map_aces_fitted(hdr_color.rgb);
+    return vec4<f32>(display_color, 1.0);
 }
