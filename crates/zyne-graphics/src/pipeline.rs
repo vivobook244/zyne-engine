@@ -1313,6 +1313,81 @@ mod tests {
     }
 
     #[test]
+    fn shadow_camera_is_stable_under_sub_texel_motion_on_both_light_plane_axes() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let bounds = MeshBounds::new([-1.0; 3], [1.0; 3]);
+        // With a vertical light, the shadow-map plane spans world X and Z.
+        let tiny_right_motion = MeshBounds::new([-1.0001, -1.0, -1.0], [0.9999, 1.0, 1.0]);
+        let tiny_up_motion = MeshBounds::new([-1.0, -1.0, -0.9999], [1.0, 1.0, 1.0001]);
+        let baseline = directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(bounds));
+
+        assert_eq!(
+            baseline,
+            directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(tiny_right_motion)),
+            "sub-texel movement along shadow right must not shift the projection"
+        );
+        assert_eq!(
+            baseline,
+            directional_shadow_matrix_for_bounds([0.0, -1.0, 0.0], Some(tiny_up_motion)),
+            "sub-texel movement along shadow up must not shift the projection"
+        );
+    }
+
+    #[test]
+    fn shadow_camera_tracks_scene_motion_along_light_depth_without_losing_coverage() {
+        use super::directional_shadow_matrix_for_bounds;
+        use crate::mesh::MeshBounds;
+
+        let direction = [-0.4, -1.0, -0.3];
+        let original = MeshBounds::new([-2.0, -1.0, -3.0], [2.0, 3.0, 1.0]);
+        let moved = MeshBounds::new(
+            [
+                original.min[0] + direction[0] * 25.0,
+                original.min[1] + direction[1] * 25.0,
+                original.min[2] + direction[2] * 25.0,
+            ],
+            [
+                original.max[0] + direction[0] * 25.0,
+                original.max[1] + direction[1] * 25.0,
+                original.max[2] + direction[2] * 25.0,
+            ],
+        );
+        let first = directional_shadow_matrix_for_bounds(direction, Some(original));
+        let second = directional_shadow_matrix_for_bounds(direction, Some(moved));
+
+        assert_ne!(
+            first, second,
+            "moving the scene along the light depth must update the shadow camera"
+        );
+        assert!(second.iter().flatten().all(|value| value.is_finite()));
+
+        for bounds in [original, moved] {
+            let matrix = directional_shadow_matrix_for_bounds(direction, Some(bounds));
+            for x in [bounds.min[0], bounds.max[0]] {
+                for y in [bounds.min[1], bounds.max[1]] {
+                    for z in [bounds.min[2], bounds.max[2]] {
+                        let point = [x, y, z, 1.0];
+                        let clip = std::array::from_fn::<_, 4, _>(|row| {
+                            (0..4)
+                                .map(|column| matrix[column][row] * point[column])
+                                .sum::<f32>()
+                        });
+                        assert!(clip[0].abs() <= 1.001, "x clip coordinate: {}", clip[0]);
+                        assert!(clip[1].abs() <= 1.001, "y clip coordinate: {}", clip[1]);
+                        assert!(
+                            (0.0..=1.001).contains(&clip[2]),
+                            "z clip coordinate: {}",
+                            clip[2]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn shadow_camera_updates_after_scene_crosses_shadow_texel() {
         use super::directional_shadow_matrix_for_bounds;
         use crate::mesh::MeshBounds;
