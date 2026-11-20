@@ -39,6 +39,8 @@ pub struct SpotLightData {
 /// A compact snapshot of all lights used to shade one frame.
 ///
 /// The renderer uploads at most the first supported number of each light type.
+/// The first valid directional light also owns the single directional shadow map;
+/// additional directional lights contribute illumination without casting shadows.
 /// Callers should provide a deterministic order when more lights are present.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LightingData {

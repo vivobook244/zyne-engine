@@ -1649,6 +1649,28 @@ mod tests {
     }
 
     #[test]
+    fn lighting_uniform_layout_matches_wgsl_uniform_buffer_contract() {
+        use super::{
+            DirectionalLightRaw, LightingUniform, PointLightRaw, SpotLightRaw,
+        };
+        use std::mem::{offset_of, size_of};
+
+        // WGSL lays out every vec4 and fixed-size light array on 16-byte
+        // boundaries. Keep the CPU Pod representation byte-for-byte aligned
+        // with the shader's Lighting struct.
+        assert_eq!(size_of::<DirectionalLightRaw>(), 32);
+        assert_eq!(size_of::<PointLightRaw>(), 32);
+        assert_eq!(size_of::<SpotLightRaw>(), 64);
+        assert_eq!(offset_of!(LightingUniform, ambient_color), 0);
+        assert_eq!(offset_of!(LightingUniform, counts), 16);
+        assert_eq!(offset_of!(LightingUniform, directional_lights), 32);
+        assert_eq!(offset_of!(LightingUniform, point_lights), 160);
+        assert_eq!(offset_of!(LightingUniform, spot_lights), 672);
+        assert_eq!(size_of::<LightingUniform>(), 1184);
+        assert_eq!(bytemuck::bytes_of(&LightingUniform::zeroed()).len(), 1184);
+    }
+
+    #[test]
     fn lighting_uniform_caps_light_counts_to_gpu_capacity() {
         use super::LightingUniform;
         use crate::lighting::{
