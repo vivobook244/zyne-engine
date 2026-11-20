@@ -178,10 +178,7 @@ impl LightingUniform {
             if directional_count == MAX_DIRECTIONAL_LIGHTS {
                 break;
             }
-            if valid_direction(light.direction)
-                && valid_color(light.color)
-                && valid_intensity(light.intensity)
-            {
+            if valid_directional_light(*light) {
                 uniform.directional_lights[directional_count] = directional_light_raw(*light);
                 directional_count += 1;
             }
@@ -264,6 +261,12 @@ fn valid_direction(direction: [f32; 3]) -> bool {
         .map(|component| f64::from(*component) * f64::from(*component))
         .sum::<f64>()
         > f64::from(f32::EPSILON)
+}
+
+fn valid_directional_light(light: DirectionalLightData) -> bool {
+    valid_direction(light.direction)
+        && valid_color(light.color)
+        && valid_intensity(light.intensity)
 }
 
 fn normalized_direction(direction: [f32; 3]) -> [f32; 3] {
@@ -930,10 +933,13 @@ fn create_shadow_resources(device: &wgpu::Device) -> ShadowResources {
 }
 
 fn directional_shadow_direction(lighting: &LightingData) -> [f32; 3] {
+    // The first light accepted by the GPU upload owns the single shadow map.
+    // Keep this predicate identical to LightingUniform::from_data so CPU shadow
+    // camera selection and shader directional_lights[0] cannot diverge.
     lighting
         .directional_lights
         .iter()
-        .find(|light| valid_direction(light.direction))
+        .find(|light| valid_directional_light(**light))
         .map_or([-0.4, -1.0, -0.3], |light| {
             normalized_direction(light.direction)
         })
@@ -1416,6 +1422,77 @@ mod tests {
         let selected = directional_shadow_direction(&lighting);
         let expected = directional_shadow_matrix([1.0, -2.0, 0.5]);
         assert_eq!(directional_shadow_matrix(selected), expected);
+    }
+
+    #[test]
+    fn shadow_camera_matches_first_directional_light_uploaded_to_gpu() {
+        use super::{LightingUniform, directional_shadow_direction, directional_shadow_matrix};
+        use crate::lighting::{DirectionalLightData, LightingData};
+
+        let lighting = LightingData {
+            directional_lights: vec![
+                DirectionalLightData {
+                    direction: [0.0, -1.0, 0.0],
+                    color: [f32::NAN, 1.0, 1.0],
+                    intensity: 1.0,
+                },
+                DirectionalLightData {
+                    direction: [1.0, -2.0, 0.5],
+                    color: [1.0; 3],
+                    intensity: 1.0,
+                },
+                DirectionalLightData {
+                    direction: [0.0, 0.0, 1.0],
+                    color: [1.0; 3],
+                    intensity: f32::INFINITY,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let uniform = LightingUniform::from_data(&lighting);
+        let selected = directional_shadow_direction(&lighting);
+        let expected_direction = [1.0, -2.0, 0.5];
+
+        assert_eq!(uniform.counts[0], 1);
+        assert_eq!(
+            uniform.directional_lights[0].direction[..3],
+            super::normalized_direction(expected_direction)
+        );
+        assert_eq!(
+            directional_shadow_matrix(selected),
+            directional_shadow_matrix(expected_direction),
+            "the shadow camera must follow the first light accepted by GPU upload"
+        );
+    }
+
+    #[test]
+    fn shadow_camera_selection_preserves_gpu_light_order() {
+        use super::{LightingUniform, directional_shadow_direction, directional_shadow_matrix};
+        use crate::lighting::{DirectionalLightData, LightingData};
+
+        let first = DirectionalLightData {
+            direction: [0.0, -1.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+        };
+        let second = DirectionalLightData {
+            direction: [1.0, 0.0, 0.0],
+            color: [1.0; 3],
+            intensity: 1.0,
+        };
+        let lighting = LightingData {
+            directional_lights: vec![first, second],
+            ..Default::default()
+        };
+
+        let uniform = LightingUniform::from_data(&lighting);
+        assert_eq!(uniform.counts[0], 2);
+        assert_eq!(
+            directional_shadow_matrix(directional_shadow_direction(&lighting)),
+            directional_shadow_matrix(first.direction),
+            "the first valid uploaded directional light must retain shadow ownership"
+        );
     }
 
     #[test]
