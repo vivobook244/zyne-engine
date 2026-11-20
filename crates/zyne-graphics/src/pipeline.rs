@@ -1667,7 +1667,6 @@ mod tests {
         assert_eq!(offset_of!(LightingUniform, point_lights), 160);
         assert_eq!(offset_of!(LightingUniform, spot_lights), 672);
         assert_eq!(size_of::<LightingUniform>(), 1184);
-        assert_eq!(bytemuck::bytes_of(&LightingUniform::zeroed()).len(), 1184);
     }
 
     #[test]
