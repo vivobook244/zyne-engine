@@ -1,6 +1,6 @@
 # Phase 5.5.3 — Exposure Control
 
-**Status:** IMPLEMENTED — CI VALIDATION PENDING  
+**Status:** IMPLEMENTED — AUTOMATED VALIDATION PASSED; PHYSICAL GPU VALIDATION PENDING  
 **Branch:** `main`  
 **Prerequisite:** Phase 5.5.2 — Tone Mapping  
 **Goal:** Provide deterministic exposure compensation in photographic EV stops at the final presentation stage, without coupling exposure to materials, lights, or scene data.
@@ -25,7 +25,7 @@
 - [x] Reject non-finite and out-of-range EV values.
 - [x] Add boundary and invalid-value unit tests.
 - [x] Keep exposure independent from material and lighting APIs.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and Windows/Ubuntu CI (CI run [#577](https://github.com/vivobook244/zyne-engine/actions/runs/44710864606), commit `57062b12`).
 - [ ] Verify visible exposure changes on a physical GPU.
 - [ ] Record visual observations for negative, neutral, and positive EV settings.
 
