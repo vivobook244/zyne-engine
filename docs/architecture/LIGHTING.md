@@ -91,11 +91,11 @@ The current GPU lighting uniform and WGSL shader support these maximum counts pe
 | Point | 16 |
 | Spot | 8 |
 
-The renderer uploads no more than the first supported number of each type. Provide a deterministic order when building a lighting snapshot and keep the most important lights within the supported range. Invalid light data is skipped before GPU upload.
+The renderer uploads no more than the first supported number of each type. Scene entities are extracted in scene creation order, and that order is preserved when a scene is serialized and loaded again. Keep important lights early in the scene creation order so they remain within the supported range. Invalid light data is skipped before GPU upload.
 
 The current renderer uses **one directional shadow map**:
 
-- The first valid directional light accepted for GPU upload owns the shadow map.
+- The first valid directional light in scene creation order accepted for GPU upload owns the shadow map.
 - Other directional lights still contribute diffuse and specular illumination, but are unshadowed.
 - Point and spot lights contribute illumination but do not cast shadows in the current renderer.
 
@@ -119,7 +119,7 @@ Shadow visibility is evaluated for the first uploaded directional light. The cur
 - Start with one directional key light and a modest ambient color.
 - Add point lights for local pools of light; keep their ranges appropriate to the scene scale.
 - Use spot lights for focused beams. Keep the inner cone narrower than the outer cone for a soft edge.
-- Put important shadow-casting directional light first in the snapshot order.
+- Create the primary shadow-casting directional light before fill lights; scene creation order determines directional-light upload order and shadow-map ownership.
 - Keep the number of active lights within the renderer limits.
 - Avoid adding many high-intensity lights before checking material response; Blinn–Phong contributions are additive.
 
