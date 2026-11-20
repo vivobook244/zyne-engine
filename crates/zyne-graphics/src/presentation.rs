@@ -41,9 +41,14 @@ impl HdrRenderTarget {
 /// The pass intentionally performs a direct load/store of linear values. Values
 /// outside the SDR display range are preserved in the HDR target and will be
 /// mapped to the display range by the dedicated tone-mapping milestone.
+pub(super) const MIN_EXPOSURE_EV: f32 = -16.0;
+pub(super) const MAX_EXPOSURE_EV: f32 = 16.0;
+
 pub(super) struct PresentationPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
+    exposure_buffer: wgpu::Buffer,
+    exposure_ev: f32,
 }
 
 impl PresentationPipeline {
@@ -52,18 +57,35 @@ impl PresentationPipeline {
             label: Some("ZYNE HDR Presentation Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/presentation.wgsl").into()),
         });
+        let exposure_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ZYNE Presentation Exposure Uniform"),
+            contents: bytemuck::cast_slice(&[0.0_f32, 0.0, 0.0, 0.0]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ZYNE HDR Presentation Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(16),
+                    },
+                    count: None,
+                },
+            ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ZYNE HDR Presentation Pipeline Layout"),
@@ -99,6 +121,8 @@ impl PresentationPipeline {
         Self {
             pipeline,
             bind_group_layout,
+            exposure_buffer,
+            exposure_ev: 0.0,
         }
     }
 
@@ -110,11 +134,30 @@ impl PresentationPipeline {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ZYNE HDR Presentation Bind Group"),
             layout: &self.bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(hdr_view),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(hdr_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.exposure_buffer.as_entire_binding(),
+                },
+            ],
         })
+    }
+
+    pub(super) fn set_exposure_ev(&mut self, queue: &wgpu::Queue, exposure_ev: f32) {
+        self.exposure_ev = exposure_ev;
+        queue.write_buffer(
+            &self.exposure_buffer,
+            0,
+            bytemuck::cast_slice(&[exposure_ev, 0.0_f32, 0.0, 0.0]),
+        );
+    }
+
+    pub(super) const fn exposure_ev(&self) -> f32 {
+        self.exposure_ev
     }
 
     pub(super) const fn pipeline(&self) -> &wgpu::RenderPipeline {
