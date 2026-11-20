@@ -14,7 +14,9 @@ use crate::{
     FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
-    presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline},
+    presentation::{
+        HDR_FORMAT, HdrRenderTarget, MAX_EXPOSURE_EV, MIN_EXPOSURE_EV, PresentationPipeline,
+    },
 };
 
 fn merge_transformed_bounds(
@@ -216,6 +218,33 @@ impl GraphicsContext {
     /// exhausted.
     pub fn render_frame(&mut self) -> Result<FrameOutcome, GraphicsError> {
         self.render_frame_internal(None, None, None, None, None)
+    }
+
+    /// Sets presentation exposure compensation in EV stops.
+    ///
+    /// Zero EV preserves the scene exposure. Positive values brighten the
+    /// scene before tone mapping; negative values darken it. The supported
+    /// range is -16 to +16 EV.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the value is non-finite or outside the supported range.
+    pub fn set_exposure_ev(&mut self, exposure_ev: f32) -> Result<(), GraphicsError> {
+        if !exposure_ev.is_finite()
+            || !(MIN_EXPOSURE_EV..=MAX_EXPOSURE_EV).contains(&exposure_ev)
+        {
+            return Err(GraphicsError::InvalidExposure(exposure_ev));
+        }
+
+        self.presentation_pipeline
+            .set_exposure_ev(&self.queue, exposure_ev);
+        Ok(())
+    }
+
+    /// Returns the current presentation exposure compensation in EV stops.
+    #[must_use]
+    pub const fn exposure_ev(&self) -> f32 {
+        self.presentation_pipeline.exposure_ev()
     }
 
     /// Renders a frame using a caller-supplied camera.
