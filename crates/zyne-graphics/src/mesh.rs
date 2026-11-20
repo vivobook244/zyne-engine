@@ -43,11 +43,8 @@ impl MeshBounds {
                         matrix[0][1] * x + matrix[1][1] * y + matrix[2][1] * z + matrix[3][1],
                         matrix[0][2] * x + matrix[1][2] * y + matrix[2][2] * z + matrix[3][2],
                     ];
-                    for ((min_value, max_value), value) in result
-                        .min
-                        .iter_mut()
-                        .zip(result.max.iter_mut())
-                        .zip(point)
+                    for ((min_value, max_value), value) in
+                        result.min.iter_mut().zip(result.max.iter_mut()).zip(point)
                     {
                         *min_value = (*min_value).min(value);
                         *max_value = (*max_value).max(value);
