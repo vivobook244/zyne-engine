@@ -235,6 +235,16 @@ fn build_scene(
         .map_err(subsystem_error)?;
     scene.set_entity_directional_light(light, Some(directional_light));
 
+    // The first valid directional light owns the current shadow map. This
+    // lower-intensity fill light exercises additive multi-light shading.
+    let fill_light = scene
+        .spawn_entity("Showcase Fill Light (Unshadowed)", Transform3d::identity())
+        .map_err(subsystem_error)?;
+    let fill_directional_light =
+        DirectionalLight::new([-0.65, -0.25, 0.7], [0.55, 0.68, 1.0], 0.45)
+            .map_err(subsystem_error)?;
+    scene.set_entity_directional_light(fill_light, Some(fill_directional_light));
+
     Ok(scene)
 }
 
