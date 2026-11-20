@@ -1,5 +1,7 @@
 //! Linear HDR scene target and final surface presentation pipeline.
 
+use wgpu::util::DeviceExt;
+
 pub(super) const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// Owns the linear floating-point color target used by the forward scene pass.
@@ -36,10 +38,6 @@ impl HdrRenderTarget {
     }
 }
 
-/// Presents the HDR scene texture through exposure compensation and tone mapping.
-///
-/// Scene-linear values are multiplied by the configured exposure scale before
-/// the fitted ACES operator maps them into the display range.
 pub(super) const MIN_EXPOSURE_EV: f32 = -16.0;
 pub(super) const MAX_EXPOSURE_EV: f32 = 16.0;
 
@@ -47,6 +45,10 @@ pub(super) fn is_valid_exposure_ev(value: f32) -> bool {
     value.is_finite() && (MIN_EXPOSURE_EV..=MAX_EXPOSURE_EV).contains(&value)
 }
 
+/// Presents the HDR scene texture through exposure compensation and tone mapping.
+///
+/// Scene-linear values are multiplied by the configured exposure scale before
+/// the fitted ACES operator maps them into the display range.
 pub(super) struct PresentationPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
