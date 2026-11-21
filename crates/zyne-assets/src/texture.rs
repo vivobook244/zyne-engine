@@ -19,10 +19,7 @@ pub enum TextureDataError {
     /// The dimensions overflow the addressable pixel-byte length.
     DimensionsOverflow,
     /// The supplied byte count does not match tightly packed RGBA8 pixels.
-    PixelDataLengthMismatch {
-        expected: usize,
-        actual: usize,
-    },
+    PixelDataLengthMismatch { expected: usize, actual: usize },
 }
 
 impl std::fmt::Display for TextureDataError {
@@ -124,10 +121,7 @@ impl TextureData {
     /// # Errors
     ///
     /// Returns an error for zero dimensions or arithmetic overflow.
-    pub fn expected_rgba8_byte_len(
-        width: u32,
-        height: u32,
-    ) -> Result<usize, TextureDataError> {
+    pub fn expected_rgba8_byte_len(width: u32, height: u32) -> Result<usize, TextureDataError> {
         if width == 0 {
             return Err(TextureDataError::ZeroWidth);
         }
