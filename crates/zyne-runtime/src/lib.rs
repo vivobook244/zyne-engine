@@ -25,7 +25,9 @@ pub use scene_assets::{
 pub use scene_loading::{LoadedScene, SceneAssetLoadError, load_scene_with_asset_diagnostics};
 pub use scene_materials::{
     ResolvedSceneMaterial, SceneMaterialResolutionIssue, SceneMaterialResolutionReport,
-    UnresolvedSceneMaterial, resolve_scene_materials,
+    UnresolvedSceneMaterial, ResolvedSceneTexture, SceneTextureResolutionIssue,
+    SceneTextureResolutionReport, UnresolvedSceneTexture, resolve_scene_materials,
+    resolve_scene_textures,
 };
 pub use scene_renderer::{
     SceneEngine, SceneMaterialEngine, SceneMaterialRenderer, SceneMeshRenderer, SceneRenderError,
