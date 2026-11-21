@@ -11,7 +11,7 @@ use zyne_math::{Camera3d, Transform3d};
 use zyne_platform::PlatformWindow;
 
 use crate::{
-    FrameOutcome, GpuMaterial, GraphicsError, LightingData, MaterialData,
+    FrameOutcome, GpuMaterial, GpuTexture, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
     presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev},
@@ -194,6 +194,84 @@ impl GraphicsContext {
             index_count,
             data.bounds(),
         ))
+    }
+
+    /// Uploads tightly packed RGBA8 pixels into a reusable sampled GPU texture.
+    ///
+    /// Only linear and sRGB RGBA8 formats are accepted. The texture is owned by
+    /// the returned handle and uses repeat addressing with linear filtering.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unsupported formats, zero or oversized dimensions,
+    /// or a pixel payload whose length does not exactly match RGBA8 dimensions.
+    pub fn create_texture(
+        &self,
+        width: u32,
+        height: u32,
+        format: TextureFormat,
+        pixels: &[u8],
+    ) -> Result<GpuTexture, GraphicsError> {
+        if !matches!(format, TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb) {
+            return Err(GraphicsError::UnsupportedTextureFormat);
+        }
+        let maximum = self.device.limits().max_texture_dimension_2d;
+        if width == 0 || height == 0 || width > maximum || height > maximum {
+            return Err(GraphicsError::InvalidTextureDimensions { width, height, maximum });
+        }
+        let expected = usize::try_from(width)
+            .ok()
+            .and_then(|w| usize::try_from(height).ok().and_then(|h| w.checked_mul(h)))
+            .and_then(|count| count.checked_mul(4))
+            .ok_or(GraphicsError::InvalidTextureDimensions { width, height, maximum })?;
+        if pixels.len() != expected {
+            return Err(GraphicsError::InvalidTextureDataLength {
+                expected,
+                actual: pixels.len(),
+            });
+        }
+        let bytes_per_row = width.checked_mul(4).ok_or(
+            GraphicsError::InvalidTextureDimensions { width, height, maximum },
+        )?;
+
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ZYNE Uploaded Diffuse Texture"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        );
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("ZYNE Diffuse Texture Sampler"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        let bind_group = self.cube_pipeline.create_texture_bind_group(&self.device, &view, &sampler);
+        Ok(GpuTexture::new(texture, view, sampler, bind_group, width, height, format))
     }
 
     /// Uploads renderer-facing material parameters for reuse across draws.
@@ -397,6 +475,7 @@ impl GraphicsContext {
                     batch_ranges.push((
                         batch.mesh(),
                         batch.material(),
+                        batch.texture(),
                         first_instance..end_instance,
                     ));
                 }
@@ -432,7 +511,7 @@ impl GraphicsContext {
             shadow_pass.set_bind_group(0, self.cube_pipeline.shadow_camera_bind_group(), &[]);
             shadow_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
-                for (mesh, _, instances) in &batch_ranges {
+                for (mesh, _, _, instances) in &batch_ranges {
                     shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
                     shadow_pass
                         .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
@@ -480,7 +559,15 @@ impl GraphicsContext {
             render_pass.set_bind_group(2, self.cube_pipeline.lighting_bind_group(), &[]);
             render_pass.set_vertex_buffer(1, self.cube_pipeline.instance_buffer().slice(..));
             if !batch_ranges.is_empty() {
-                for (mesh, material, instances) in &batch_ranges {
+                for (mesh, material, texture, instances) in &batch_ranges {
+                    render_pass.set_bind_group(
+                        1,
+                        texture.map_or_else(
+                            || self.cube_pipeline.texture_bind_group(),
+                            |value| value.bind_group(),
+                        ),
+                        &[],
+                    );
                     render_pass.set_bind_group(
                         3,
                         material.map_or_else(
