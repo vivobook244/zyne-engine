@@ -597,7 +597,7 @@ mod tests {
             &AssetCache::new(ResourceKind::Texture),
         );
         assert!(report.is_complete());
-        assert!(report.resolved().is_empty());
+        assert_eq!(report.resolved(), []);
         assert_eq!(report.unresolved(), []);
     }
 }
