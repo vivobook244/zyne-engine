@@ -30,7 +30,11 @@ pub enum GraphicsError {
     /// A mesh vertex or index buffer exceeds the device's supported size.
     MeshBufferTooLarge,
     /// Texture dimensions are zero or exceed the device's 2D texture limit.
-    InvalidTextureDimensions { width: u32, height: u32, maximum: u32 },
+    InvalidTextureDimensions {
+        width: u32,
+        height: u32,
+        maximum: u32,
+    },
     /// The supplied RGBA8 pixel payload has an invalid byte length.
     InvalidTextureDataLength { expected: usize, actual: usize },
     /// The requested texture format is not supported for sampled RGBA8 uploads.
