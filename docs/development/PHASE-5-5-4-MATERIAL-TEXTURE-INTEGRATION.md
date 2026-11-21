@@ -1,8 +1,6 @@
 # Phase 5.5.4 — Material Texture Integration
 
 **Status:** IN PROGRESS — CPU TEXTURE DATA FOUNDATION IMPLEMENTED | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
-**Prerequisite:** Phase 5.5.3 — Exposure Control  \
-**Goal:** Connect persistent diffuse-texture asset references to the existing Blinn–Phong GPU material path while preserving the HDR, tone-mapping, exposure, lighting, and shadow contracts.
 
 ## Audit findings
 
