@@ -1,5 +1,8 @@
 //! Validated renderer-independent CPU texture payloads.
 
+use crate::ImportedImage;
+use gltf::image::Format as ImageFormat;
+
 /// The interpretation of RGB channels when a texture is sampled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextureColorSpace {
@@ -20,6 +23,8 @@ pub enum TextureDataError {
     DimensionsOverflow,
     /// The supplied byte count does not match tightly packed RGBA8 pixels.
     PixelDataLengthMismatch { expected: usize, actual: usize },
+    /// The imported image uses a pixel format that cannot be normalized to RGBA8.
+    UnsupportedPixelFormat,
 }
 
 impl std::fmt::Display for TextureDataError {
@@ -34,6 +39,9 @@ impl std::fmt::Display for TextureDataError {
                 formatter,
                 "texture contains {actual} pixel bytes, expected {expected} for tightly packed RGBA8 data"
             ),
+            Self::UnsupportedPixelFormat => {
+                formatter.write_str("imported image format cannot be normalized to RGBA8")
+            }
         }
     }
 }
@@ -54,6 +62,76 @@ pub struct TextureData {
 }
 
 impl TextureData {
+    /// Converts an imported 8-bit glTF image into tightly packed RGBA8 data.
+    ///
+    /// Single-channel images are expanded to grayscale RGB with opaque alpha;
+    /// two-channel images are expanded to grayscale RGB with the second channel
+    /// used as alpha. RGB images receive opaque alpha. Four-channel images are
+    /// copied without changing their channel values.
+    ///
+    /// The caller chooses the color-space interpretation because an imported
+    /// image may be used by different material texture slots.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the source format is not an 8-bit channel layout
+    /// supported by this conversion, or when the resulting dimensions/payload
+    /// fail RGBA8 validation.
+    pub fn from_imported_image(
+        image: &ImportedImage,
+        color_space: TextureColorSpace,
+    ) -> Result<Self, TextureDataError> {
+        let pixel_count = usize::try_from(image.width)
+            .ok()
+            .and_then(|width| {
+                usize::try_from(image.height)
+                    .ok()
+                    .and_then(|height| width.checked_mul(height))
+            })
+            .ok_or(TextureDataError::DimensionsOverflow)?;
+
+        let pixels = match image.format {
+            ImageFormat::R8 => {
+                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
+                    TextureDataError::DimensionsOverflow,
+                )?);
+                for &gray in &image.pixels {
+                    rgba.extend_from_slice(&[gray, gray, gray, 255]);
+                }
+                rgba
+            }
+            ImageFormat::R8G8 => {
+                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
+                    TextureDataError::DimensionsOverflow,
+                )?);
+                for channels in image.pixels.chunks_exact(2) {
+                    rgba.extend_from_slice(&[channels[0], channels[0], channels[0], channels[1]]);
+                }
+                rgba
+            }
+            ImageFormat::R8G8B8 => {
+                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
+                    TextureDataError::DimensionsOverflow,
+                )?);
+                for channels in image.pixels.chunks_exact(3) {
+                    rgba.extend_from_slice(&[channels[0], channels[1], channels[2], 255]);
+                }
+                rgba
+            }
+            ImageFormat::R8G8B8A8 => image.pixels.clone(),
+            ImageFormat::R16
+            | ImageFormat::R16G16
+            | ImageFormat::R16G16B16
+            | ImageFormat::R16G16B16A16
+            | ImageFormat::R32G32B32FLOAT
+            | ImageFormat::R32G32B32A32FLOAT => {
+                return Err(TextureDataError::UnsupportedPixelFormat);
+            }
+        };
+
+        Self::new_rgba8(image.width, image.height, color_space, pixels)
+    }
+
     /// Creates RGBA8 texture data after validating dimensions and byte length.
     ///
     /// Pixel order is row-major with four consecutive bytes per pixel in
@@ -144,6 +222,77 @@ impl TextureData {
 #[cfg(test)]
 mod tests {
     use super::{TextureColorSpace, TextureData, TextureDataError};
+    use crate::ImportedImage;
+    use gltf::image::Format as ImageFormat;
+
+    #[test]
+    fn normalizes_rgb_imported_images_to_opaque_rgba8() {
+        let image = ImportedImage {
+            index: 0,
+            name: None,
+            width: 1,
+            height: 1,
+            format: ImageFormat::R8G8B8,
+            pixels: vec![12, 34, 56],
+        };
+
+        let texture = TextureData::from_imported_image(&image, TextureColorSpace::Srgb).unwrap();
+        assert_eq!(texture.pixels(), &[12, 34, 56, 255]);
+        assert_eq!(texture.color_space(), TextureColorSpace::Srgb);
+    }
+
+    #[test]
+    fn expands_grayscale_and_grayscale_alpha_imported_images() {
+        let grayscale = ImportedImage {
+            index: 0,
+            name: None,
+            width: 1,
+            height: 1,
+            format: ImageFormat::R8,
+            pixels: vec![90],
+        };
+        let grayscale_alpha = ImportedImage {
+            format: ImageFormat::R8G8,
+            pixels: vec![90, 128],
+            ..grayscale.clone()
+        };
+
+        let gray = TextureData::from_imported_image(&grayscale, TextureColorSpace::Linear).unwrap();
+        let gray_alpha =
+            TextureData::from_imported_image(&grayscale_alpha, TextureColorSpace::Srgb).unwrap();
+        assert_eq!(gray.pixels(), &[90, 90, 90, 255]);
+        assert_eq!(gray_alpha.pixels(), &[90, 90, 90, 128]);
+    }
+
+    #[test]
+    fn preserves_rgba_imported_images() {
+        let image = ImportedImage {
+            index: 0,
+            name: None,
+            width: 1,
+            height: 1,
+            format: ImageFormat::R8G8B8A8,
+            pixels: vec![1, 2, 3, 4],
+        };
+        let texture = TextureData::from_imported_image(&image, TextureColorSpace::Srgb).unwrap();
+        assert_eq!(texture.pixels(), &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn rejects_non_eight_bit_imported_image_formats() {
+        let image = ImportedImage {
+            index: 0,
+            name: None,
+            width: 1,
+            height: 1,
+            format: ImageFormat::R16,
+            pixels: vec![0, 0],
+        };
+        assert_eq!(
+            TextureData::from_imported_image(&image, TextureColorSpace::Linear),
+            Err(TextureDataError::UnsupportedPixelFormat)
+        );
+    }
 
     #[test]
     fn creates_valid_rgba8_texture_data() {
