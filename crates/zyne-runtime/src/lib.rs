@@ -31,6 +31,7 @@ pub use scene_materials::{
 };
 pub use scene_renderer::{
     SceneEngine, SceneMaterialEngine, SceneMaterialRenderer, SceneMeshRenderer, SceneRenderError,
+    SceneTextureEngine,
 };
 
 pub use zyne_assets::AssetRegistry;
