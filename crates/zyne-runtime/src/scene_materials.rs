@@ -302,7 +302,7 @@ mod tests {
     use zyne_math::Transform3d;
     use zyne_scene::Scene;
 
-    use super::{SceneMaterialResolutionIssue, resolve_scene_materials};
+    use super::{SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials, resolve_scene_textures};
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
@@ -450,4 +450,88 @@ mod tests {
         assert_eq!(report.resolved(), &[]);
         assert_eq!(report.unresolved(), &[]);
     }
+    
+    #[test]
+    fn resolves_loaded_diffuse_texture_reference() {
+        use zyne_assets::{TextureColorSpace, TextureData};
+
+        let mut scene = Scene::new("Textured Material").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/brick.ron");
+        register(&mut registry, texture_id, ResourceKind::Texture, "textures/brick.png");
+        scene.set_entity_material_reference(entity, Some(material_id));
+
+        let mut material = BlinnPhongMaterial::default();
+        material.set_diffuse_texture(Some(texture_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, material);
+
+        let mut textures = AssetCache::new(ResourceKind::Texture);
+        textures.begin_loading(&registry, texture_id).unwrap();
+        textures.complete_loading(
+            &registry,
+            texture_id,
+            TextureData::new_rgba8(1, 1, TextureColorSpace::Srgb, vec![255, 255, 255, 255]).unwrap(),
+        ).unwrap();
+
+        let report = resolve_scene_textures(&scene, &registry, &materials, &textures);
+        assert!(report.is_complete());
+        assert_eq!(report.resolved().len(), 1);
+        assert_eq!(report.resolved()[0].entity_id(), entity);
+        assert_eq!(report.resolved()[0].material_id(), material_id);
+        assert_eq!(report.resolved()[0].texture_id(), texture_id);
+    }
+
+    #[test]
+    fn reports_missing_diffuse_texture_reference_without_silent_fallback() {
+        let mut scene = Scene::new("Missing Diffuse Texture").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/missing.ron");
+        scene.set_entity_material_reference(entity, Some(material_id));
+
+        let mut material = BlinnPhongMaterial::default();
+        material.set_diffuse_texture(Some(texture_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, material);
+
+        let report = resolve_scene_textures(
+            &scene,
+            &registry,
+            &materials,
+            &AssetCache::new(ResourceKind::Texture),
+        );
+        assert!(report.resolved().is_empty());
+        assert_eq!(report.unresolved().len(), 1);
+        assert_eq!(report.unresolved()[0].texture_id(), texture_id);
+        assert_eq!(report.unresolved()[0].issue(), SceneTextureResolutionIssue::NotRegistered);
+    }
+
+    #[test]
+    fn ignores_materials_without_diffuse_texture_assignments() {
+        let mut scene = Scene::new("Untextured Material").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/plain.ron");
+        scene.set_entity_material_reference(entity, Some(material_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, BlinnPhongMaterial::default());
+
+        let report = resolve_scene_textures(
+            &scene,
+            &registry,
+            &materials,
+            &AssetCache::new(ResourceKind::Texture),
+        );
+        assert!(report.is_complete());
+        assert!(report.resolved().is_empty());
+        assert!(report.unresolved().is_empty());
+    }
+
 }
