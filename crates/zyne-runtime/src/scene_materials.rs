@@ -179,15 +179,21 @@ pub struct ResolvedSceneTexture {
 impl ResolvedSceneTexture {
     /// Returns the entity that owns the material assignment.
     #[must_use]
-    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+    pub const fn entity_id(&self) -> SceneEntityId {
+        self.entity_id
+    }
 
     /// Returns the persistent material resource identity.
     #[must_use]
-    pub const fn material_id(&self) -> ResourceId { self.material_id }
+    pub const fn material_id(&self) -> ResourceId {
+        self.material_id
+    }
 
     /// Returns the persistent diffuse texture resource identity.
     #[must_use]
-    pub const fn texture_id(&self) -> ResourceId { self.texture_id }
+    pub const fn texture_id(&self) -> ResourceId {
+        self.texture_id
+    }
 }
 
 /// Why a material's diffuse texture reference could not be resolved.
@@ -225,7 +231,9 @@ impl UnresolvedSceneTexture {
 
     /// Returns why the texture could not be resolved.
     #[must_use]
-    pub const fn issue(&self) -> SceneTextureResolutionIssue { self.issue }
+    pub const fn issue(&self) -> SceneTextureResolutionIssue {
+        self.issue
+    }
 }
 
 /// Deterministic result of resolving diffuse texture references in scene materials.
@@ -238,15 +246,21 @@ pub struct SceneTextureResolutionReport {
 impl SceneTextureResolutionReport {
     /// Returns all resolved diffuse texture assignments.
     #[must_use]
-    pub fn resolved(&self) -> &[ResolvedSceneTexture] { &self.resolved }
+    pub fn resolved(&self) -> &[ResolvedSceneTexture] {
+        &self.resolved
+    }
 
     /// Returns all unresolved diffuse texture assignments.
     #[must_use]
-    pub fn unresolved(&self) -> &[UnresolvedSceneTexture] { &self.unresolved }
+    pub fn unresolved(&self) -> &[UnresolvedSceneTexture] {
+        &self.unresolved
+    }
 
     /// Returns true when every referenced diffuse texture is loaded and valid.
     #[must_use]
-    pub fn is_complete(&self) -> bool { self.unresolved.is_empty() }
+    pub fn is_complete(&self) -> bool {
+        self.unresolved.is_empty()
+    }
 }
 
 /// Resolves optional diffuse texture IDs from loaded scene materials against
@@ -263,14 +277,22 @@ pub fn resolve_scene_textures(
     let mut report = SceneTextureResolutionReport::default();
 
     for entity_id in scene.entity_ids() {
-        let Some(material_id) = scene.entity_material_reference(entity_id) else { continue; };
-        let Some(material) = material_cache.get(material_id) else { continue; };
-        let Some(texture_id) = material.diffuse_texture() else { continue; };
+        let Some(material_id) = scene.entity_material_reference(entity_id) else {
+            continue;
+        };
+        let Some(material) = material_cache.get(material_id) else {
+            continue;
+        };
+        let Some(texture_id) = material.diffuse_texture() else {
+            continue;
+        };
 
         let issue = match registry.find(texture_id) {
             None => Some(SceneTextureResolutionIssue::NotRegistered),
             Some(metadata) if metadata.kind() != ResourceKind::Texture => {
-                Some(SceneTextureResolutionIssue::WrongResourceKind { actual: metadata.kind() })
+                Some(SceneTextureResolutionIssue::WrongResourceKind {
+                    actual: metadata.kind(),
+                })
             }
             Some(_) if texture_cache.get(texture_id).is_none() => {
                 Some(SceneTextureResolutionIssue::NotLoaded)
@@ -280,11 +302,16 @@ pub fn resolve_scene_textures(
 
         if let Some(issue) = issue {
             report.unresolved.push(UnresolvedSceneTexture {
-                entity_id, material_id, texture_id, issue,
+                entity_id,
+                material_id,
+                texture_id,
+                issue,
             });
         } else {
             report.resolved.push(ResolvedSceneTexture {
-                entity_id, material_id, texture_id,
+                entity_id,
+                material_id,
+                texture_id,
             });
         }
     }
