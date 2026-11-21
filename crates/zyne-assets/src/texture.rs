@@ -92,9 +92,11 @@ impl TextureData {
 
         let pixels = match image.format {
             ImageFormat::R8 => {
-                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
-                    TextureDataError::DimensionsOverflow,
-                )?);
+                let mut rgba = Vec::with_capacity(
+                    pixel_count
+                        .checked_mul(4)
+                        .ok_or(TextureDataError::DimensionsOverflow)?,
+                );
                 for &gray in &image.pixels {
                     rgba.extend_from_slice(&[gray, gray, gray, 255]);
                 }
