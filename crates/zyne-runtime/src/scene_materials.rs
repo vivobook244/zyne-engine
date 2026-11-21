@@ -171,28 +171,28 @@ pub fn resolve_scene_materials(
 /// A diffuse texture reference resolved for one scene entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResolvedSceneTexture {
-    entity_id: SceneEntityId,
-    material_id: ResourceId,
-    texture_id: ResourceId,
+    entity: SceneEntityId,
+    material: ResourceId,
+    texture: ResourceId,
 }
 
 impl ResolvedSceneTexture {
     /// Returns the entity that owns the material assignment.
     #[must_use]
     pub const fn entity_id(&self) -> SceneEntityId {
-        self.entity_id
+        self.entity
     }
 
     /// Returns the persistent material resource identity.
     #[must_use]
     pub const fn material_id(&self) -> ResourceId {
-        self.material_id
+        self.material
     }
 
     /// Returns the persistent diffuse texture resource identity.
     #[must_use]
     pub const fn texture_id(&self) -> ResourceId {
-        self.texture_id
+        self.texture
     }
 }
 
@@ -560,7 +560,7 @@ mod tests {
             &materials,
             &AssetCache::new(ResourceKind::Texture),
         );
-        assert!(report.resolved().is_empty());
+        assert_eq!(report.resolved(), []);
         assert_eq!(report.unresolved().len(), 1);
         assert_eq!(report.unresolved()[0].texture_id(), texture_id);
         assert_eq!(
@@ -598,6 +598,6 @@ mod tests {
         );
         assert!(report.is_complete());
         assert!(report.resolved().is_empty());
-        assert!(report.unresolved().is_empty());
+        assert_eq!(report.unresolved(), []);
     }
 }
