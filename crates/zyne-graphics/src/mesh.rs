@@ -143,6 +143,7 @@ pub struct MeshRenderBatch<'a> {
     mesh: &'a GpuMesh,
     transforms: &'a [Transform3d],
     material: Option<&'a GpuMaterial>,
+    texture: Option<&'a super::texture::GpuTexture>,
 }
 
 impl<'a> MeshRenderBatch<'a> {
@@ -153,6 +154,7 @@ impl<'a> MeshRenderBatch<'a> {
             mesh,
             transforms,
             material: None,
+            texture: None,
         }
     }
 
@@ -167,13 +169,41 @@ impl<'a> MeshRenderBatch<'a> {
             mesh,
             transforms,
             material: Some(material),
+            texture: None,
         }
+    }
+
+    /// Creates a batch using an explicit GPU texture and the default material.
+    #[must_use]
+    pub const fn with_texture(
+        mesh: &'a GpuMesh,
+        transforms: &'a [Transform3d],
+        texture: &'a super::texture::GpuTexture,
+    ) -> Self {
+        Self { mesh, transforms, material: None, texture: Some(texture) }
+    }
+
+    /// Creates a batch with an explicit GPU material and diffuse texture.
+    #[must_use]
+    pub const fn with_material_and_texture(
+        mesh: &'a GpuMesh,
+        transforms: &'a [Transform3d],
+        material: &'a GpuMaterial,
+        texture: &'a super::texture::GpuTexture,
+    ) -> Self {
+        Self { mesh, transforms, material: Some(material), texture: Some(texture) }
     }
 
     /// Returns the GPU material assigned to this batch, if any.
     #[must_use]
     pub const fn material(&self) -> Option<&'a GpuMaterial> {
         self.material
+    }
+
+    /// Returns the GPU diffuse texture assigned to this batch, if any.
+    #[must_use]
+    pub const fn texture(&self) -> Option<&'a super::texture::GpuTexture> {
+        self.texture
     }
 
     /// Returns the uploaded mesh used by this batch.
