@@ -168,6 +168,130 @@ pub fn resolve_scene_materials(
     report
 }
 
+/// A diffuse texture reference resolved for one scene entity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResolvedSceneTexture {
+    entity_id: SceneEntityId,
+    material_id: ResourceId,
+    texture_id: ResourceId,
+}
+
+impl ResolvedSceneTexture {
+    /// Returns the entity that owns the material assignment.
+    #[must_use]
+    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+
+    /// Returns the persistent material resource identity.
+    #[must_use]
+    pub const fn material_id(&self) -> ResourceId { self.material_id }
+
+    /// Returns the persistent diffuse texture resource identity.
+    #[must_use]
+    pub const fn texture_id(&self) -> ResourceId { self.texture_id }
+}
+
+/// Why a material's diffuse texture reference could not be resolved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneTextureResolutionIssue {
+    /// The referenced texture ID is absent from the asset registry.
+    NotRegistered,
+    /// The referenced ID belongs to another asset category.
+    WrongResourceKind { actual: ResourceKind },
+    /// The texture is registered but is not loaded in the CPU cache.
+    NotLoaded,
+}
+
+/// One unresolved diffuse texture reference and its owning scene entity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnresolvedSceneTexture {
+    entity_id: SceneEntityId,
+    material_id: ResourceId,
+    texture_id: ResourceId,
+    issue: SceneTextureResolutionIssue,
+}
+
+impl UnresolvedSceneTexture {
+    /// Returns the entity that owns the material assignment.
+    #[must_use]
+    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+
+    /// Returns the material containing the texture reference.
+    #[must_use]
+    pub const fn material_id(&self) -> ResourceId { self.material_id }
+
+    /// Returns the unresolved texture resource identity.
+    #[must_use]
+    pub const fn texture_id(&self) -> ResourceId { self.texture_id }
+
+    /// Returns why the texture could not be resolved.
+    #[must_use]
+    pub const fn issue(&self) -> SceneTextureResolutionIssue { self.issue }
+}
+
+/// Deterministic result of resolving diffuse texture references in scene materials.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SceneTextureResolutionReport {
+    resolved: Vec<ResolvedSceneTexture>,
+    unresolved: Vec<UnresolvedSceneTexture>,
+}
+
+impl SceneTextureResolutionReport {
+    /// Returns all resolved diffuse texture assignments.
+    #[must_use]
+    pub fn resolved(&self) -> &[ResolvedSceneTexture] { &self.resolved }
+
+    /// Returns all unresolved diffuse texture assignments.
+    #[must_use]
+    pub fn unresolved(&self) -> &[UnresolvedSceneTexture] { &self.unresolved }
+
+    /// Returns true when every referenced diffuse texture is loaded and valid.
+    #[must_use]
+    pub fn is_complete(&self) -> bool { self.unresolved.is_empty() }
+}
+
+/// Resolves optional diffuse texture IDs from loaded scene materials against
+/// registry metadata and the typed CPU texture cache. Materials without a
+/// diffuse texture are intentionally omitted so the renderer can use its
+/// explicit fallback texture.
+#[must_use]
+pub fn resolve_scene_textures(
+    scene: &Scene,
+    registry: &AssetRegistry,
+    material_cache: &AssetCache<BlinnPhongMaterial>,
+    texture_cache: &AssetCache<zyne_assets::TextureData>,
+) -> SceneTextureResolutionReport {
+    let mut report = SceneTextureResolutionReport::default();
+
+    for entity_id in scene.entity_ids() {
+        let Some(material_id) = scene.entity_material_reference(entity_id) else { continue; };
+        let Some(material) = material_cache.get(material_id) else { continue; };
+        let Some(texture_id) = material.diffuse_texture() else { continue; };
+
+        let issue = match registry.find(texture_id) {
+            None => Some(SceneTextureResolutionIssue::NotRegistered),
+            Some(metadata) if metadata.kind() != ResourceKind::Texture => {
+                Some(SceneTextureResolutionIssue::WrongResourceKind { actual: metadata.kind() })
+            }
+            Some(_) if texture_cache.get(texture_id).is_none() => {
+                Some(SceneTextureResolutionIssue::NotLoaded)
+            }
+            Some(_) => None,
+        };
+
+        if let Some(issue) = issue {
+            report.unresolved.push(UnresolvedSceneTexture {
+                entity_id, material_id, texture_id, issue,
+            });
+        } else {
+            report.resolved.push(ResolvedSceneTexture {
+                entity_id, material_id, texture_id,
+            });
+        }
+    }
+
+    report
+}
+
 #[cfg(test)]
 mod tests {
     use zyne_assets::{
