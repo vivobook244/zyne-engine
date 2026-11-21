@@ -31,7 +31,7 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Expand grayscale channels deterministically and synthesize opaque alpha when the source has no alpha channel.
 - [x] Preserve source channel values and require the caller to select the intended color-space interpretation.
 - [x] Reject 16-bit and floating-point source formats explicitly until a deliberate conversion policy is designed.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
 
 ### 5.5.4.3 — Runtime Diffuse Texture Resolution
 
@@ -39,9 +39,35 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Validate that referenced resources are registered as `ResourceKind::Texture` and loaded in the typed CPU texture cache.
 - [x] Return deterministic resolved/unresolved reports with entity, material, texture IDs, and typed issue reasons.
 - [x] Preserve untextured materials as explicit fallback candidates rather than treating them as resolution failures.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for runtime resolution.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for runtime resolution (CI #603, commit `5e90a682`).
 
-### Remaining integration work
+### GPU integration audit — 2026-11-21
+
+The current `main` branch was inspected before changing the renderer. The following existing contracts are confirmed:
+
+- `GraphicsContext` owns the `wgpu::Device` and `wgpu::Queue` and is the only public GPU creation boundary.
+- `CubePipeline` currently owns the checker texture and its texture/sampler bind-group layout. The scene shader consumes that resource at bind group 1.
+- Bind group 3 is reserved for per-material Blinn–Phong uniform data; bind group 2 is lighting and bind group 0 is camera/shadow state.
+- `MeshRenderBatch` currently carries mesh, transforms, and optional material. Draws are grouped by mesh/material before command encoding.
+- `SceneMaterialRenderer` already caches GPU materials by persistent `ResourceId` and exposes explicit unload behavior. This is the established pattern to mirror for textures.
+- `TextureData` owns tightly packed RGBA8 CPU bytes and records `Srgb` or `Linear` interpretation. The graphics layer must choose `Rgba8UnormSrgb` or `Rgba8Unorm` accordingly.
+- The HDR scene render target and lighting shader remain downstream of texture sampling. Texture sampling must stay in the scene pass and must not alter the HDR presentation pass.
+
+### Integration decisions
+
+1. Add a graphics-owned `GpuTexture` and a `GraphicsContext::create_texture` upload boundary. It will own the GPU texture, view, sampler, and bind group; no GPU type enters assets, scene, or serialized documents.
+2. Reuse the existing checker texture layout at bind group 1. Keep the checker bind group as the explicit fallback for materials without a diffuse texture.
+3. Extend render batches to carry an optional `GpuTexture`. Bind the selected texture for each material batch; retain existing material uniform binding at group 3.
+4. Add a texture cache to `SceneMaterialRenderer` keyed by texture `ResourceId`. Repeated references reuse one upload; explicit unload removes the owned GPU texture.
+5. Runtime synchronization must resolve all texture references before issuing uploads. Missing registry entries, wrong resource kinds, and unloaded CPU payloads remain typed errors; do not silently replace a broken explicit reference with the checker fallback.
+6. Validate dimensions against `device.limits().max_texture_dimension_2d` and validate checked upload layout before creating GPU objects. Use the texture's recorded color space to select the GPU format.
+7. Extend draw grouping to include texture identity (or equivalent batch identity) so different diffuse textures cannot accidentally share one draw binding.
+
+### Audit boundary
+
+This audit is a design checkpoint, not an implementation claim. GPU upload, cache reuse, per-draw binding, tests, and visual showcase validation remain pending.
+
+## Remaining integration work
 
 1. Define a renderer-facing texture representation/handle that does not introduce a graphics dependency into `zyne-assets` or `zyne-scene`.
 2. Resolve a material's optional diffuse texture ResourceId through the runtime asset registry/cache.
