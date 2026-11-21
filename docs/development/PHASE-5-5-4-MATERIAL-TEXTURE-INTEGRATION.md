@@ -1,6 +1,6 @@
 # Phase 5.5.4 — Material Texture Integration
 
-**Status:** IN PROGRESS — CPU TEXTURE DATA FOUNDATION IMPLEMENTED | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
+**Status:** IN PROGRESS — CPU TEXTURE DATA + GLTF IMAGE NORMALIZATION IMPLEMENTED; RUNTIME/GPU INTEGRATION REMAINS | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
 
 ## Audit findings
 
@@ -23,7 +23,15 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Validate non-zero dimensions, checked byte-length arithmetic, and exact tightly packed RGBA8 payload length.
 - [x] Add a typed texture cache alias using the existing generic asset cache.
 - [x] Add unit tests for valid data, color-space metadata, zero dimensions, incorrect byte lengths, and arithmetic overflow.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI.
+- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
+
+### 5.5.4.2 — glTF Image Normalization
+
+- [x] Convert imported 8-bit R, RG, RGB, and RGBA images into validated tightly packed RGBA8 CPU data.
+- [x] Expand grayscale channels deterministically and synthesize opaque alpha when the source has no alpha channel.
+- [x] Preserve source channel values and require the caller to select the intended color-space interpretation.
+- [x] Reject 16-bit and floating-point source formats explicitly until a deliberate conversion policy is designed.
+- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
 
 ### Remaining integration work
 
