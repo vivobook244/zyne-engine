@@ -219,15 +219,21 @@ pub struct UnresolvedSceneTexture {
 impl UnresolvedSceneTexture {
     /// Returns the entity that owns the material assignment.
     #[must_use]
-    pub const fn entity_id(&self) -> SceneEntityId { self.entity_id }
+    pub const fn entity_id(&self) -> SceneEntityId {
+        self.entity_id
+    }
 
     /// Returns the material containing the texture reference.
     #[must_use]
-    pub const fn material_id(&self) -> ResourceId { self.material_id }
+    pub const fn material_id(&self) -> ResourceId {
+        self.material_id
+    }
 
     /// Returns the unresolved texture resource identity.
     #[must_use]
-    pub const fn texture_id(&self) -> ResourceId { self.texture_id }
+    pub const fn texture_id(&self) -> ResourceId {
+        self.texture_id
+    }
 
     /// Returns why the texture could not be resolved.
     #[must_use]
@@ -329,7 +335,10 @@ mod tests {
     use zyne_math::Transform3d;
     use zyne_scene::Scene;
 
-    use super::{SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials, resolve_scene_textures};
+    use super::{
+        SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
+        resolve_scene_textures,
+    };
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
@@ -477,7 +486,7 @@ mod tests {
         assert_eq!(report.resolved(), &[]);
         assert_eq!(report.unresolved(), &[]);
     }
-    
+
     #[test]
     fn resolves_loaded_diffuse_texture_reference() {
         use zyne_assets::{TextureColorSpace, TextureData};
@@ -487,8 +496,18 @@ mod tests {
         let material_id = ResourceId::new();
         let texture_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/brick.ron");
-        register(&mut registry, texture_id, ResourceKind::Texture, "textures/brick.png");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/brick.ron",
+        );
+        register(
+            &mut registry,
+            texture_id,
+            ResourceKind::Texture,
+            "textures/brick.png",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let mut material = BlinnPhongMaterial::default();
@@ -498,11 +517,14 @@ mod tests {
 
         let mut textures = AssetCache::new(ResourceKind::Texture);
         textures.begin_loading(&registry, texture_id).unwrap();
-        textures.complete_loading(
-            &registry,
-            texture_id,
-            TextureData::new_rgba8(1, 1, TextureColorSpace::Srgb, vec![255, 255, 255, 255]).unwrap(),
-        ).unwrap();
+        textures
+            .complete_loading(
+                &registry,
+                texture_id,
+                TextureData::new_rgba8(1, 1, TextureColorSpace::Srgb, vec![255, 255, 255, 255])
+                    .unwrap(),
+            )
+            .unwrap();
 
         let report = resolve_scene_textures(&scene, &registry, &materials, &textures);
         assert!(report.is_complete());
@@ -519,7 +541,12 @@ mod tests {
         let material_id = ResourceId::new();
         let texture_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/missing.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/missing.ron",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let mut material = BlinnPhongMaterial::default();
@@ -536,7 +563,10 @@ mod tests {
         assert!(report.resolved().is_empty());
         assert_eq!(report.unresolved().len(), 1);
         assert_eq!(report.unresolved()[0].texture_id(), texture_id);
-        assert_eq!(report.unresolved()[0].issue(), SceneTextureResolutionIssue::NotRegistered);
+        assert_eq!(
+            report.unresolved()[0].issue(),
+            SceneTextureResolutionIssue::NotRegistered
+        );
     }
 
     #[test]
@@ -545,10 +575,20 @@ mod tests {
         let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
         let material_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/plain.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/plain.ron",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
         let mut materials = AssetCache::new_material();
-        load_material(&registry, &mut materials, material_id, BlinnPhongMaterial::default());
+        load_material(
+            &registry,
+            &mut materials,
+            material_id,
+            BlinnPhongMaterial::default(),
+        );
 
         let report = resolve_scene_textures(
             &scene,
