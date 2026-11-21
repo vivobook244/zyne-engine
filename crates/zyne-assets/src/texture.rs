@@ -103,18 +103,22 @@ impl TextureData {
                 rgba
             }
             ImageFormat::R8G8 => {
-                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
-                    TextureDataError::DimensionsOverflow,
-                )?);
+                let mut rgba = Vec::with_capacity(
+                    pixel_count
+                        .checked_mul(4)
+                        .ok_or(TextureDataError::DimensionsOverflow)?,
+                );
                 for channels in image.pixels.chunks_exact(2) {
                     rgba.extend_from_slice(&[channels[0], channels[0], channels[0], channels[1]]);
                 }
                 rgba
             }
             ImageFormat::R8G8B8 => {
-                let mut rgba = Vec::with_capacity(pixel_count.checked_mul(4).ok_or(
-                    TextureDataError::DimensionsOverflow,
-                )?);
+                let mut rgba = Vec::with_capacity(
+                    pixel_count
+                        .checked_mul(4)
+                        .ok_or(TextureDataError::DimensionsOverflow)?,
+                );
                 for channels in image.pixels.chunks_exact(3) {
                     rgba.extend_from_slice(&[channels[0], channels[1], channels[2], 255]);
                 }
