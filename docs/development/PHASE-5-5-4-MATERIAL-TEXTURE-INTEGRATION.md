@@ -1,8 +1,8 @@
 # Phase 5.5.4 — Material Texture Integration
 
-**Status:** SCOPED — IMPLEMENTATION NOT STARTED  
-**Branch:** `main`  
-**Prerequisite:** Phase 5.5.3 — Exposure Control  
+**Status:** IN PROGRESS — CPU TEXTURE DATA FOUNDATION IMPLEMENTED  \
+**Branch:** `main`  \
+**Prerequisite:** Phase 5.5.3 — Exposure Control  \
 **Goal:** Connect persistent diffuse-texture asset references to the existing Blinn–Phong GPU material path while preserving the HDR, tone-mapping, exposure, lighting, and shadow contracts.
 
 ## Audit findings
@@ -17,13 +17,24 @@ The current renderer already integrates scene materials, directional/point/spot 
 
 This phase addresses that missing connection. It does not replace the current Blinn–Phong model or introduce a PBR workflow.
 
-## Scope
+## Implementation sequence
+
+### 5.5.4.1 — CPU Texture Data & Validation
+
+- [x] Add renderer-independent, owned RGBA8 `TextureData` in `zyne-assets`.
+- [x] Record sRGB versus linear RGB interpretation without introducing GPU types.
+- [x] Validate non-zero dimensions, checked byte-length arithmetic, and exact tightly packed RGBA8 payload length.
+- [x] Add a typed texture cache alias using the existing generic asset cache.
+- [x] Add unit tests for valid data, color-space metadata, zero dimensions, incorrect byte lengths, and arithmetic overflow.
+- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI.
+
+### Remaining integration work
 
 1. Define a renderer-facing texture representation/handle that does not introduce a graphics dependency into `zyne-assets` or `zyne-scene`.
 2. Resolve a material's optional diffuse texture ResourceId through the runtime asset registry/cache.
 3. Upload and reuse GPU texture resources; avoid duplicate uploads for shared texture references.
 4. Bind the resolved texture with the matching material draw. Materials without a diffuse texture retain a deterministic fallback texture.
-5. Validate texture format, dimensions, and upload-size constraints before GPU allocation.
+5. Validate GPU-supported texture formats, dimensions, and upload-size constraints before GPU allocation.
 6. Preserve scene-linear color handling so texture samples participate correctly in HDR lighting and final presentation.
 7. Add unit/integration coverage for missing references, unloaded texture data, shared texture reuse, fallback behavior, and material-to-texture binding selection.
 8. Extend `material_showcase` with distinct textured materials and keep its existing exposure controls and shadow receiver.
