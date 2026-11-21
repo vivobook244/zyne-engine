@@ -1,5 +1,14 @@
 //! GPU-resident sampled textures owned by a graphics device.
 
+/// Interpretation of RGB bytes when a sampled texture is uploaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextureColorSpace {
+    /// RGB bytes use the sRGB transfer function.
+    Srgb,
+    /// RGB bytes already contain linear values.
+    Linear,
+}
+
 /// A sampled 2D texture uploaded to one graphics device.
 pub struct GpuTexture {
     _texture: wgpu::Texture,
