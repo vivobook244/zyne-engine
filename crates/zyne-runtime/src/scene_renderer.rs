@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind, TextureColorSpace, TextureData};
+use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind, TextureData};
 use zyne_core::Engine;
 use zyne_core::ResourceId;
 use zyne_graphics::{
     DirectionalLightData, FrameOutcome, GpuMaterial, GpuMesh, GpuTexture, GraphicsContext, GraphicsError,
-    LightingData, MeshData, MeshRenderBatch, PointLightData, SpotLightData,
+    LightingData, MeshData, MeshRenderBatch, PointLightData, SpotLightData, TextureColorSpace,
 };
 use zyne_math::Camera3d;
 use zyne_scene::{Scene, SceneEntityId};
@@ -124,11 +124,11 @@ impl SceneMaterialRenderer {
             let data = texture_cache.get(resolved.texture_id()).ok_or(
                 SceneRenderError::MissingCpuTexture { resource_id: resolved.texture_id() },
             )?;
-            let format = match data.color_space() {
-                TextureColorSpace::Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-                TextureColorSpace::Linear => wgpu::TextureFormat::Rgba8Unorm,
+            let color_space = match data.color_space() {
+                zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
+                zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
             };
-            let texture = graphics.create_texture(data.width(), data.height(), format, data.pixels())
+            let texture = graphics.create_texture(data.width(), data.height(), color_space, data.pixels())
                 .map_err(SceneRenderError::Graphics)?;
             self.textures.insert(resolved.texture_id(), texture);
             uploaded += 1;
