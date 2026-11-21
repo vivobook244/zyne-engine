@@ -7,13 +7,17 @@ use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind, T
 use zyne_core::Engine;
 use zyne_core::ResourceId;
 use zyne_graphics::{
-    DirectionalLightData, FrameOutcome, GpuMaterial, GpuMesh, GpuTexture, GraphicsContext, GraphicsError,
-    LightingData, MeshData, MeshRenderBatch, PointLightData, SpotLightData, TextureColorSpace,
+    DirectionalLightData, FrameOutcome, GpuMaterial, GpuMesh, GpuTexture, GraphicsContext,
+    GraphicsError, LightingData, MeshData, MeshRenderBatch, PointLightData, SpotLightData,
+    TextureColorSpace,
 };
 use zyne_math::Camera3d;
 use zyne_scene::{Scene, SceneEntityId};
 
-use crate::{SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials, resolve_scene_textures};
+use crate::{
+    SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
+    resolve_scene_textures,
+};
 
 /// Engine contract for applications that render a live ECS scene.
 pub trait SceneEngine: Engine {
@@ -80,7 +84,10 @@ impl SceneMaterialRenderer {
 
         let mut uploaded = 0;
         for resolved in report.resolved() {
-            self.material_textures.insert(resolved.resource_id(), resolved.material().diffuse_texture());
+            self.material_textures.insert(
+                resolved.resource_id(),
+                resolved.material().diffuse_texture(),
+            );
             if self.materials.contains_key(&resolved.resource_id()) {
                 continue;
             }
@@ -122,13 +129,16 @@ impl SceneMaterialRenderer {
                 continue;
             }
             let data = texture_cache.get(resolved.texture_id()).ok_or(
-                SceneRenderError::MissingCpuTexture { resource_id: resolved.texture_id() },
+                SceneRenderError::MissingCpuTexture {
+                    resource_id: resolved.texture_id(),
+                },
             )?;
             let color_space = match data.color_space() {
                 zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
                 zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
             };
-            let texture = graphics.create_texture(data.width(), data.height(), color_space, data.pixels())
+            let texture = graphics
+                .create_texture(data.width(), data.height(), color_space, data.pixels())
                 .map_err(SceneRenderError::Graphics)?;
             self.textures.insert(resolved.texture_id(), texture);
             uploaded += 1;
@@ -235,15 +245,17 @@ impl SceneMeshRenderer {
                     return Err(SceneRenderError::MissingGpuMaterial { resource_id });
                 }
             }
-            let texture_id = material_id.and_then(|id| {
-                materials.material_textures.get(&id).copied().flatten()
-            });
+            let texture_id =
+                material_id.and_then(|id| materials.material_textures.get(&id).copied().flatten());
             if let Some(resource_id) = texture_id {
                 if !materials.textures.contains_key(&resource_id) {
                     return Err(SceneRenderError::MissingGpuTexture { resource_id });
                 }
             }
-            grouped.entry((mesh_id, material_id, texture_id)).or_default().push(transform);
+            grouped
+                .entry((mesh_id, material_id, texture_id))
+                .or_default()
+                .push(transform);
         }
 
         let mut groups: Vec<_> = grouped.into_iter().collect();
@@ -263,18 +275,34 @@ impl SceneMeshRenderer {
                     .ok_or(SceneRenderError::MissingGpuMesh {
                         resource_id: *mesh_id,
                     })?;
-                let material = material_id.map(|resource_id| {
-                    materials.materials.get(&resource_id)
-                        .ok_or(SceneRenderError::MissingGpuMaterial { resource_id })
-                }).transpose()?;
-                let texture = texture_id.map(|resource_id| {
-                    materials.textures.get(&resource_id)
-                        .ok_or(SceneRenderError::MissingGpuTexture { resource_id })
-                }).transpose()?;
+                let material = material_id
+                    .map(|resource_id| {
+                        materials
+                            .materials
+                            .get(&resource_id)
+                            .ok_or(SceneRenderError::MissingGpuMaterial { resource_id })
+                    })
+                    .transpose()?;
+                let texture = texture_id
+                    .map(|resource_id| {
+                        materials
+                            .textures
+                            .get(&resource_id)
+                            .ok_or(SceneRenderError::MissingGpuTexture { resource_id })
+                    })
+                    .transpose()?;
                 match (material, texture) {
-                    (Some(material), Some(texture)) => Ok(MeshRenderBatch::with_material_and_texture(mesh, transforms, material, texture)),
-                    (Some(material), None) => Ok(MeshRenderBatch::with_material(mesh, transforms, material)),
-                    (None, Some(texture)) => Ok(MeshRenderBatch::with_texture(mesh, transforms, texture)),
+                    (Some(material), Some(texture)) => {
+                        Ok(MeshRenderBatch::with_material_and_texture(
+                            mesh, transforms, material, texture,
+                        ))
+                    }
+                    (Some(material), None) => {
+                        Ok(MeshRenderBatch::with_material(mesh, transforms, material))
+                    }
+                    (None, Some(texture)) => {
+                        Ok(MeshRenderBatch::with_texture(mesh, transforms, texture))
+                    }
                     (None, None) => Ok(MeshRenderBatch::new(mesh, transforms)),
                 }
             })
@@ -368,7 +396,12 @@ pub enum SceneRenderError {
     /// A referenced texture has not been uploaded to the GPU.
     MissingGpuTexture { resource_id: ResourceId },
     /// A diffuse texture reference could not be resolved.
-    UnresolvedTexture { entity_id: SceneEntityId, material_id: ResourceId, resource_id: ResourceId, issue: SceneTextureResolutionIssue },
+    UnresolvedTexture {
+        entity_id: SceneEntityId,
+        material_id: ResourceId,
+        resource_id: ResourceId,
+        issue: SceneTextureResolutionIssue,
+    },
     /// The graphics backend rejected an upload or frame.
     Graphics(GraphicsError),
 }
@@ -400,9 +433,23 @@ impl fmt::Display for SceneRenderError {
                 formatter,
                 "material asset {resource_id} has not been uploaded to the GPU"
             ),
-            Self::MissingCpuTexture { resource_id } => write!(formatter, "texture asset {resource_id} is not loaded in the CPU cache"),
-            Self::MissingGpuTexture { resource_id } => write!(formatter, "texture asset {resource_id} has not been uploaded to the GPU"),
-            Self::UnresolvedTexture { entity_id, material_id, resource_id, issue } => write!(formatter, "diffuse texture {resource_id} referenced by material {material_id} on entity {entity_id:?} could not be resolved: {issue:?}"),
+            Self::MissingCpuTexture { resource_id } => write!(
+                formatter,
+                "texture asset {resource_id} is not loaded in the CPU cache"
+            ),
+            Self::MissingGpuTexture { resource_id } => write!(
+                formatter,
+                "texture asset {resource_id} has not been uploaded to the GPU"
+            ),
+            Self::UnresolvedTexture {
+                entity_id,
+                material_id,
+                resource_id,
+                issue,
+            } => write!(
+                formatter,
+                "diffuse texture {resource_id} referenced by material {material_id} on entity {entity_id:?} could not be resolved: {issue:?}"
+            ),
             Self::Graphics(error) => write!(formatter, "scene rendering failed: {error}"),
         }
     }
