@@ -315,9 +315,9 @@ pub fn resolve_scene_textures(
             });
         } else {
             report.resolved.push(ResolvedSceneTexture {
-                entity_id,
-                material_id,
-                texture_id,
+                entity: entity_id,
+                material: material_id,
+                texture: texture_id,
             });
         }
     }
