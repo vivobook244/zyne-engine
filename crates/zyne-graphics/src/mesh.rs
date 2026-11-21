@@ -180,7 +180,12 @@ impl<'a> MeshRenderBatch<'a> {
         transforms: &'a [Transform3d],
         texture: &'a super::texture::GpuTexture,
     ) -> Self {
-        Self { mesh, transforms, material: None, texture: Some(texture) }
+        Self {
+            mesh,
+            transforms,
+            material: None,
+            texture: Some(texture),
+        }
     }
 
     /// Creates a batch with an explicit GPU material and diffuse texture.
@@ -191,7 +196,12 @@ impl<'a> MeshRenderBatch<'a> {
         material: &'a GpuMaterial,
         texture: &'a super::texture::GpuTexture,
     ) -> Self {
-        Self { mesh, transforms, material: Some(material), texture: Some(texture) }
+        Self {
+            mesh,
+            transforms,
+            material: Some(material),
+            texture: Some(texture),
+        }
     }
 
     /// Returns the GPU material assigned to this batch, if any.
