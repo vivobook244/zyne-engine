@@ -1,6 +1,6 @@
 # ZYNE Development Roadmap
 
-The current rendering milestone, [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md), is complete. [Phase 5.5.4 — Material Texture Integration](development/PHASE-5-5-4-MATERIAL-TEXTURE-INTEGRATION.md) is in progress; its CPU texture data and validation foundation is implemented.
+The current rendering milestone, [Phase 5.5.3 — Exposure Control](development/PHASE-5-5-3-EXPOSURE-CONTROL.md), is complete. [Phase 5.5.4 — Material Texture Integration](development/PHASE-5-5-4-MATERIAL-TEXTURE-INTEGRATION.md) is in progress; validated CPU RGBA8 texture data and 8-bit glTF image normalization are implemented. Runtime texture resolution, GPU upload/binding, and visual validation remain.
 
 | Phase | Focus | Estimate | Acceptance |
 |---|---|---:|---|
