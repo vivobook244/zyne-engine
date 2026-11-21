@@ -14,8 +14,8 @@ use crate::{
     FrameOutcome, GpuMaterial, GpuTexture, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
-    texture::TextureColorSpace,
     presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev},
+    texture::TextureColorSpace,
 };
 
 fn merge_transformed_bounds(
@@ -219,26 +219,43 @@ impl GraphicsContext {
         };
         let maximum = self.device.limits().max_texture_dimension_2d;
         if width == 0 || height == 0 || width > maximum || height > maximum {
-            return Err(GraphicsError::InvalidTextureDimensions { width, height, maximum });
+            return Err(GraphicsError::InvalidTextureDimensions {
+                width,
+                height,
+                maximum,
+            });
         }
         let expected = usize::try_from(width)
             .ok()
             .and_then(|w| usize::try_from(height).ok().and_then(|h| w.checked_mul(h)))
             .and_then(|count| count.checked_mul(4))
-            .ok_or(GraphicsError::InvalidTextureDimensions { width, height, maximum })?;
+            .ok_or(GraphicsError::InvalidTextureDimensions {
+                width,
+                height,
+                maximum,
+            })?;
         if pixels.len() != expected {
             return Err(GraphicsError::InvalidTextureDataLength {
                 expected,
                 actual: pixels.len(),
             });
         }
-        let bytes_per_row = width.checked_mul(4).ok_or(
-            GraphicsError::InvalidTextureDimensions { width, height, maximum },
-        )?;
+        let bytes_per_row =
+            width
+                .checked_mul(4)
+                .ok_or(GraphicsError::InvalidTextureDimensions {
+                    width,
+                    height,
+                    maximum,
+                })?;
 
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ZYNE Uploaded Diffuse Texture"),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -259,7 +276,11 @@ impl GraphicsContext {
                 bytes_per_row: Some(bytes_per_row),
                 rows_per_image: Some(height),
             },
-            wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
         );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -272,8 +293,12 @@ impl GraphicsContext {
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        let bind_group = self.cube_pipeline.create_texture_bind_group(&self.device, &view, &sampler);
-        Ok(GpuTexture::new(texture, view, sampler, bind_group, width, height, format))
+        let bind_group =
+            self.cube_pipeline
+                .create_texture_bind_group(&self.device, &view, &sampler);
+        Ok(GpuTexture::new(
+            texture, view, sampler, bind_group, width, height, format,
+        ))
     }
 
     /// Uploads renderer-facing material parameters for reuse across draws.
