@@ -8,6 +8,7 @@ mod material;
 mod mesh;
 mod pipeline;
 mod presentation;
+mod texture;
 
 pub use context::GraphicsContext;
 pub use error::GraphicsError;
@@ -17,6 +18,7 @@ pub use lighting::{
 };
 pub use material::MaterialData;
 pub use mesh::{GpuMaterial, GpuMesh, MeshData, MeshError, MeshRenderBatch, MeshVertex};
+pub use texture::GpuTexture;
 
 /// Result of attempting to render one window frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
