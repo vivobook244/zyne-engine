@@ -6,8 +6,8 @@ use zyne_core::ResourceId;
 use zyne_graphics::{MeshData, MeshVertex};
 use zyne_runtime::{
     Application, ApplicationConfig, Camera3d, Engine, EngineContext, InputState,
-    OrbitCameraController, Scene, SceneEngine, SceneMaterialEngine, SceneTextureEngine, Transform3d, ZyneError,
-    ZyneResult,
+    OrbitCameraController, Scene, SceneEngine, SceneMaterialEngine, SceneTextureEngine,
+    Transform3d, ZyneError, ZyneResult,
 };
 use zyne_scene::DirectionalLight;
 
@@ -324,19 +324,21 @@ fn load_texture(
     let id = ResourceId::new();
     register_asset(registry, id, name, ResourceKind::Texture, source_path)?;
     cache.begin_loading(registry, id).map_err(subsystem_error)?;
-    cache.complete_loading(registry, id, data).map_err(subsystem_error)?;
+    cache
+        .complete_loading(registry, id, data)
+        .map_err(subsystem_error)?;
     Ok(id)
 }
 
-fn patterned_texture(
-    first: [u8; 3],
-    second: [u8; 3],
-    diagonal: bool,
-) -> ZyneResult<TextureData> {
+fn patterned_texture(first: [u8; 3], second: [u8; 3], diagonal: bool) -> ZyneResult<TextureData> {
     let mut pixels = Vec::with_capacity(8 * 8 * 4);
     for y in 0..8 {
         for x in 0..8 {
-            let alternate = if diagonal { (x + y) % 4 < 2 } else { (x / 2 + y / 2) % 2 == 0 };
+            let alternate = if diagonal {
+                (x + y) % 4 < 2
+            } else {
+                (x / 2 + y / 2) % 2 == 0
+            };
             let color = if alternate { first } else { second };
             pixels.extend_from_slice(&[color[0], color[1], color[2], 255]);
         }
