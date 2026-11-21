@@ -23,7 +23,7 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Validate non-zero dimensions, checked byte-length arithmetic, and exact tightly packed RGBA8 payload length.
 - [x] Add a typed texture cache alias using the existing generic asset cache.
 - [x] Add unit tests for valid data, color-space metadata, zero dimensions, incorrect byte lengths, and arithmetic overflow.
-- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
 
 ### 5.5.4.2 — glTF Image Normalization
 
@@ -32,6 +32,14 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Preserve source channel values and require the caller to select the intended color-space interpretation.
 - [x] Reject 16-bit and floating-point source formats explicitly until a deliberate conversion policy is designed.
 - [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for the normalization implementation.
+
+### 5.5.4.3 — Runtime Diffuse Texture Resolution
+
+- [x] Resolve optional diffuse texture ResourceIds from loaded scene materials against registry metadata.
+- [x] Validate that referenced resources are registered as `ResourceKind::Texture` and loaded in the typed CPU texture cache.
+- [x] Return deterministic resolved/unresolved reports with entity, material, texture IDs, and typed issue reasons.
+- [x] Preserve untextured materials as explicit fallback candidates rather than treating them as resolution failures.
+- [ ] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for runtime resolution.
 
 ### Remaining integration work
 
