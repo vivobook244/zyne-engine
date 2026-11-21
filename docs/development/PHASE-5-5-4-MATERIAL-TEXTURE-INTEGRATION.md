@@ -1,6 +1,6 @@
 # Phase 5.5.4 — Material Texture Integration
 
-**Status:** IN PROGRESS — CPU TEXTURE DATA + GLTF IMAGE NORMALIZATION IMPLEMENTED; RUNTIME/GPU INTEGRATION REMAINS | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
+**Status:** GPU TEXTURE UPLOAD + RUNTIME BINDING IMPLEMENTED; SHOWCASE / PHYSICAL GPU VALIDATION REMAINS | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
 
 ## Audit findings
 
@@ -41,6 +41,18 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Preserve untextured materials as explicit fallback candidates rather than treating them as resolution failures.
 - [x] Run formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI for runtime resolution (CI #603, commit `5e90a682`).
 
+### 5.5.4.4 — GPU Texture Upload, Cache & Draw Binding
+
+- [x] Add graphics-owned `GpuTexture` with texture, view, sampler, bind group, dimensions, and storage format.
+- [x] Add `GraphicsContext::create_texture` for validated tightly packed RGBA8 uploads.
+- [x] Enforce non-zero dimensions, the device's maximum 2D texture dimension, checked byte-length arithmetic, and exact payload size before allocation.
+- [x] Map CPU sRGB/linear metadata to `Rgba8UnormSrgb` / `Rgba8Unorm` so sampled color enters scene lighting with the intended interpretation.
+- [x] Extend `MeshRenderBatch` with optional per-batch texture binding while retaining the checker fallback.
+- [x] Add a `ResourceId`-keyed GPU texture cache to `SceneMaterialRenderer`; repeated material references reuse one upload.
+- [x] Add explicit texture unload and typed unresolved/missing CPU/GPU texture errors.
+- [x] Include texture identity in scene draw grouping so batches with different diffuse textures cannot share the wrong bind group.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke tests on Ubuntu and Windows (CI #619, commit `fb8c8f66`).
+
 ### GPU integration audit — 2026-11-21
 
 The current `main` branch was inspected before changing the renderer. The following existing contracts are confirmed:
@@ -63,20 +75,15 @@ The current `main` branch was inspected before changing the renderer. The follow
 6. Validate dimensions against `device.limits().max_texture_dimension_2d` and validate checked upload layout before creating GPU objects. Use the texture's recorded color space to select the GPU format.
 7. Extend draw grouping to include texture identity (or equivalent batch identity) so different diffuse textures cannot accidentally share one draw binding.
 
-### Audit boundary
+### Implementation boundary
 
-This audit is a design checkpoint, not an implementation claim. GPU upload, cache reuse, per-draw binding, tests, and visual showcase validation remain pending.
+The graphics upload path, runtime texture cache, and per-draw binding path are implemented and pass the repository's cross-platform CI. The current CI does not instantiate a physical GPU or visually inspect the showcase; dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
 
 ## Remaining integration work
 
-1. Define a renderer-facing texture representation/handle that does not introduce a graphics dependency into `zyne-assets` or `zyne-scene`.
-2. Resolve a material's optional diffuse texture ResourceId through the runtime asset registry/cache.
-3. Upload and reuse GPU texture resources; avoid duplicate uploads for shared texture references.
-4. Bind the resolved texture with the matching material draw. Materials without a diffuse texture retain a deterministic fallback texture.
-5. Validate GPU-supported texture formats, dimensions, and upload-size constraints before GPU allocation.
-6. Preserve scene-linear color handling so texture samples participate correctly in HDR lighting and final presentation.
-7. Add unit/integration coverage for missing references, unloaded texture data, shared texture reuse, fallback behavior, and material-to-texture binding selection.
-8. Extend `material_showcase` with distinct textured materials and keep its existing exposure controls and shadow receiver.
+1. Add focused automated coverage for GPU texture upload validation, cache reuse/unload, fallback selection, and per-batch binding. Existing CPU-side resolution tests and cross-platform CI pass, but they do not exercise an actual GPU texture allocation.
+2. Extend `material_showcase` with distinct textured materials while retaining its existing exposure controls and shadow receiver.
+3. Validate the textured showcase on a physical GPU and confirm HDR, ACES, exposure, lighting, and directional shadows remain visually correct.
 
 ## Acceptance criteria
 
@@ -87,7 +94,8 @@ This audit is a design checkpoint, not an implementation claim. GPU upload, cach
 - [ ] Texture and material resources are released through explicit unload paths.
 - [ ] HDR output, ACES tone mapping, exposure controls, lighting, and directional shadows remain functional.
 - [ ] Automated tests cover resource resolution, reuse, fallback, and invalid input.
-- [ ] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass.
+- [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
+- [ ] Dedicated automated tests exercise GPU texture allocation, cache reuse, fallback, and per-draw binding.
 - [ ] Physical-GPU showcase validation confirms textured materials and regression checks.
 
 ## Explicit non-goals
