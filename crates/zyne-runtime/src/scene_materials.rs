@@ -600,5 +600,4 @@ mod tests {
         assert!(report.resolved().is_empty());
         assert!(report.unresolved().is_empty());
     }
-
 }
