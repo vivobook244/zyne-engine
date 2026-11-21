@@ -51,7 +51,9 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Add a `ResourceId`-keyed GPU texture cache to `SceneMaterialRenderer`; repeated material references reuse one upload.
 - [x] Add explicit texture unload and typed unresolved/missing CPU/GPU texture errors.
 - [x] Include texture identity in scene draw grouping so batches with different diffuse textures cannot share the wrong bind group.
-- [x] Run formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke tests on Ubuntu and Windows (CI #619, commit `fb8c8f66`).
+- [x] Add the `SceneTextureEngine` contract and `Application::run_scene_with_textures` synchronization path.
+- [x] Extend `material_showcase` with blue ceramic and amber metal diffuse patterns; retain the matte checker-fallback material, exposure controls, and shadow receiver.
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke tests on Ubuntu and Windows (GPU integration CI #619 passed; textured showcase CI #625 pending at documentation time).
 
 ### GPU integration audit — 2026-11-21
 
@@ -77,13 +79,12 @@ The current `main` branch was inspected before changing the renderer. The follow
 
 ### Implementation boundary
 
-The graphics upload path, runtime texture cache, and per-draw binding path are implemented and pass the repository's cross-platform CI. The current CI does not instantiate a physical GPU or visually inspect the showcase; dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
+The graphics upload path, runtime texture cache, application synchronization path, per-draw binding, and textured showcase source are implemented. CI verifies compilation, formatting, Clippy, workspace tests/checks, and headless lifecycle smoke tests; it does not instantiate a physical GPU or visually inspect the showcase. Dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
 
 ## Remaining integration work
 
 1. Add focused automated coverage for GPU texture upload validation, cache reuse/unload, fallback selection, and per-batch binding. Existing CPU-side resolution tests and cross-platform CI pass, but they do not exercise an actual GPU texture allocation.
-2. Extend `material_showcase` with distinct textured materials while retaining its existing exposure controls and shadow receiver.
-3. Validate the textured showcase on a physical GPU and confirm HDR, ACES, exposure, lighting, and directional shadows remain visually correct.
+2. Run `material_showcase` on a physical GPU and confirm the two diffuse textures are visibly sampled while HDR, ACES, exposure, lighting, and directional shadows remain visually correct.
 
 ## Acceptance criteria
 
