@@ -29,6 +29,12 @@ pub enum GraphicsError {
     TooManyInstances,
     /// A mesh vertex or index buffer exceeds the device's supported size.
     MeshBufferTooLarge,
+    /// Texture dimensions are zero or exceed the device's 2D texture limit.
+    InvalidTextureDimensions { width: u32, height: u32, maximum: u32 },
+    /// The supplied RGBA8 pixel payload has an invalid byte length.
+    InvalidTextureDataLength { expected: usize, actual: usize },
+    /// The requested texture format is not supported for sampled RGBA8 uploads.
+    UnsupportedTextureFormat,
 }
 
 impl fmt::Display for GraphicsError {
@@ -77,6 +83,17 @@ impl fmt::Display for GraphicsError {
             Self::MeshBufferTooLarge => {
                 formatter.write_str("mesh buffers exceed the supported GPU buffer size")
             }
+            Self::InvalidTextureDimensions { width, height, maximum } => write!(
+                formatter,
+                "texture dimensions {width}x{height} are invalid or exceed the device limit {maximum}"
+            ),
+            Self::InvalidTextureDataLength { expected, actual } => write!(
+                formatter,
+                "texture contains {actual} pixel bytes, expected {expected} for RGBA8"
+            ),
+            Self::UnsupportedTextureFormat => formatter.write_str(
+                "sampled texture uploads support only Rgba8Unorm and Rgba8UnormSrgb"
+            ),
         }
     }
 }
