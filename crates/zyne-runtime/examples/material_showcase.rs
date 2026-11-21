@@ -1,12 +1,12 @@
 use zyne_assets::{
     AssetCache, AssetMetadata, AssetRegistry, BlinnPhongMaterial, ImporterSettings,
-    ProjectRelativePath, ResourceKind,
+    ProjectRelativePath, ResourceKind, TextureColorSpace, TextureData,
 };
 use zyne_core::ResourceId;
 use zyne_graphics::{MeshData, MeshVertex};
 use zyne_runtime::{
     Application, ApplicationConfig, Camera3d, Engine, EngineContext, InputState,
-    OrbitCameraController, Scene, SceneEngine, SceneMaterialEngine, Transform3d, ZyneError,
+    OrbitCameraController, Scene, SceneEngine, SceneMaterialEngine, SceneTextureEngine, Transform3d, ZyneError,
     ZyneResult,
 };
 use zyne_scene::DirectionalLight;
@@ -17,6 +17,7 @@ struct MaterialShowcaseEngine {
     asset_registry: AssetRegistry,
     mesh_cache: AssetCache<MeshData>,
     material_cache: AssetCache<BlinnPhongMaterial>,
+    texture_cache: AssetCache<TextureData>,
     exposure_ev: f32,
 }
 
@@ -91,16 +92,23 @@ impl SceneMaterialEngine for MaterialShowcaseEngine {
     }
 }
 
+impl SceneTextureEngine for MaterialShowcaseEngine {
+    fn texture_cache(&self) -> &AssetCache<TextureData> {
+        &self.texture_cache
+    }
+}
+
 fn main() -> ZyneResult<()> {
     zyne_runtime::diagnostics::init_logging()?;
     let application = Application::new(ApplicationConfig::default())?;
-    application.run_scene_with_materials(build_engine()?)
+    application.run_scene_with_textures(build_engine()?)
 }
 
 struct ShowcaseAssets {
     registry: AssetRegistry,
     mesh_cache: AssetCache<MeshData>,
     material_cache: AssetCache<BlinnPhongMaterial>,
+    texture_cache: AssetCache<TextureData>,
     mesh_id: ResourceId,
     matte_id: ResourceId,
     glossy_id: ResourceId,
@@ -124,6 +132,7 @@ fn build_engine() -> ZyneResult<MaterialShowcaseEngine> {
         asset_registry: assets.registry,
         mesh_cache: assets.mesh_cache,
         material_cache: assets.material_cache,
+        texture_cache: assets.texture_cache,
         exposure_ev: 0.0,
     })
 }
@@ -132,6 +141,7 @@ fn build_assets() -> ZyneResult<ShowcaseAssets> {
     let mut registry = AssetRegistry::new();
     let mut mesh_cache = AssetCache::<MeshData>::new(ResourceKind::Mesh);
     let mut material_cache = AssetCache::<BlinnPhongMaterial>::new_material();
+    let mut texture_cache = AssetCache::<TextureData>::new(ResourceKind::Texture);
 
     let mesh_id = ResourceId::new();
     register_asset(
@@ -148,6 +158,21 @@ fn build_assets() -> ZyneResult<ShowcaseAssets> {
         .complete_loading(&registry, mesh_id, cube_mesh()?)
         .map_err(subsystem_error)?;
 
+    let blue_texture_id = load_texture(
+        &mut registry,
+        &mut texture_cache,
+        "Blue Ceramic Pattern",
+        "textures/blue_ceramic.rgba8",
+        patterned_texture([28, 96, 210], [120, 205, 255], false)?,
+    )?;
+    let amber_texture_id = load_texture(
+        &mut registry,
+        &mut texture_cache,
+        "Amber Metal Pattern",
+        "textures/amber_metal.rgba8",
+        patterned_texture([170, 72, 18], [255, 190, 72], true)?,
+    )?;
+
     let matte_id = load_material(
         &mut registry,
         &mut material_cache,
@@ -161,37 +186,42 @@ fn build_assets() -> ZyneResult<ShowcaseAssets> {
         )
         .map_err(subsystem_error)?,
     )?;
+    let mut glossy_material = BlinnPhongMaterial::new(
+        [0.025, 0.08, 0.16],
+        [0.72, 0.82, 1.0],
+        [0.95, 0.95, 1.0],
+        112.0,
+    )
+    .map_err(subsystem_error)?;
+    glossy_material.set_diffuse_texture(Some(blue_texture_id));
     let glossy_id = load_material(
         &mut registry,
         &mut material_cache,
-        "Glossy",
+        "Glossy Textured",
         "materials/glossy.ron",
-        BlinnPhongMaterial::new(
-            [0.025, 0.08, 0.16],
-            [0.12, 0.38, 0.88],
-            [0.95, 0.95, 1.0],
-            112.0,
-        )
-        .map_err(subsystem_error)?,
+        glossy_material,
     )?;
+    let mut metal_like_material = BlinnPhongMaterial::new(
+        [0.12, 0.075, 0.025],
+        [0.82, 0.72, 0.55],
+        [1.4, 1.15, 0.72],
+        144.0,
+    )
+    .map_err(subsystem_error)?;
+    metal_like_material.set_diffuse_texture(Some(amber_texture_id));
     let metal_like_id = load_material(
         &mut registry,
         &mut material_cache,
-        "Metal Like",
+        "Metal Like Textured",
         "materials/metal_like.ron",
-        BlinnPhongMaterial::new(
-            [0.12, 0.075, 0.025],
-            [0.62, 0.34, 0.09],
-            [1.4, 1.15, 0.72],
-            144.0,
-        )
-        .map_err(subsystem_error)?,
+        metal_like_material,
     )?;
 
     Ok(ShowcaseAssets {
         registry,
         mesh_cache,
         material_cache,
+        texture_cache,
         mesh_id,
         matte_id,
         glossy_id,
@@ -282,6 +312,36 @@ fn register_asset(
     )
     .map_err(subsystem_error)?;
     registry.register(metadata).map_err(subsystem_error)
+}
+
+fn load_texture(
+    registry: &mut AssetRegistry,
+    cache: &mut AssetCache<TextureData>,
+    name: &str,
+    source_path: &str,
+    data: TextureData,
+) -> ZyneResult<ResourceId> {
+    let id = ResourceId::new();
+    register_asset(registry, id, name, ResourceKind::Texture, source_path)?;
+    cache.begin_loading(registry, id).map_err(subsystem_error)?;
+    cache.complete_loading(registry, id, data).map_err(subsystem_error)?;
+    Ok(id)
+}
+
+fn patterned_texture(
+    first: [u8; 3],
+    second: [u8; 3],
+    diagonal: bool,
+) -> ZyneResult<TextureData> {
+    let mut pixels = Vec::with_capacity(8 * 8 * 4);
+    for y in 0..8 {
+        for x in 0..8 {
+            let alternate = if diagonal { (x + y) % 4 < 2 } else { (x / 2 + y / 2) % 2 == 0 };
+            let color = if alternate { first } else { second };
+            pixels.extend_from_slice(&[color[0], color[1], color[2], 255]);
+        }
+    }
+    TextureData::new_rgba8(8, 8, TextureColorSpace::Srgb, pixels).map_err(subsystem_error)
 }
 
 fn load_material(
