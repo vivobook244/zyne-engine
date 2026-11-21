@@ -64,7 +64,6 @@ impl GpuTexture {
     }
 }
 
-
 /// Validates tightly packed RGBA8 upload dimensions and returns the row stride.
 pub(crate) fn validate_rgba8_upload(
     width: u32,
