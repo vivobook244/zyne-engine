@@ -14,6 +14,7 @@ use crate::{
     FrameOutcome, GpuMaterial, GpuTexture, GraphicsError, LightingData, MaterialData,
     mesh::{GpuMesh, MeshBounds, MeshData, MeshRenderBatch},
     pipeline::CubePipeline,
+    texture::TextureColorSpace,
     presentation::{HDR_FORMAT, HdrRenderTarget, PresentationPipeline, is_valid_exposure_ev},
 };
 
@@ -209,12 +210,13 @@ impl GraphicsContext {
         &self,
         width: u32,
         height: u32,
-        format: TextureFormat,
+        color_space: TextureColorSpace,
         pixels: &[u8],
     ) -> Result<GpuTexture, GraphicsError> {
-        if !matches!(format, TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb) {
-            return Err(GraphicsError::UnsupportedTextureFormat);
-        }
+        let format = match color_space {
+            TextureColorSpace::Srgb => TextureFormat::Rgba8UnormSrgb,
+            TextureColorSpace::Linear => TextureFormat::Rgba8Unorm,
+        };
         let maximum = self.device.limits().max_texture_dimension_2d;
         if width == 0 || height == 0 || width > maximum || height > maximum {
             return Err(GraphicsError::InvalidTextureDimensions { width, height, maximum });
