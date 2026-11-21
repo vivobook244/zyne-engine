@@ -37,6 +37,12 @@ pub trait SceneMaterialEngine: SceneEngine {
     fn material_cache(&self) -> &AssetCache<BlinnPhongMaterial>;
 }
 
+/// Extended scene-engine contract for materials with diffuse texture references.
+pub trait SceneTextureEngine: SceneMaterialEngine {
+    /// Returns loaded CPU texture data referenced by scene materials.
+    fn texture_cache(&self) -> &AssetCache<TextureData>;
+}
+
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMeshRenderer {
