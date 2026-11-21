@@ -217,37 +217,12 @@ impl GraphicsContext {
             TextureColorSpace::Srgb => TextureFormat::Rgba8UnormSrgb,
             TextureColorSpace::Linear => TextureFormat::Rgba8Unorm,
         };
-        let maximum = self.device.limits().max_texture_dimension_2d;
-        if width == 0 || height == 0 || width > maximum || height > maximum {
-            return Err(GraphicsError::InvalidTextureDimensions {
-                width,
-                height,
-                maximum,
-            });
-        }
-        let expected = usize::try_from(width)
-            .ok()
-            .and_then(|w| usize::try_from(height).ok().and_then(|h| w.checked_mul(h)))
-            .and_then(|count| count.checked_mul(4))
-            .ok_or(GraphicsError::InvalidTextureDimensions {
-                width,
-                height,
-                maximum,
-            })?;
-        if pixels.len() != expected {
-            return Err(GraphicsError::InvalidTextureDataLength {
-                expected,
-                actual: pixels.len(),
-            });
-        }
-        let bytes_per_row =
-            width
-                .checked_mul(4)
-                .ok_or(GraphicsError::InvalidTextureDimensions {
-                    width,
-                    height,
-                    maximum,
-                })?;
+        let bytes_per_row = crate::texture::validate_rgba8_upload(
+            width,
+            height,
+            self.device.limits().max_texture_dimension_2d,
+            pixels,
+        )?;
 
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ZYNE Uploaded Diffuse Texture"),
