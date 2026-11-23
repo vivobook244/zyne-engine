@@ -563,7 +563,7 @@ fn group_scene_draw_instances(
             zyne_math::Transform3d,
         ),
     >,
-)-> HashMap<(ResourceId, Option<ResourceId>, Option<ResourceId>), Vec<zyne_math::Transform3d>> {
+) -> HashMap<(ResourceId, Option<ResourceId>, Option<ResourceId>), Vec<zyne_math::Transform3d>> {
     let mut grouped = HashMap::new();
     for (mesh_id, material_id, texture_id, transform) in instances {
         grouped
