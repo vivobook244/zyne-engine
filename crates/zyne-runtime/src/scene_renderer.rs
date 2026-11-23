@@ -563,10 +563,7 @@ fn group_scene_draw_instances(
             zyne_math::Transform3d,
         ),
     >,
-) -> HashMap<
-    (ResourceId, Option<ResourceId>, Option<ResourceId>),
-    Vec<zyne_math::Transform3d>,
-> {
+)-> HashMap<(ResourceId, Option<ResourceId>, Option<ResourceId>), Vec<zyne_math::Transform3d>> {
     let mut grouped = HashMap::new();
     for (mesh_id, material_id, texture_id, transform) in instances {
         grouped
@@ -731,23 +728,30 @@ mod tests {
         let material_id = ResourceId::new();
         let first_texture = ResourceId::new();
         let second_texture = ResourceId::new();
-        let first_transform = Transform3d::new(
-            [1.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-            [1.0; 3],
-        )
-        .unwrap();
-        let second_transform = Transform3d::new(
-            [2.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-            [1.0; 3],
-        )
-        .unwrap();
+        let first_transform =
+            Transform3d::new([1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3]).unwrap();
+        let second_transform =
+            Transform3d::new([2.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0; 3]).unwrap();
 
         let grouped = group_scene_draw_instances([
-            (mesh_id, Some(material_id), Some(first_texture), first_transform),
-            (mesh_id, Some(material_id), Some(first_texture), second_transform),
-            (mesh_id, Some(material_id), Some(second_texture), Transform3d::identity()),
+            (
+                mesh_id,
+                Some(material_id),
+                Some(first_texture),
+                first_transform,
+            ),
+            (
+                mesh_id,
+                Some(material_id),
+                Some(first_texture),
+                second_transform,
+            ),
+            (
+                mesh_id,
+                Some(material_id),
+                Some(second_texture),
+                Transform3d::identity(),
+            ),
         ]);
 
         assert_eq!(grouped.len(), 2);
