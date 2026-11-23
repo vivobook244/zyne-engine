@@ -510,7 +510,9 @@ mod tests {
         assert_eq!(cache.revision(id), None);
         cache.begin_loading(&registry, id).unwrap();
         assert_eq!(cache.revision(id), Some(0));
-        cache.complete_loading(&registry, id, TestAsset("first")).unwrap();
+        cache
+            .complete_loading(&registry, id, TestAsset("first"))
+            .unwrap();
         assert_eq!(cache.revision(id), Some(1));
 
         cache.unload(id).unwrap();
@@ -522,7 +524,9 @@ mod tests {
         assert_eq!(cache.revision(id), Some(1));
 
         cache.retry_loading(&registry, id).unwrap();
-        cache.complete_loading(&registry, id, TestAsset("second")).unwrap();
+        cache
+            .complete_loading(&registry, id, TestAsset("second"))
+            .unwrap();
         assert_eq!(cache.revision(id), Some(2));
     }
 
