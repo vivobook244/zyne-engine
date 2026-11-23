@@ -870,11 +870,13 @@ mod tests {
         );
         assert!(remove_cached_resource(&mut cache, resource_id));
         assert!(!remove_cached_resource(&mut cache, resource_id));
-        assert!(ensure_cached_resource(&mut cache, resource_id, || {
-            uploads += 1;
-            Ok::<_, ()>(uploads)
-        })
-        .unwrap());
+        assert!(
+            ensure_cached_resource(&mut cache, resource_id, || {
+                uploads += 1;
+                Ok::<_, ()>(uploads)
+            })
+            .unwrap()
+        );
 
         assert_eq!(uploads, 2);
         assert_eq!(cache.get(&resource_id), Some(&2));
