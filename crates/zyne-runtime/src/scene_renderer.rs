@@ -234,10 +234,7 @@ impl SceneMeshRenderer {
         registry: &AssetRegistry,
         camera: Option<&Camera3d>,
     ) -> Result<FrameOutcome, SceneRenderError> {
-        let mut grouped: HashMap<
-            (ResourceId, Option<ResourceId>, Option<ResourceId>),
-            Vec<zyne_math::Transform3d>,
-        > = HashMap::new();
+        let mut draw_instances = Vec::new();
         for (mesh_id, material_id, transform) in
             collect_scene_mesh_material_instances(scene, registry)
         {
@@ -258,11 +255,9 @@ impl SceneMeshRenderer {
                     return Err(SceneRenderError::MissingGpuTexture { resource_id });
                 }
             }
-            grouped
-                .entry((mesh_id, material_id, texture_id))
-                .or_default()
-                .push(transform);
+            draw_instances.push((mesh_id, material_id, texture_id, transform));
         }
+        let grouped = group_scene_draw_instances(draw_instances);
 
         let mut groups: Vec<_> = grouped.into_iter().collect();
         groups.sort_unstable_by_key(|((mesh_id, material_id, texture_id), _)| {
@@ -559,6 +554,29 @@ fn collect_scene_mesh_instances(
     instances
 }
 
+fn group_scene_draw_instances(
+    instances: impl IntoIterator<
+        Item = (
+            ResourceId,
+            Option<ResourceId>,
+            Option<ResourceId>,
+            zyne_math::Transform3d,
+        ),
+    >,
+) -> HashMap<
+    (ResourceId, Option<ResourceId>, Option<ResourceId>),
+    Vec<zyne_math::Transform3d>,
+> {
+    let mut grouped = HashMap::new();
+    for (mesh_id, material_id, texture_id, transform) in instances {
+        grouped
+            .entry((mesh_id, material_id, texture_id))
+            .or_insert_with(Vec::new)
+            .push(transform);
+    }
+    grouped
+}
+
 fn collect_scene_mesh_material_instances(
     scene: &Scene,
     registry: &AssetRegistry,
@@ -703,6 +721,70 @@ mod tests {
         assert_eq!(materials.len(), 2);
         assert!(materials.contains(&first_material));
         assert!(materials.contains(&second_material));
+    }
+
+    #[test]
+    fn draw_grouping_keeps_distinct_texture_bindings_separate() {
+        use super::group_scene_draw_instances;
+
+        let mesh_id = ResourceId::new();
+        let material_id = ResourceId::new();
+        let first_texture = ResourceId::new();
+        let second_texture = ResourceId::new();
+        let first_transform = Transform3d::new(
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [1.0; 3],
+        )
+        .unwrap();
+        let second_transform = Transform3d::new(
+            [2.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [1.0; 3],
+        )
+        .unwrap();
+
+        let grouped = group_scene_draw_instances([
+            (mesh_id, Some(material_id), Some(first_texture), first_transform),
+            (mesh_id, Some(material_id), Some(first_texture), second_transform),
+            (mesh_id, Some(material_id), Some(second_texture), Transform3d::identity()),
+        ]);
+
+        assert_eq!(grouped.len(), 2);
+        assert_eq!(
+            grouped
+                .get(&(mesh_id, Some(material_id), Some(first_texture)))
+                .map(Vec::len),
+            Some(2)
+        );
+        assert_eq!(
+            grouped
+                .get(&(mesh_id, Some(material_id), Some(second_texture)))
+                .map(Vec::len),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn draw_grouping_preserves_checker_fallback_as_distinct_binding() {
+        use super::group_scene_draw_instances;
+
+        let mesh_id = ResourceId::new();
+        let material_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let grouped = group_scene_draw_instances([
+            (mesh_id, Some(material_id), None, Transform3d::identity()),
+            (
+                mesh_id,
+                Some(material_id),
+                Some(texture_id),
+                Transform3d::identity(),
+            ),
+        ]);
+
+        assert_eq!(grouped.len(), 2);
+        assert!(grouped.contains_key(&(mesh_id, Some(material_id), None)));
+        assert!(grouped.contains_key(&(mesh_id, Some(material_id), Some(texture_id))));
     }
 
     #[test]
