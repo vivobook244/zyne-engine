@@ -722,7 +722,12 @@ mod tests {
         let material_id = ResourceId::new();
         let mesh_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/ref.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/ref.ron",
+        );
         register(
             &mut registry,
             mesh_id,
