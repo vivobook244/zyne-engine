@@ -325,6 +325,58 @@ pub fn resolve_scene_textures(
     report
 }
 
+/// Resolves texture references using registry identity and kind only.
+///
+/// CPU payload availability is deliberately deferred to the GPU cache-miss
+/// path: a resident GPU texture remains usable after its CPU payload is unloaded.
+#[must_use]
+pub(crate) fn resolve_scene_texture_references(
+    scene: &Scene,
+    registry: &AssetRegistry,
+    material_cache: &AssetCache<BlinnPhongMaterial>,
+) -> SceneTextureResolutionReport {
+    let mut report = SceneTextureResolutionReport::default();
+
+    for entity_id in scene.entity_ids() {
+        let Some(material_id) = scene.entity_material_reference(entity_id) else {
+            continue;
+        };
+        let Some(material) = material_cache.get(material_id) else {
+            continue;
+        };
+        let Some(texture_id) = material.diffuse_texture() else {
+            continue;
+        };
+
+        let issue = match registry.find(texture_id) {
+            None => Some(SceneTextureResolutionIssue::NotRegistered),
+            Some(metadata) if metadata.kind() != ResourceKind::Texture => {
+                Some(SceneTextureResolutionIssue::WrongResourceKind {
+                    actual: metadata.kind(),
+                })
+            }
+            Some(_) => None,
+        };
+
+        if let Some(issue) = issue {
+            report.unresolved.push(UnresolvedSceneTexture {
+                entity_id,
+                material_id,
+                texture_id,
+                issue,
+            });
+        } else {
+            report.resolved.push(ResolvedSceneTexture {
+                entity: entity_id,
+                material: material_id,
+                texture: texture_id,
+            });
+        }
+    }
+
+    report
+}
+
 #[cfg(test)]
 mod tests {
     use zyne_assets::{
