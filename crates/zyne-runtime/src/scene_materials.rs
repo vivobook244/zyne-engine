@@ -652,7 +652,6 @@ mod tests {
         assert_eq!(report.resolved(), []);
         assert_eq!(report.unresolved(), []);
     }
-}
     #[test]
     fn reference_resolution_does_not_require_cpu_texture_payload() {
         let mut scene = Scene::new("GPU Resident Texture").unwrap();
@@ -732,4 +731,4 @@ mod tests {
             }
         );
     }
-
+}
