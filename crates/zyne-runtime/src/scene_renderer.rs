@@ -388,10 +388,7 @@ fn ensure_cached_resource<T, E>(
     Ok(true)
 }
 
-fn remove_cached_resource<T>(
-    cache: &mut HashMap<ResourceId, T>,
-    resource_id: ResourceId,
-) -> bool {
+fn remove_cached_resource<T>(cache: &mut HashMap<ResourceId, T>, resource_id: ResourceId) -> bool {
     cache.remove(&resource_id).is_some()
 }
 
@@ -819,16 +816,20 @@ mod tests {
         let mut cache = HashMap::new();
         let mut uploads = 0;
 
-        assert!(ensure_cached_resource(&mut cache, resource_id, || {
-            uploads += 1;
-            Ok::<_, ()>("gpu-texture")
-        })
-        .unwrap());
-        assert!(!ensure_cached_resource(&mut cache, resource_id, || {
-            uploads += 1;
-            Ok::<_, ()>("duplicate-gpu-texture")
-        })
-        .unwrap());
+        assert!(
+            ensure_cached_resource(&mut cache, resource_id, || {
+                uploads += 1;
+                Ok::<_, ()>("gpu-texture")
+            })
+            .unwrap()
+        );
+        assert!(
+            !ensure_cached_resource(&mut cache, resource_id, || {
+                uploads += 1;
+                Ok::<_, ()>("duplicate-gpu-texture")
+            })
+            .unwrap()
+        );
 
         assert_eq!(uploads, 1);
         assert_eq!(cache.get(&resource_id), Some(&"gpu-texture"));
@@ -860,11 +861,13 @@ mod tests {
         let mut cache = HashMap::new();
         let mut uploads = 0;
 
-        assert!(ensure_cached_resource(&mut cache, resource_id, || {
-            uploads += 1;
-            Ok::<_, ()>(uploads)
-        })
-        .unwrap());
+        assert!(
+            ensure_cached_resource(&mut cache, resource_id, || {
+                uploads += 1;
+                Ok::<_, ()>(uploads)
+            })
+            .unwrap()
+        );
         assert!(remove_cached_resource(&mut cache, resource_id));
         assert!(!remove_cached_resource(&mut cache, resource_id));
         assert!(ensure_cached_resource(&mut cache, resource_id, || {
