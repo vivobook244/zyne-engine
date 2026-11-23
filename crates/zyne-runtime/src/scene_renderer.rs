@@ -49,6 +49,30 @@ struct RevisionedGpu<T> {
     resource: T,
 }
 
+fn sync_revisioned_gpu<T, E>(
+    cache: &mut HashMap<ResourceId, RevisionedGpu<T>>,
+    resource_id: ResourceId,
+    revision: u64,
+    create: impl FnOnce() -> Result<T, E>,
+) -> Result<bool, E> {
+    if cache
+        .get(&resource_id)
+        .is_some_and(|cached| cached.revision == revision)
+    {
+        return Ok(false);
+    }
+
+    let resource = create()?;
+    cache.insert(
+        resource_id,
+        RevisionedGpu {
+            revision,
+            resource,
+        },
+    );
+    Ok(true)
+}
+
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMeshRenderer {
@@ -104,22 +128,13 @@ impl SceneMaterialRenderer {
             let revision = material_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            if self
-                .materials
-                .get(&resource_id)
-                .is_some_and(|cached| cached.revision == revision)
-            {
-                continue;
-            }
-            let gpu_material = graphics.create_material(&resolved.render_data());
-            self.materials.insert(
+            let created = sync_revisioned_gpu(
+                &mut self.materials,
                 resource_id,
-                RevisionedGpu {
-                    revision,
-                    resource: gpu_material,
-                },
-            );
-            uploaded += 1;
+                revision,
+                || Ok::<_, SceneRenderError>(graphics.create_material(&resolved.render_data())),
+            )?;
+            uploaded += usize::from(created);
         }
         Ok(uploaded)
     }
@@ -155,33 +170,24 @@ impl SceneMaterialRenderer {
             let revision = texture_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            if self
-                .textures
-                .get(&resource_id)
-                .is_some_and(|cached| cached.revision == revision)
-            {
-                continue;
-            }
-            let gpu_texture = {
-                let data = texture_cache
-                    .get(resource_id)
-                    .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
-                let color_space = match data.color_space() {
-                    zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
-                    zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
-                };
-                graphics
-                    .create_texture(data.width(), data.height(), color_space, data.pixels())
-                    .map_err(SceneRenderError::Graphics)?
-            };
-            self.textures.insert(
+            let created = sync_revisioned_gpu(
+                &mut self.textures,
                 resource_id,
-                RevisionedGpu {
-                    revision,
-                    resource: gpu_texture,
+                revision,
+                || {
+                    let data = texture_cache
+                        .get(resource_id)
+                        .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
+                    let color_space = match data.color_space() {
+                        zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
+                        zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
+                    };
+                    graphics
+                        .create_texture(data.width(), data.height(), color_space, data.pixels())
+                        .map_err(SceneRenderError::Graphics)
                 },
-            );
-            uploaded += 1;
+            )?;
+            uploaded += usize::from(created);
         }
         Ok(uploaded)
     }
@@ -238,28 +244,20 @@ impl SceneMeshRenderer {
             let revision = mesh_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            if self
-                .meshes
-                .get(&resource_id)
-                .is_some_and(|cached| cached.revision == revision)
-            {
-                continue;
-            }
-
-            let data = mesh_cache
-                .get(resource_id)
-                .ok_or(SceneRenderError::MissingCpuMesh { resource_id })?;
-            let gpu_mesh = graphics
-                .create_mesh(data)
-                .map_err(SceneRenderError::Graphics)?;
-            self.meshes.insert(
+            let created = sync_revisioned_gpu(
+                &mut self.meshes,
                 resource_id,
-                RevisionedGpu {
-                    revision,
-                    resource: gpu_mesh,
+                revision,
+                || {
+                    let data = mesh_cache
+                        .get(resource_id)
+                        .ok_or(SceneRenderError::MissingCpuMesh { resource_id })?;
+                    graphics
+                        .create_mesh(data)
+                        .map_err(SceneRenderError::Graphics)
                 },
-            );
-            uploaded += 1;
+            )?;
+            uploaded += usize::from(created);
         }
         Ok(uploaded)
     }
@@ -679,7 +677,11 @@ mod tests {
     use zyne_math::Transform3d;
     use zyne_scene::Scene;
 
-    use super::{collect_scene_mesh_instances, collect_scene_mesh_material_instances};
+    use super::{
+        collect_scene_mesh_instances, collect_scene_mesh_material_instances, sync_revisioned_gpu,
+        RevisionedGpu,
+    };
+    use std::collections::HashMap;
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
@@ -694,6 +696,84 @@ mod tests {
                 .unwrap(),
             )
             .unwrap();
+    }
+
+    #[test]
+    fn revisioned_gpu_sync_skips_upload_when_revision_is_unchanged() {
+        let id = ResourceId::new();
+        let mut cache = HashMap::from([(
+            id,
+            RevisionedGpu {
+                revision: 4,
+                resource: "existing",
+            },
+        )]);
+        let mut create_called = false;
+
+        let created = sync_revisioned_gpu(&mut cache, id, 4, || {
+            create_called = true;
+            Ok::<_, &'static str>("replacement")
+        })
+        .unwrap();
+
+        assert!(!created);
+        assert!(!create_called);
+        assert_eq!(cache.get(&id).unwrap().resource, "existing");
+        assert_eq!(cache.get(&id).unwrap().revision, 4);
+    }
+
+    #[test]
+    fn revisioned_gpu_sync_replaces_resource_when_revision_changes() {
+        let id = ResourceId::new();
+        let mut cache = HashMap::from([(
+            id,
+            RevisionedGpu {
+                revision: 4,
+                resource: "old",
+            },
+        )]);
+
+        let created = sync_revisioned_gpu(&mut cache, id, 5, || {
+            Ok::<_, &'static str>("new")
+        })
+        .unwrap();
+
+        assert!(created);
+        assert_eq!(cache.get(&id).unwrap().resource, "new");
+        assert_eq!(cache.get(&id).unwrap().revision, 5);
+    }
+
+    #[test]
+    fn revisioned_gpu_sync_preserves_old_resource_when_upload_fails() {
+        let id = ResourceId::new();
+        let mut cache = HashMap::from([(
+            id,
+            RevisionedGpu {
+                revision: 4,
+                resource: "valid-old-resource",
+            },
+        )]);
+
+        let result = sync_revisioned_gpu(&mut cache, id, 5, || {
+            Err::<&str, _>("simulated upload failure")
+        });
+
+        assert_eq!(result, Err("simulated upload failure"));
+        assert_eq!(cache.get(&id).unwrap().resource, "valid-old-resource");
+        assert_eq!(cache.get(&id).unwrap().revision, 4);
+    }
+
+    #[test]
+    fn revisioned_gpu_sync_keeps_cache_empty_when_first_upload_fails() {
+        let id = ResourceId::new();
+        let mut cache = HashMap::new();
+
+        let result = sync_revisioned_gpu(&mut cache, id, 1, || {
+            Err::<&str, _>("simulated upload failure")
+        });
+
+        assert_eq!(result, Err("simulated upload failure"));
+        assert!(!cache.contains_key(&id));
     }
 
     #[test]
