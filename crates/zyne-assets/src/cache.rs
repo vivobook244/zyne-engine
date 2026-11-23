@@ -500,6 +500,30 @@ mod tests {
     }
 
     #[test]
+    fn content_revision_advances_only_after_successful_load_and_survives_unload() {
+        let (registry, id) = registry_with_asset(ResourceKind::Mesh);
+        let mut cache = AssetCache::new(ResourceKind::Mesh);
+
+        assert_eq!(cache.revision(id), None);
+        cache.begin_loading(&registry, id).unwrap();
+        assert_eq!(cache.revision(id), Some(0));
+        cache.complete_loading(&registry, id, TestAsset("first")).unwrap();
+        assert_eq!(cache.revision(id), Some(1));
+
+        cache.unload(id).unwrap();
+        assert_eq!(cache.revision(id), Some(1));
+        assert_eq!(cache.get(id), None);
+
+        cache.begin_loading(&registry, id).unwrap();
+        cache.fail_loading(id, "simulated import failure").unwrap();
+        assert_eq!(cache.revision(id), Some(1));
+
+        cache.retry_loading(&registry, id).unwrap();
+        cache.complete_loading(&registry, id, TestAsset("second")).unwrap();
+        assert_eq!(cache.revision(id), Some(2));
+    }
+
+    #[test]
     fn rejects_unknown_resources_and_kind_mismatches() {
         let (registry, id) = registry_with_asset(ResourceKind::Texture);
         let cache = AssetCache::<TestAsset>::new(ResourceKind::Mesh);
