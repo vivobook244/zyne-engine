@@ -16,7 +16,7 @@ use zyne_scene::{Scene, SceneEntityId};
 
 use crate::{
     SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
-    resolve_scene_textures,
+    resolve_scene_texture_references,
 };
 
 /// Engine contract for applications that render a live ECS scene.
@@ -119,7 +119,7 @@ impl SceneMaterialRenderer {
         material_cache: &AssetCache<BlinnPhongMaterial>,
         texture_cache: &AssetCache<TextureData>,
     ) -> Result<usize, SceneRenderError> {
-        let report = resolve_scene_textures(scene, registry, material_cache, texture_cache);
+        let report = resolve_scene_texture_references(scene, registry, material_cache);
         if let Some(unresolved) = report.unresolved().first() {
             return Err(SceneRenderError::UnresolvedTexture {
                 entity_id: unresolved.entity_id(),
