@@ -63,13 +63,7 @@ fn sync_revisioned_gpu<T, E>(
     }
 
     let resource = create()?;
-    cache.insert(
-        resource_id,
-        RevisionedGpu {
-            revision,
-            resource,
-        },
-    );
+    cache.insert(resource_id, RevisionedGpu { revision, resource });
     Ok(true)
 }
 
@@ -128,12 +122,9 @@ impl SceneMaterialRenderer {
             let revision = material_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            let created = sync_revisioned_gpu(
-                &mut self.materials,
-                resource_id,
-                revision,
-                || Ok::<_, SceneRenderError>(graphics.create_material(&resolved.render_data())),
-            )?;
+            let created = sync_revisioned_gpu(&mut self.materials, resource_id, revision, || {
+                Ok::<_, SceneRenderError>(graphics.create_material(&resolved.render_data()))
+            })?;
             uploaded += usize::from(created);
         }
         Ok(uploaded)
@@ -170,23 +161,18 @@ impl SceneMaterialRenderer {
             let revision = texture_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            let created = sync_revisioned_gpu(
-                &mut self.textures,
-                resource_id,
-                revision,
-                || {
-                    let data = texture_cache
-                        .get(resource_id)
-                        .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
-                    let color_space = match data.color_space() {
-                        zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
-                        zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
-                    };
-                    graphics
-                        .create_texture(data.width(), data.height(), color_space, data.pixels())
-                        .map_err(SceneRenderError::Graphics)
-                },
-            )?;
+            let created = sync_revisioned_gpu(&mut self.textures, resource_id, revision, || {
+                let data = texture_cache
+                    .get(resource_id)
+                    .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
+                let color_space = match data.color_space() {
+                    zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
+                    zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
+                };
+                graphics
+                    .create_texture(data.width(), data.height(), color_space, data.pixels())
+                    .map_err(SceneRenderError::Graphics)
+            })?;
             uploaded += usize::from(created);
         }
         Ok(uploaded)
@@ -244,19 +230,14 @@ impl SceneMeshRenderer {
             let revision = mesh_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            let created = sync_revisioned_gpu(
-                &mut self.meshes,
-                resource_id,
-                revision,
-                || {
-                    let data = mesh_cache
-                        .get(resource_id)
-                        .ok_or(SceneRenderError::MissingCpuMesh { resource_id })?;
-                    graphics
-                        .create_mesh(data)
-                        .map_err(SceneRenderError::Graphics)
-                },
-            )?;
+            let created = sync_revisioned_gpu(&mut self.meshes, resource_id, revision, || {
+                let data = mesh_cache
+                    .get(resource_id)
+                    .ok_or(SceneRenderError::MissingCpuMesh { resource_id })?;
+                graphics
+                    .create_mesh(data)
+                    .map_err(SceneRenderError::Graphics)
+            })?;
             uploaded += usize::from(created);
         }
         Ok(uploaded)
@@ -678,8 +659,8 @@ mod tests {
     use zyne_scene::Scene;
 
     use super::{
-        collect_scene_mesh_instances, collect_scene_mesh_material_instances, sync_revisioned_gpu,
-        RevisionedGpu,
+        RevisionedGpu, collect_scene_mesh_instances, collect_scene_mesh_material_instances,
+        sync_revisioned_gpu,
     };
     use std::collections::HashMap;
 
@@ -733,10 +714,8 @@ mod tests {
             },
         )]);
 
-        let created = sync_revisioned_gpu(&mut cache, id, 5, || {
-            Ok::<_, &'static str>("new")
-        })
-        .unwrap();
+        let created =
+            sync_revisioned_gpu(&mut cache, id, 5, || Ok::<_, &'static str>("new")).unwrap();
 
         assert!(created);
         assert_eq!(cache.get(&id).unwrap().resource, "new");
