@@ -1,6 +1,6 @@
 //! Scene-to-GPU mesh synchronization and render extraction.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use zyne_assets::{AssetCache, AssetRegistry, BlinnPhongMaterial, ResourceKind, TextureData};
@@ -15,8 +15,7 @@ use zyne_math::Camera3d;
 use zyne_scene::{Scene, SceneEntityId};
 
 use crate::{
-    SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
-    resolve_scene_texture_references,
+    SceneMaterialResolutionIssue, SceneTextureResolutionIssue,
 };
 
 /// Engine contract for applications that render a live ECS scene.
@@ -103,28 +102,60 @@ impl SceneMaterialRenderer {
         registry: &AssetRegistry,
         material_cache: &AssetCache<BlinnPhongMaterial>,
     ) -> Result<usize, SceneRenderError> {
-        let report = resolve_scene_materials(scene, registry, material_cache);
-        if let Some(unresolved) = report.unresolved().first() {
-            return Err(SceneRenderError::UnresolvedMaterial {
-                entity_id: unresolved.entity_id(),
-                resource_id: unresolved.resource_id(),
-                issue: unresolved.issue(),
-            });
-        }
-
         let mut uploaded = 0;
-        for resolved in report.resolved() {
-            self.material_textures.insert(
-                resolved.resource_id(),
-                resolved.material().diffuse_texture(),
-            );
-            let resource_id = resolved.resource_id();
+        let mut synchronized = HashSet::new();
+        for entity_id in scene.entity_ids() {
+            let Some(resource_id) = scene.entity_material_reference(entity_id) else {
+                continue;
+            };
+            if !synchronized.insert(resource_id) {
+                continue;
+            }
+            let Some(metadata) = registry.find(resource_id) else {
+                return Err(SceneRenderError::UnresolvedMaterial {
+                    entity_id,
+                    resource_id,
+                    issue: SceneMaterialResolutionIssue::NotRegistered,
+                });
+            };
+            if metadata.kind() != ResourceKind::Material {
+                return Err(SceneRenderError::UnresolvedMaterial {
+                    entity_id,
+                    resource_id,
+                    issue: SceneMaterialResolutionIssue::WrongResourceKind {
+                        actual: metadata.kind(),
+                    },
+                });
+            }
             let revision = material_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
+            if self.materials.get(&resource_id)
+                .is_some_and(|cached| cached.revision == revision)
+            {
+                continue;
+            }
+
+            let material = material_cache.get(resource_id).ok_or(
+                SceneRenderError::UnresolvedMaterial {
+                    entity_id,
+                    resource_id,
+                    issue: SceneMaterialResolutionIssue::NotLoaded,
+                },
+            )?;
+            let diffuse_texture = material.diffuse_texture();
+            let render_data = zyne_graphics::MaterialData::new(
+                material.ambient(),
+                material.diffuse(),
+                material.specular(),
+                material.shininess(),
+            );
             let created = sync_revisioned_gpu(&mut self.materials, resource_id, revision, || {
-                Ok::<_, SceneRenderError>(graphics.create_material(&resolved.render_data()))
+                Ok::<_, SceneRenderError>(graphics.create_material(&render_data))
             })?;
+            if created {
+                self.material_textures.insert(resource_id, diffuse_texture);
+            }
             uploaded += usize::from(created);
         }
         Ok(uploaded)
@@ -145,19 +176,40 @@ impl SceneMaterialRenderer {
         material_cache: &AssetCache<BlinnPhongMaterial>,
         texture_cache: &AssetCache<TextureData>,
     ) -> Result<usize, SceneRenderError> {
-        let report = resolve_scene_texture_references(scene, registry, material_cache);
-        if let Some(unresolved) = report.unresolved().first() {
-            return Err(SceneRenderError::UnresolvedTexture {
-                entity_id: unresolved.entity_id(),
-                material_id: unresolved.material_id(),
-                resource_id: unresolved.texture_id(),
-                issue: unresolved.issue(),
-            });
+        let mut uploaded = 0;
+        let mut synchronized = HashSet::new();
+        let mut references = Vec::new();
+        for entity_id in scene.entity_ids() {
+            let Some(material_id) = scene.entity_material_reference(entity_id) else {
+                continue;
+            };
+            if let Some(Some(texture_id)) = self.material_textures.get(&material_id) {
+                references.push((entity_id, material_id, *texture_id));
+            }
         }
 
-        let mut uploaded = 0;
-        for resolved in report.resolved() {
-            let resource_id = resolved.texture_id();
+        for (entity_id, material_id, resource_id) in references {
+            if !synchronized.insert(resource_id) {
+                continue;
+            }
+            let Some(metadata) = registry.find(resource_id) else {
+                return Err(SceneRenderError::UnresolvedTexture {
+                    entity_id,
+                    material_id,
+                    resource_id,
+                    issue: SceneTextureResolutionIssue::NotRegistered,
+                });
+            };
+            if metadata.kind() != ResourceKind::Texture {
+                return Err(SceneRenderError::UnresolvedTexture {
+                    entity_id,
+                    material_id,
+                    resource_id,
+                    issue: SceneTextureResolutionIssue::WrongResourceKind {
+                        actual: metadata.kind(),
+                    },
+                });
+            }
             let revision = texture_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
