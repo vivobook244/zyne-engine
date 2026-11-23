@@ -173,7 +173,7 @@ impl SceneMaterialRenderer {
         graphics: &GraphicsContext,
         scene: &Scene,
         registry: &AssetRegistry,
-        material_cache: &AssetCache<BlinnPhongMaterial>,
+        _material_cache: &AssetCache<BlinnPhongMaterial>,
         texture_cache: &AssetCache<TextureData>,
     ) -> Result<usize, SceneRenderError> {
         let mut uploaded = 0;
