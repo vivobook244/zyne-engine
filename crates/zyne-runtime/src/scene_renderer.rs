@@ -132,14 +132,14 @@ impl SceneMaterialRenderer {
         let mut uploaded = 0;
         for resolved in report.resolved() {
             let resource_id = resolved.texture_id();
-            let data = texture_cache.get(resource_id).ok_or(
-                SceneRenderError::MissingCpuTexture { resource_id },
-            )?;
-            let color_space = match data.color_space() {
-                zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
-                zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
-            };
             let was_uploaded = ensure_cached_resource(&mut self.textures, resource_id, || {
+                let data = texture_cache
+                    .get(resource_id)
+                    .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
+                let color_space = match data.color_space() {
+                    zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
+                    zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
+                };
                 graphics
                     .create_texture(data.width(), data.height(), color_space, data.pixels())
                     .map_err(SceneRenderError::Graphics)
