@@ -659,8 +659,18 @@ mod tests {
         let material_id = ResourceId::new();
         let texture_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/gpu.ron");
-        register(&mut registry, texture_id, ResourceKind::Texture, "textures/gpu.png");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/gpu.ron",
+        );
+        register(
+            &mut registry,
+            texture_id,
+            ResourceKind::Texture,
+            "textures/gpu.png",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let mut material = BlinnPhongMaterial::default();
@@ -668,11 +678,7 @@ mod tests {
         let mut materials = AssetCache::new_material();
         load_material(&registry, &mut materials, material_id, material);
 
-        let report = resolve_scene_texture_references(
-            &scene,
-            &registry,
-            &materials,
-        );
+        let report = resolve_scene_texture_references(&scene, &registry, &materials);
 
         assert!(report.is_complete());
         assert_eq!(report.resolved().len(), 1);
@@ -686,7 +692,12 @@ mod tests {
         let material_id = ResourceId::new();
         let texture_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
-        register(&mut registry, material_id, ResourceKind::Material, "materials/ref.ron");
+        register(
+            &mut registry,
+            material_id,
+            ResourceKind::Material,
+            "materials/ref.ron",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let mut material = BlinnPhongMaterial::default();
@@ -712,7 +723,12 @@ mod tests {
         let mesh_id = ResourceId::new();
         let mut registry = AssetRegistry::new();
         register(&mut registry, material_id, ResourceKind::Material, "materials/ref.ron");
-        register(&mut registry, mesh_id, ResourceKind::Mesh, "meshes/not-texture.mesh");
+        register(
+            &mut registry,
+            mesh_id,
+            ResourceKind::Mesh,
+            "meshes/not-texture.mesh",
+        );
         scene.set_entity_material_reference(entity, Some(material_id));
 
         let mut material = BlinnPhongMaterial::default();
