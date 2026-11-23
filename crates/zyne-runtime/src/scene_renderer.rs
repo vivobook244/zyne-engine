@@ -131,30 +131,27 @@ impl SceneMaterialRenderer {
 
         let mut uploaded = 0;
         for resolved in report.resolved() {
-            if self.textures.contains_key(&resolved.texture_id()) {
-                continue;
-            }
-            let data = texture_cache.get(resolved.texture_id()).ok_or(
-                SceneRenderError::MissingCpuTexture {
-                    resource_id: resolved.texture_id(),
-                },
+            let resource_id = resolved.texture_id();
+            let data = texture_cache.get(resource_id).ok_or(
+                SceneRenderError::MissingCpuTexture { resource_id },
             )?;
             let color_space = match data.color_space() {
                 zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
                 zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
             };
-            let texture = graphics
-                .create_texture(data.width(), data.height(), color_space, data.pixels())
-                .map_err(SceneRenderError::Graphics)?;
-            self.textures.insert(resolved.texture_id(), texture);
-            uploaded += 1;
+            let was_uploaded = ensure_cached_resource(&mut self.textures, resource_id, || {
+                graphics
+                    .create_texture(data.width(), data.height(), color_space, data.pixels())
+                    .map_err(SceneRenderError::Graphics)
+            })?;
+            uploaded += usize::from(was_uploaded);
         }
         Ok(uploaded)
     }
 
     /// Removes a GPU diffuse texture upload and returns whether one was resident.
     pub fn unload_texture(&mut self, resource_id: ResourceId) -> bool {
-        self.textures.remove(&resource_id).is_some()
+        remove_cached_resource(&mut self.textures, resource_id)
     }
 
     /// Removes a GPU material upload and returns whether one was resident.
@@ -375,6 +372,27 @@ impl SceneMeshRenderer {
             .render_frame_with_mesh_batches_and_lighting(camera, &batches, &lighting)
             .map_err(SceneRenderError::Graphics)
     }
+}
+
+fn ensure_cached_resource<T, E>(
+    cache: &mut HashMap<ResourceId, T>,
+    resource_id: ResourceId,
+    create: impl FnOnce() -> Result<T, E>,
+) -> Result<bool, E> {
+    if cache.contains_key(&resource_id) {
+        return Ok(false);
+    }
+
+    let resource = create()?;
+    cache.insert(resource_id, resource);
+    Ok(true)
+}
+
+fn remove_cached_resource<T>(
+    cache: &mut HashMap<ResourceId, T>,
+    resource_id: ResourceId,
+) -> bool {
+    cache.remove(&resource_id).is_some()
 }
 
 /// Errors produced while synchronizing or rendering scene meshes.
@@ -789,6 +807,74 @@ mod tests {
         assert_eq!(grouped.len(), 2);
         assert!(grouped.contains_key(&(mesh_id, Some(material_id), None)));
         assert!(grouped.contains_key(&(mesh_id, Some(material_id), Some(texture_id))));
+    }
+
+    #[test]
+    fn texture_cache_reuses_existing_resource_without_reuploading() {
+        use std::collections::HashMap;
+
+        use super::ensure_cached_resource;
+
+        let resource_id = ResourceId::new();
+        let mut cache = HashMap::new();
+        let mut uploads = 0;
+
+        assert!(ensure_cached_resource(&mut cache, resource_id, || {
+            uploads += 1;
+            Ok::<_, ()>("gpu-texture")
+        })
+        .unwrap());
+        assert!(!ensure_cached_resource(&mut cache, resource_id, || {
+            uploads += 1;
+            Ok::<_, ()>("duplicate-gpu-texture")
+        })
+        .unwrap());
+
+        assert_eq!(uploads, 1);
+        assert_eq!(cache.get(&resource_id), Some(&"gpu-texture"));
+    }
+
+    #[test]
+    fn texture_cache_does_not_store_failed_uploads() {
+        use std::collections::HashMap;
+
+        use super::ensure_cached_resource;
+
+        let resource_id = ResourceId::new();
+        let mut cache = HashMap::new();
+        let result = ensure_cached_resource(&mut cache, resource_id, || {
+            Err::<&str, _>("simulated GPU upload failure")
+        });
+
+        assert_eq!(result, Err("simulated GPU upload failure"));
+        assert!(!cache.contains_key(&resource_id));
+    }
+
+    #[test]
+    fn unloading_texture_cache_entry_allows_a_fresh_upload() {
+        use std::collections::HashMap;
+
+        use super::{ensure_cached_resource, remove_cached_resource};
+
+        let resource_id = ResourceId::new();
+        let mut cache = HashMap::new();
+        let mut uploads = 0;
+
+        assert!(ensure_cached_resource(&mut cache, resource_id, || {
+            uploads += 1;
+            Ok::<_, ()>(uploads)
+        })
+        .unwrap());
+        assert!(remove_cached_resource(&mut cache, resource_id));
+        assert!(!remove_cached_resource(&mut cache, resource_id));
+        assert!(ensure_cached_resource(&mut cache, resource_id, || {
+            uploads += 1;
+            Ok::<_, ()>(uploads)
+        })
+        .unwrap());
+
+        assert_eq!(uploads, 2);
+        assert_eq!(cache.get(&resource_id), Some(&2));
     }
 
     #[test]
