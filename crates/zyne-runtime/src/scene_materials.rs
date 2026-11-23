@@ -325,57 +325,6 @@ pub fn resolve_scene_textures(
     report
 }
 
-/// Resolves texture references using registry identity and kind only.
-///
-/// CPU payload availability is deliberately deferred to the GPU cache-miss
-/// path: a resident GPU texture remains usable after its CPU payload is unloaded.
-#[must_use]
-pub(crate) fn resolve_scene_texture_references(
-    scene: &Scene,
-    registry: &AssetRegistry,
-    material_cache: &AssetCache<BlinnPhongMaterial>,
-) -> SceneTextureResolutionReport {
-    let mut report = SceneTextureResolutionReport::default();
-
-    for entity_id in scene.entity_ids() {
-        let Some(material_id) = scene.entity_material_reference(entity_id) else {
-            continue;
-        };
-        let Some(material) = material_cache.get(material_id) else {
-            continue;
-        };
-        let Some(texture_id) = material.diffuse_texture() else {
-            continue;
-        };
-
-        let issue = match registry.find(texture_id) {
-            None => Some(SceneTextureResolutionIssue::NotRegistered),
-            Some(metadata) if metadata.kind() != ResourceKind::Texture => {
-                Some(SceneTextureResolutionIssue::WrongResourceKind {
-                    actual: metadata.kind(),
-                })
-            }
-            Some(_) => None,
-        };
-
-        if let Some(issue) = issue {
-            report.unresolved.push(UnresolvedSceneTexture {
-                entity_id,
-                material_id,
-                texture_id,
-                issue,
-            });
-        } else {
-            report.resolved.push(ResolvedSceneTexture {
-                entity: entity_id,
-                material: material_id,
-                texture: texture_id,
-            });
-        }
-    }
-
-    report
-}
 
 #[cfg(test)]
 mod tests {
@@ -389,7 +338,7 @@ mod tests {
 
     use super::{
         SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
-        resolve_scene_texture_references, resolve_scene_textures,
+        resolve_scene_textures,
     };
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
@@ -652,104 +601,5 @@ mod tests {
         assert_eq!(report.resolved(), []);
         assert_eq!(report.unresolved(), []);
     }
-    #[test]
-    fn reference_resolution_does_not_require_cpu_texture_payload() {
-        let mut scene = Scene::new("GPU Resident Texture").unwrap();
-        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
-        let material_id = ResourceId::new();
-        let texture_id = ResourceId::new();
-        let mut registry = AssetRegistry::new();
-        register(
-            &mut registry,
-            material_id,
-            ResourceKind::Material,
-            "materials/gpu.ron",
-        );
-        register(
-            &mut registry,
-            texture_id,
-            ResourceKind::Texture,
-            "textures/gpu.png",
-        );
-        scene.set_entity_material_reference(entity, Some(material_id));
 
-        let mut material = BlinnPhongMaterial::default();
-        material.set_diffuse_texture(Some(texture_id));
-        let mut materials = AssetCache::new_material();
-        load_material(&registry, &mut materials, material_id, material);
-
-        let report = resolve_scene_texture_references(&scene, &registry, &materials);
-
-        assert!(report.is_complete());
-        assert_eq!(report.resolved().len(), 1);
-        assert_eq!(report.resolved()[0].texture_id(), texture_id);
-    }
-
-    #[test]
-    fn reference_resolution_reports_unregistered_texture() {
-        let mut scene = Scene::new("Unregistered Texture").unwrap();
-        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
-        let material_id = ResourceId::new();
-        let texture_id = ResourceId::new();
-        let mut registry = AssetRegistry::new();
-        register(
-            &mut registry,
-            material_id,
-            ResourceKind::Material,
-            "materials/ref.ron",
-        );
-        scene.set_entity_material_reference(entity, Some(material_id));
-
-        let mut material = BlinnPhongMaterial::default();
-        material.set_diffuse_texture(Some(texture_id));
-        let mut materials = AssetCache::new_material();
-        load_material(&registry, &mut materials, material_id, material);
-
-        let report = resolve_scene_texture_references(&scene, &registry, &materials);
-
-        assert_eq!(report.resolved(), []);
-        assert_eq!(report.unresolved().len(), 1);
-        assert_eq!(
-            report.unresolved()[0].issue(),
-            SceneTextureResolutionIssue::NotRegistered
-        );
-    }
-
-    #[test]
-    fn reference_resolution_rejects_registered_non_texture_resources() {
-        let mut scene = Scene::new("Wrong Texture Kind").unwrap();
-        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
-        let material_id = ResourceId::new();
-        let mesh_id = ResourceId::new();
-        let mut registry = AssetRegistry::new();
-        register(
-            &mut registry,
-            material_id,
-            ResourceKind::Material,
-            "materials/ref.ron",
-        );
-        register(
-            &mut registry,
-            mesh_id,
-            ResourceKind::Mesh,
-            "meshes/not-texture.mesh",
-        );
-        scene.set_entity_material_reference(entity, Some(material_id));
-
-        let mut material = BlinnPhongMaterial::default();
-        material.set_diffuse_texture(Some(mesh_id));
-        let mut materials = AssetCache::new_material();
-        load_material(&registry, &mut materials, material_id, material);
-
-        let report = resolve_scene_texture_references(&scene, &registry, &materials);
-
-        assert_eq!(report.resolved(), []);
-        assert_eq!(report.unresolved().len(), 1);
-        assert_eq!(
-            report.unresolved()[0].issue(),
-            SceneTextureResolutionIssue::WrongResourceKind {
-                actual: ResourceKind::Mesh
-            }
-        );
-    }
 }
