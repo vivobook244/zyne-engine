@@ -425,20 +425,6 @@ impl SceneMeshRenderer {
     }
 }
 
-fn ensure_cached_resource<T, E>(
-    cache: &mut HashMap<ResourceId, T>,
-    resource_id: ResourceId,
-    create: impl FnOnce() -> Result<T, E>,
-) -> Result<bool, E> {
-    if cache.contains_key(&resource_id) {
-        return Ok(false);
-    }
-
-    let resource = create()?;
-    cache.insert(resource_id, resource);
-    Ok(true)
-}
-
 fn remove_cached_resource<T>(cache: &mut HashMap<ResourceId, T>, resource_id: ResourceId) -> bool {
     cache.remove(&resource_id).is_some()
 }
