@@ -325,7 +325,6 @@ pub fn resolve_scene_textures(
     report
 }
 
-
 #[cfg(test)]
 mod tests {
     use zyne_assets::{
@@ -601,5 +600,4 @@ mod tests {
         assert_eq!(report.resolved(), []);
         assert_eq!(report.unresolved(), []);
     }
-
 }
