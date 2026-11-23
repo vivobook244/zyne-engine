@@ -29,6 +29,7 @@ pub use scene_materials::{
     UnresolvedSceneMaterial, UnresolvedSceneTexture, resolve_scene_materials,
     resolve_scene_textures,
 };
+pub(crate) use scene_materials::resolve_scene_texture_references;
 pub use scene_renderer::{
     SceneEngine, SceneMaterialEngine, SceneMaterialRenderer, SceneMeshRenderer, SceneRenderError,
     SceneTextureEngine,
