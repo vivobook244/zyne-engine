@@ -852,6 +852,46 @@ mod tests {
     }
 
     #[test]
+    fn resident_gpu_texture_does_not_require_cpu_payload() {
+        use std::collections::HashMap;
+
+        use super::ensure_cached_resource;
+
+        let resource_id = ResourceId::new();
+        let mut cache = HashMap::from([(resource_id, "resident-gpu-texture")]);
+        let mut attempted_cpu_lookup = false;
+
+        let result = ensure_cached_resource(&mut cache, resource_id, || {
+            attempted_cpu_lookup = true;
+            Err::<&str, _>("CPU texture payload is unavailable")
+        });
+
+        assert_eq!(result, Ok(false));
+        assert!(!attempted_cpu_lookup);
+        assert_eq!(cache.get(&resource_id), Some(&"resident-gpu-texture"));
+    }
+
+    #[test]
+    fn missing_cpu_texture_on_gpu_cache_miss_does_not_insert_entry() {
+        use std::collections::HashMap;
+
+        use super::{SceneRenderError, ensure_cached_resource};
+
+        let resource_id = ResourceId::new();
+        let mut cache = HashMap::new();
+        let result = ensure_cached_resource(&mut cache, resource_id, || {
+            Err::<&str, _>(SceneRenderError::MissingCpuTexture { resource_id })
+        });
+
+        assert!(matches!(
+            result,
+            Err(SceneRenderError::MissingCpuTexture { resource_id: missing })
+                if missing == resource_id
+        ));
+        assert!(!cache.contains_key(&resource_id));
+    }
+
+    #[test]
     fn unloading_texture_cache_entry_allows_a_fresh_upload() {
         use std::collections::HashMap;
 
