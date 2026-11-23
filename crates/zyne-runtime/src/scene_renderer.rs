@@ -351,7 +351,7 @@ impl SceneMeshRenderer {
                         &mesh.resource,
                         transforms,
                         &texture.resource,
-                    ))
+                    )),
                     (None, None) => Ok(MeshRenderBatch::new(&mesh.resource, transforms)),
                 }
             })
