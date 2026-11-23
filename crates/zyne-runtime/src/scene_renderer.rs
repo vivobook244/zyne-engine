@@ -102,11 +102,21 @@ impl SceneMaterialRenderer {
             );
             let resource_id = resolved.resource_id();
             let revision = material_cache.revision(resource_id).unwrap_or(0);
-            if self.materials.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
+            if self
+                .materials
+                .get(&resource_id)
+                .is_some_and(|cached| cached.revision == revision)
+            {
                 continue;
             }
             let gpu_material = graphics.create_material(&resolved.render_data());
-            self.materials.insert(resource_id, RevisionedGpu { revision, resource: gpu_material });
+            self.materials.insert(
+                resource_id,
+                RevisionedGpu {
+                    revision,
+                    resource: gpu_material,
+                },
+            );
             uploaded += 1;
         }
         Ok(uploaded)
@@ -141,7 +151,11 @@ impl SceneMaterialRenderer {
         for resolved in report.resolved() {
             let resource_id = resolved.texture_id();
             let revision = texture_cache.revision(resource_id).unwrap_or(0);
-            if self.textures.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
+            if self
+                .textures
+                .get(&resource_id)
+                .is_some_and(|cached| cached.revision == revision)
+            {
                 continue;
             }
             let gpu_texture = {
@@ -156,7 +170,13 @@ impl SceneMaterialRenderer {
                     .create_texture(data.width(), data.height(), color_space, data.pixels())
                     .map_err(SceneRenderError::Graphics)?
             };
-            self.textures.insert(resource_id, RevisionedGpu { revision, resource: gpu_texture });
+            self.textures.insert(
+                resource_id,
+                RevisionedGpu {
+                    revision,
+                    resource: gpu_texture,
+                },
+            );
             uploaded += 1;
         }
         Ok(uploaded)
@@ -212,7 +232,11 @@ impl SceneMeshRenderer {
         let mut uploaded = 0;
         for (resource_id, _) in collect_scene_mesh_instances(scene, registry) {
             let revision = mesh_cache.revision(resource_id).unwrap_or(0);
-            if self.meshes.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
+            if self
+                .meshes
+                .get(&resource_id)
+                .is_some_and(|cached| cached.revision == revision)
+            {
                 continue;
             }
 
@@ -222,7 +246,13 @@ impl SceneMeshRenderer {
             let gpu_mesh = graphics
                 .create_mesh(data)
                 .map_err(SceneRenderError::Graphics)?;
-            self.meshes.insert(resource_id, RevisionedGpu { revision, resource: gpu_mesh });
+            self.meshes.insert(
+                resource_id,
+                RevisionedGpu {
+                    revision,
+                    resource: gpu_mesh,
+                },
+            );
             uploaded += 1;
         }
         Ok(uploaded)
@@ -306,15 +336,22 @@ impl SceneMeshRenderer {
                 match (material, texture) {
                     (Some(material), Some(texture)) => {
                         Ok(MeshRenderBatch::with_material_and_texture(
-                            &mesh.resource, transforms, &material.resource, &texture.resource,
+                            &mesh.resource,
+                            transforms,
+                            &material.resource,
+                            &texture.resource,
                         ))
                     }
-                    (Some(material), None) => {
-                        Ok(MeshRenderBatch::with_material(&mesh.resource, transforms, &material.resource))
-                    }
-                    (None, Some(texture)) => {
-                        Ok(MeshRenderBatch::with_texture(&mesh.resource, transforms, &texture.resource))
-                    }
+                    (Some(material), None) => Ok(MeshRenderBatch::with_material(
+                        &mesh.resource,
+                        transforms,
+                        &material.resource,
+                    )),
+                    (None, Some(texture)) => Ok(MeshRenderBatch::with_texture(
+                        &mesh.resource,
+                        transforms,
+                        &texture.resource,
+                    ))
                     (None, None) => Ok(MeshRenderBatch::new(&mesh.resource, transforms)),
                 }
             })
