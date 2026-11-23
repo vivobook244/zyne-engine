@@ -262,7 +262,7 @@ impl SceneTextureResolutionReport {
         &self.unresolved
     }
 
-    /// Returns true when every referenced diffuse texture is loaded and valid.
+    /// Returns true when every referenced diffuse texture is registered with the correct asset kind.
     #[must_use]
     pub fn is_complete(&self) -> bool {
         self.unresolved.is_empty()
@@ -389,7 +389,7 @@ mod tests {
 
     use super::{
         SceneMaterialResolutionIssue, SceneTextureResolutionIssue, resolve_scene_materials,
-        resolve_scene_textures,
+        resolve_scene_texture_references, resolve_scene_textures,
     };
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
@@ -653,3 +653,83 @@ mod tests {
         assert_eq!(report.unresolved(), []);
     }
 }
+    #[test]
+    fn reference_resolution_does_not_require_cpu_texture_payload() {
+        let mut scene = Scene::new("GPU Resident Texture").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/gpu.ron");
+        register(&mut registry, texture_id, ResourceKind::Texture, "textures/gpu.png");
+        scene.set_entity_material_reference(entity, Some(material_id));
+
+        let mut material = BlinnPhongMaterial::default();
+        material.set_diffuse_texture(Some(texture_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, material);
+
+        let report = resolve_scene_texture_references(
+            &scene,
+            &registry,
+            &materials,
+        );
+
+        assert!(report.is_complete());
+        assert_eq!(report.resolved().len(), 1);
+        assert_eq!(report.resolved()[0].texture_id(), texture_id);
+    }
+
+    #[test]
+    fn reference_resolution_reports_unregistered_texture() {
+        let mut scene = Scene::new("Unregistered Texture").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let texture_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/ref.ron");
+        scene.set_entity_material_reference(entity, Some(material_id));
+
+        let mut material = BlinnPhongMaterial::default();
+        material.set_diffuse_texture(Some(texture_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, material);
+
+        let report = resolve_scene_texture_references(&scene, &registry, &materials);
+
+        assert_eq!(report.resolved(), []);
+        assert_eq!(report.unresolved().len(), 1);
+        assert_eq!(
+            report.unresolved()[0].issue(),
+            SceneTextureResolutionIssue::NotRegistered
+        );
+    }
+
+    #[test]
+    fn reference_resolution_rejects_registered_non_texture_resources() {
+        let mut scene = Scene::new("Wrong Texture Kind").unwrap();
+        let entity = scene.spawn_entity("Prop", Transform3d::identity()).unwrap();
+        let material_id = ResourceId::new();
+        let mesh_id = ResourceId::new();
+        let mut registry = AssetRegistry::new();
+        register(&mut registry, material_id, ResourceKind::Material, "materials/ref.ron");
+        register(&mut registry, mesh_id, ResourceKind::Mesh, "meshes/not-texture.mesh");
+        scene.set_entity_material_reference(entity, Some(material_id));
+
+        let mut material = BlinnPhongMaterial::default();
+        material.set_diffuse_texture(Some(mesh_id));
+        let mut materials = AssetCache::new_material();
+        load_material(&registry, &mut materials, material_id, material);
+
+        let report = resolve_scene_texture_references(&scene, &registry, &materials);
+
+        assert_eq!(report.resolved(), []);
+        assert_eq!(report.unresolved().len(), 1);
+        assert_eq!(
+            report.unresolved()[0].issue(),
+            SceneTextureResolutionIssue::WrongResourceKind {
+                actual: ResourceKind::Mesh
+            }
+        );
+    }
+
