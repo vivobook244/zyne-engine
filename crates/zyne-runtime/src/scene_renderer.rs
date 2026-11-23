@@ -14,9 +14,7 @@ use zyne_graphics::{
 use zyne_math::Camera3d;
 use zyne_scene::{Scene, SceneEntityId};
 
-use crate::{
-    SceneMaterialResolutionIssue, SceneTextureResolutionIssue,
-};
+use crate::{SceneMaterialResolutionIssue, SceneTextureResolutionIssue};
 
 /// Engine contract for applications that render a live ECS scene.
 pub trait SceneEngine: Engine {
@@ -130,19 +128,22 @@ impl SceneMaterialRenderer {
             let revision = material_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            if self.materials.get(&resource_id)
+            if self
+                .materials
+                .get(&resource_id)
                 .is_some_and(|cached| cached.revision == revision)
             {
                 continue;
             }
 
-            let material = material_cache.get(resource_id).ok_or(
-                SceneRenderError::UnresolvedMaterial {
-                    entity_id,
-                    resource_id,
-                    issue: SceneMaterialResolutionIssue::NotLoaded,
-                },
-            )?;
+            let material =
+                material_cache
+                    .get(resource_id)
+                    .ok_or(SceneRenderError::UnresolvedMaterial {
+                        entity_id,
+                        resource_id,
+                        issue: SceneMaterialResolutionIssue::NotLoaded,
+                    })?;
             let diffuse_texture = material.diffuse_texture();
             let render_data = zyne_graphics::MaterialData::new(
                 material.ambient(),
