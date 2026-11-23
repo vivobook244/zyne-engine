@@ -43,17 +43,23 @@ pub trait SceneTextureEngine: SceneMaterialEngine {
     fn texture_cache(&self) -> &AssetCache<TextureData>;
 }
 
+/// GPU allocation paired with the CPU asset revision used to create it.
+struct RevisionedGpu<T> {
+    revision: u64,
+    resource: T,
+}
+
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMeshRenderer {
-    meshes: HashMap<ResourceId, GpuMesh>,
+    meshes: HashMap<ResourceId, RevisionedGpu<GpuMesh>>,
 }
 
 /// Owns GPU material uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMaterialRenderer {
-    materials: HashMap<ResourceId, GpuMaterial>,
-    textures: HashMap<ResourceId, GpuTexture>,
+    materials: HashMap<ResourceId, RevisionedGpu<GpuMaterial>>,
+    textures: HashMap<ResourceId, RevisionedGpu<GpuTexture>>,
     material_textures: HashMap<ResourceId, Option<ResourceId>>,
 }
 
@@ -94,11 +100,13 @@ impl SceneMaterialRenderer {
                 resolved.resource_id(),
                 resolved.material().diffuse_texture(),
             );
-            if self.materials.contains_key(&resolved.resource_id()) {
+            let resource_id = resolved.resource_id();
+            let revision = material_cache.revision(resource_id).unwrap_or(0);
+            if self.materials.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
                 continue;
             }
             let gpu_material = graphics.create_material(&resolved.render_data());
-            self.materials.insert(resolved.resource_id(), gpu_material);
+            self.materials.insert(resource_id, RevisionedGpu { revision, resource: gpu_material });
             uploaded += 1;
         }
         Ok(uploaded)
@@ -132,7 +140,11 @@ impl SceneMaterialRenderer {
         let mut uploaded = 0;
         for resolved in report.resolved() {
             let resource_id = resolved.texture_id();
-            let was_uploaded = ensure_cached_resource(&mut self.textures, resource_id, || {
+            let revision = texture_cache.revision(resource_id).unwrap_or(0);
+            if self.textures.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
+                continue;
+            }
+            let gpu_texture = {
                 let data = texture_cache
                     .get(resource_id)
                     .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
@@ -142,9 +154,10 @@ impl SceneMaterialRenderer {
                 };
                 graphics
                     .create_texture(data.width(), data.height(), color_space, data.pixels())
-                    .map_err(SceneRenderError::Graphics)
-            })?;
-            uploaded += usize::from(was_uploaded);
+                    .map_err(SceneRenderError::Graphics)?
+            };
+            self.textures.insert(resource_id, RevisionedGpu { revision, resource: gpu_texture });
+            uploaded += 1;
         }
         Ok(uploaded)
     }
@@ -198,7 +211,8 @@ impl SceneMeshRenderer {
     ) -> Result<usize, SceneRenderError> {
         let mut uploaded = 0;
         for (resource_id, _) in collect_scene_mesh_instances(scene, registry) {
-            if self.meshes.contains_key(&resource_id) {
+            let revision = mesh_cache.revision(resource_id).unwrap_or(0);
+            if self.meshes.get(&resource_id).is_some_and(|cached| cached.revision == revision) {
                 continue;
             }
 
@@ -208,7 +222,7 @@ impl SceneMeshRenderer {
             let gpu_mesh = graphics
                 .create_mesh(data)
                 .map_err(SceneRenderError::Graphics)?;
-            self.meshes.insert(resource_id, gpu_mesh);
+            self.meshes.insert(resource_id, RevisionedGpu { revision, resource: gpu_mesh });
             uploaded += 1;
         }
         Ok(uploaded)
@@ -292,16 +306,16 @@ impl SceneMeshRenderer {
                 match (material, texture) {
                     (Some(material), Some(texture)) => {
                         Ok(MeshRenderBatch::with_material_and_texture(
-                            mesh, transforms, material, texture,
+                            &mesh.resource, transforms, &material.resource, &texture.resource,
                         ))
                     }
                     (Some(material), None) => {
-                        Ok(MeshRenderBatch::with_material(mesh, transforms, material))
+                        Ok(MeshRenderBatch::with_material(&mesh.resource, transforms, &material.resource))
                     }
                     (None, Some(texture)) => {
-                        Ok(MeshRenderBatch::with_texture(mesh, transforms, texture))
+                        Ok(MeshRenderBatch::with_texture(&mesh.resource, transforms, &texture.resource))
                     }
-                    (None, None) => Ok(MeshRenderBatch::new(mesh, transforms)),
+                    (None, None) => Ok(MeshRenderBatch::new(&mesh.resource, transforms)),
                 }
             })
             .collect::<Result<_, SceneRenderError>>()?;
@@ -360,7 +374,7 @@ impl SceneMeshRenderer {
             .map(|(resource_id, transforms)| {
                 self.meshes
                     .get(resource_id)
-                    .map(|mesh| MeshRenderBatch::new(mesh, transforms))
+                    .map(|mesh| MeshRenderBatch::new(&mesh.resource, transforms))
                     .ok_or(SceneRenderError::MissingGpuMesh {
                         resource_id: *resource_id,
                     })
