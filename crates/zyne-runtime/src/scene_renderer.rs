@@ -101,7 +101,9 @@ impl SceneMaterialRenderer {
                 resolved.material().diffuse_texture(),
             );
             let resource_id = resolved.resource_id();
-            let revision = material_cache.revision(resource_id).unwrap_or(0);
+            let revision = material_cache
+                .revision(resource_id)
+                .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
             if self
                 .materials
                 .get(&resource_id)
@@ -150,7 +152,9 @@ impl SceneMaterialRenderer {
         let mut uploaded = 0;
         for resolved in report.resolved() {
             let resource_id = resolved.texture_id();
-            let revision = texture_cache.revision(resource_id).unwrap_or(0);
+            let revision = texture_cache
+                .revision(resource_id)
+                .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
             if self
                 .textures
                 .get(&resource_id)
@@ -231,7 +235,9 @@ impl SceneMeshRenderer {
     ) -> Result<usize, SceneRenderError> {
         let mut uploaded = 0;
         for (resource_id, _) in collect_scene_mesh_instances(scene, registry) {
-            let revision = mesh_cache.revision(resource_id).unwrap_or(0);
+            let revision = mesh_cache
+                .revision(resource_id)
+                .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
             if self
                 .meshes
                 .get(&resource_id)
@@ -434,6 +440,8 @@ fn remove_cached_resource<T>(cache: &mut HashMap<ResourceId, T>, resource_id: Re
 pub enum SceneRenderError {
     /// A referenced mesh is registered but its CPU cache value is not loaded.
     MissingCpuMesh { resource_id: ResourceId },
+    /// A referenced asset has no content revision in its typed CPU cache.
+    MissingAssetRevision { resource_id: ResourceId },
     /// A referenced mesh has not been uploaded to this renderer.
     MissingGpuMesh { resource_id: ResourceId },
     /// A scene material reference could not be resolved from the CPU asset cache.
@@ -468,6 +476,10 @@ impl fmt::Display for SceneRenderError {
                     "mesh asset {resource_id} is not loaded in the CPU cache"
                 )
             }
+            Self::MissingAssetRevision { resource_id } => write!(
+                formatter,
+                "asset {resource_id} has no content revision in its CPU cache"
+            ),
             Self::MissingGpuMesh { resource_id } => {
                 write!(
                     formatter,
@@ -513,6 +525,7 @@ impl std::error::Error for SceneRenderError {
         match self {
             Self::Graphics(error) => Some(error),
             Self::MissingCpuMesh { .. }
+            | Self::MissingAssetRevision { .. }
             | Self::MissingGpuMesh { .. }
             | Self::UnresolvedMaterial { .. }
             | Self::MissingGpuMaterial { .. }
