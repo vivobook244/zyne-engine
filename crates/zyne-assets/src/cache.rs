@@ -28,6 +28,7 @@ struct CacheEntry<T> {
     state: AssetState,
     handle: Option<Handle<T>>,
     failure_reason: Option<String>,
+    revision: u64,
 }
 
 /// A typed runtime cache for assets of one resource kind.
@@ -109,12 +110,14 @@ impl<T> AssetCache<T> {
             });
         }
 
+        let revision = self.entries.get(&id).map_or(0, |entry| entry.revision);
         self.entries.insert(
             id,
             CacheEntry {
                 state: AssetState::Loading,
                 handle: None,
                 failure_reason: None,
+                revision,
             },
         );
         Ok(())
@@ -145,6 +148,13 @@ impl<T> AssetCache<T> {
             });
         }
 
+        let next_revision = self
+            .entries
+            .get(&id)
+            .map_or(0, |entry| entry.revision)
+            .checked_add(1)
+            .ok_or(AssetCacheError::RevisionExhausted { id })?;
+
         let handle = match self.storage.insert(value) {
             Ok(handle) => handle,
             Err(error) => {
@@ -161,6 +171,7 @@ impl<T> AssetCache<T> {
             entry.state = AssetState::Loaded;
             entry.handle = Some(handle);
             entry.failure_reason = None;
+            entry.revision = next_revision;
         }
         Ok(handle)
     }
@@ -266,6 +277,16 @@ impl<T> AssetCache<T> {
             entry.failure_reason = None;
         }
         Ok(())
+    }
+
+    /// Returns the content revision for a resource known to this cache.
+    ///
+    /// The revision starts at zero and increments only after a successful
+    /// load. It is retained while the CPU payload is unloaded, allowing GPU
+    /// caches to keep a matching resident allocation until the next reload.
+    #[must_use]
+    pub fn revision(&self, id: ResourceId) -> Option<u64> {
+        self.entries.get(&id).map(|entry| entry.revision)
     }
 
     /// Returns the runtime handle for a loaded resource.
@@ -379,6 +400,8 @@ pub enum AssetCacheError {
     RuntimeValueMissing { id: ResourceId },
     /// A failure diagnostic must contain non-whitespace text.
     EmptyFailureReason,
+    /// The asset content revision counter cannot be incremented further.
+    RevisionExhausted { id: ResourceId },
     /// The underlying typed runtime storage could not allocate a slot.
     Storage(ResourceStorageError),
 }
@@ -413,6 +436,9 @@ impl fmt::Display for AssetCacheError {
             }
             Self::EmptyFailureReason => {
                 formatter.write_str("asset load failure reason must not be empty")
+            }
+            Self::RevisionExhausted { id } => {
+                write!(formatter, "asset content revision counter exhausted for {id}")
             }
             Self::Storage(error) => write!(formatter, "asset runtime storage failed: {error}"),
         }
