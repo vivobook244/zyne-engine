@@ -438,7 +438,10 @@ impl fmt::Display for AssetCacheError {
                 formatter.write_str("asset load failure reason must not be empty")
             }
             Self::RevisionExhausted { id } => {
-                write!(formatter, "asset content revision counter exhausted for {id}")
+                write!(
+                    formatter,
+                    "asset content revision counter exhausted for {id}"
+                )
             }
             Self::Storage(error) => write!(formatter, "asset runtime storage failed: {error}"),
         }
