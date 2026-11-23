@@ -23,7 +23,6 @@ pub use scene_assets::{
     resolve_scene_asset_statuses, validate_scene_asset_references,
 };
 pub use scene_loading::{LoadedScene, SceneAssetLoadError, load_scene_with_asset_diagnostics};
-pub(crate) use scene_materials::resolve_scene_texture_references;
 pub use scene_materials::{
     ResolvedSceneMaterial, ResolvedSceneTexture, SceneMaterialResolutionIssue,
     SceneMaterialResolutionReport, SceneTextureResolutionIssue, SceneTextureResolutionReport,
