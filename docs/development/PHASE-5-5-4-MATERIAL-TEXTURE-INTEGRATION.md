@@ -1,6 +1,6 @@
 # Phase 5.5.4 — Material Texture Integration
 
-**Status:** GPU TEXTURE UPLOAD + RUNTIME BINDING IMPLEMENTED; SHOWCASE / PHYSICAL GPU VALIDATION REMAINS | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
+**Status:** IMPLEMENTED; PHYSICAL GPU SHOWCASE PARTIALLY VALIDATED; FOCUSED GPU AUTOMATED TESTS AND FINAL REGRESSION ACCEPTANCE OPEN | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
 
 ## Audit findings
 
@@ -81,6 +81,18 @@ The current `main` branch was inspected before changing the renderer. The follow
 
 The graphics upload path, runtime texture cache, application synchronization path, per-draw binding, and textured showcase source are implemented. CI verifies compilation, formatting, Clippy, workspace tests/checks, and headless lifecycle smoke tests; it does not instantiate a physical GPU or visually inspect the showcase. Dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
 
+### Physical GPU showcase validation — 2026-11-24
+
+The user ran `cargo run -p zyne-runtime --example material_showcase` on Linux. The runtime selected Intel UHD Graphics 610 (CFL GT1) through Vulkan (IntegratedGpu; Intel open-source Mesa driver). The supplied showcase screenshot and user confirmation establish:
+
+- Blue ceramic diffuse texture is visible.
+- Amber metal diffuse texture is visible.
+- The checker fallback material remains visible.
+- Resizing the application window changes the viewport with the window; the textures remain intact and visually unchanged.
+- The process exits normally. Vulkan loader warnings about an optional DRM extension and unavailable Khronos validation layer did not prevent device initialization or rendering.
+
+This proves physical-GPU texture sampling, fallback presentation, and resize stability. It does not prove shared GPU allocation reuse, explicit unload behavior, failed replacement preservation, or every HDR/ACES/lighting/shadow regression criterion. Exposure control was physically validated during Phase 5.5.3 and is not reopened by this resize test.
+
 ### Runtime cache lifecycle audit — 2026-11-24
 
 The runtime cache lifecycle was tightened after reviewing revision-aware GPU synchronization:
@@ -97,20 +109,21 @@ CI #670 passed on Ubuntu and Windows for commit `30ef5ed`. The workspace test su
 ## Remaining integration work
 
 1. Add focused automated coverage for GPU texture upload validation, cache reuse/unload, fallback selection, and per-batch binding. Existing CPU-side resolution tests and cross-platform CI pass, but they do not exercise an actual GPU texture allocation.
-2. Run `material_showcase` on a physical GPU and confirm the two diffuse textures are visibly sampled while HDR, ACES, exposure, lighting, and directional shadows remain visually correct.
+2. Complete a deliberate physical-GPU regression review of HDR output, ACES tone mapping, lighting, and directional shadows. Exposure control was already physically validated during Phase 5.5.3; do not repeat it without a specific regression reason.
 
 ## Acceptance criteria
 
-- [ ] A material with a valid diffuse texture ResourceId visibly samples that texture in the scene.
-- [ ] A material without a diffuse texture uses the documented fallback and renders as before.
+- [x] A material with a valid diffuse texture ResourceId visibly samples that texture in the scene (physical GPU showcase, 2026-11-24).
+- [x] A material without a diffuse texture uses the documented checker fallback in the physical GPU showcase (2026-11-24).
 - [ ] Multiple materials can reference the same texture without duplicate GPU uploads.
 - [ ] Missing or unresolved texture references produce a typed, actionable runtime error rather than silently binding an unrelated texture.
 - [ ] Texture and material resources are released through explicit unload paths.
-- [ ] HDR output, ACES tone mapping, exposure controls, lighting, and directional shadows remain functional.
+- [ ] HDR output, ACES tone mapping, lighting, and directional shadows pass a deliberate physical-GPU regression review. Exposure control was previously physically validated in Phase 5.5.3.
 - [ ] Automated tests cover resource resolution, reuse, fallback, and invalid input.
 - [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
 - [ ] Dedicated automated tests exercise GPU texture allocation, cache reuse, fallback, and per-draw binding.
-- [ ] Physical-GPU showcase validation confirms textured materials and regression checks.
+- [x] Physical-GPU showcase confirms blue/amber texture sampling, checker fallback, and resize stability (2026-11-24).
+- [ ] Physical-GPU regression review confirms HDR, ACES, lighting, and directional shadows remain correct.
 
 ## Explicit non-goals
 
