@@ -16,7 +16,7 @@ The initial visual target is the atmosphere and gameplay presentation of classic
 
 ## Status
 
-**Phase 5.5.1 — HDR Foundation** is the current implementation milestone. ZYNE now renders the forward Blinn–Phong scene into a linear RGBA16-float target before a dedicated presentation pass. Tone mapping and exposure control remain the next steps. See the [roadmap](docs/ROADMAP.md), [Phase 5.5.1 tracker](docs/development/PHASE-5-5-1-HDR-FOUNDATION.md), [architecture overview](docs/architecture/OVERVIEW.md), [lighting guide](docs/architecture/LIGHTING.md), [math conventions](docs/architecture/MATH.md), [configuration reference](docs/CONFIGURATION.md), and [versioning policy](docs/VERSIONING.md).
+**Phase 5.5.4 — Material Texture Integration** is the current implementation milestone. CPU texture validation, glTF image normalization, runtime resolution, GPU upload/binding, and cache lifecycle reconciliation are implemented. The material showcase has been visually verified on Intel UHD Graphics 610: blue ceramic and amber diffuse textures render, checker fallback remains visible, and viewport resizing preserves the textures. Focused automated coverage for actual GPU allocation, cache reuse, fallback, and per-draw binding remains open. See the [roadmap](docs/ROADMAP.md), [Phase 5.5.4 tracker](docs/development/PHASE-5-5-4-MATERIAL-TEXTURE-INTEGRATION.md), [architecture overview](docs/architecture/OVERVIEW.md), [lighting guide](docs/architecture/LIGHTING.md), [math conventions](docs/architecture/MATH.md), [configuration reference](docs/CONFIGURATION.md), and [versioning policy](docs/VERSIONING.md).
 
 ## Development
 
