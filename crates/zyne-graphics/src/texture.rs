@@ -63,6 +63,8 @@ impl GpuTexture {
         &self.bind_group
     }
 
+    #[cfg(test)]
+    #[allow(clippy::used_underscore_binding)]
     const fn texture(&self) -> &wgpu::Texture {
         &self._texture
     }
