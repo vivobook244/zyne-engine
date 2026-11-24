@@ -53,7 +53,7 @@ This phase addresses that missing connection. It does not replace the current Bl
 - [x] Include texture identity in scene draw grouping so batches with different diffuse textures cannot share the wrong bind group.
 - [x] Add the `SceneTextureEngine` contract and `Application::run_scene_with_textures` synchronization path.
 - [x] Extend `material_showcase` with blue ceramic and amber metal diffuse patterns; retain the matte checker-fallback material, exposure controls, and shadow receiver.
-- [x] Run formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke tests on Ubuntu and Windows (GPU integration CI #619 passed; textured showcase CI #625 pending at documentation time).
+- [x] Run formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke tests on Ubuntu and Windows (CI #670 passed on Ubuntu and Windows; 234 tests passed per platform).
 
 ### GPU integration audit — 2026-11-21
 
@@ -80,6 +80,19 @@ The current `main` branch was inspected before changing the renderer. The follow
 ### Implementation boundary
 
 The graphics upload path, runtime texture cache, application synchronization path, per-draw binding, and textured showcase source are implemented. CI verifies compilation, formatting, Clippy, workspace tests/checks, and headless lifecycle smoke tests; it does not instantiate a physical GPU or visually inspect the showcase. Dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
+
+### Runtime cache lifecycle audit — 2026-11-24
+
+The runtime cache lifecycle was tightened after reviewing revision-aware GPU synchronization:
+
+- Mutable access through `AssetCache::get_mut` now changes the content revision, ensuring revision-aware GPU caches do not keep stale uploads after CPU-side edits.
+- Revisions are treated as opaque equality tokens. Mutable-access revision changes wrap at `u64::MAX` rather than saturating and leaving a stale GPU cache indistinguishable from the current CPU value.
+- `SceneMaterialRenderer::sync_materials` now reconciles material GPU allocations and material-to-texture mappings against material assignments in the active scene, and only prunes after all active materials synchronize successfully.
+- `SceneMaterialRenderer::sync_textures` derives a deduplicated set of texture references from active scene material assignments. Shared textures remain resident until their final active material reference disappears.
+- If material or texture resolution/upload fails, synchronization returns before cache reconciliation, preserving existing GPU allocations for a later retry.
+- Regression tests cover material reassignment, entity despawn, texture reassignment, shared texture retention, orphan cleanup, revision changes, revision wraparound, and preservation of the old GPU resource when a replacement upload fails.
+
+CI #670 passed on Ubuntu and Windows for commit `30ef5ed`. The workspace test suite reports 234 passing tests on each platform. These tests validate scene-reference reconciliation and cache contracts; they do not instantiate or visually inspect a physical GPU texture.
 
 ## Remaining integration work
 
