@@ -159,6 +159,13 @@ impl SceneMaterialRenderer {
             }
             uploaded += usize::from(created);
         }
+
+        // Drop GPU allocations and texture mappings for materials no longer
+        // assigned in the active scene. Do this only after every active
+        // material has synchronized successfully.
+        retain_active_resources(&mut self.materials, &synchronized);
+        retain_active_resources(&mut self.material_textures, &synchronized);
+
         Ok(uploaded)
     }
 
@@ -228,6 +235,12 @@ impl SceneMaterialRenderer {
             })?;
             uploaded += usize::from(created);
         }
+
+        // The set is deduplicated by texture ID, so a texture shared by
+        // multiple active materials remains resident until its final
+        // scene reference disappears.
+        retain_active_resources(&mut self.textures, &synchronized);
+
         Ok(uploaded)
     }
 
@@ -465,6 +478,13 @@ impl SceneMeshRenderer {
 
 fn remove_cached_resource<T>(cache: &mut HashMap<ResourceId, T>, resource_id: ResourceId) -> bool {
     cache.remove(&resource_id).is_some()
+}
+
+fn retain_active_resources<T>(
+    cache: &mut HashMap<ResourceId, T>,
+    active_resources: &HashSet<ResourceId>,
+) {
+    cache.retain(|resource_id, _| active_resources.contains(resource_id));
 }
 
 /// Errors produced while synchronizing or rendering scene meshes.
@@ -713,9 +733,9 @@ mod tests {
 
     use super::{
         RevisionedGpu, collect_scene_mesh_instances, collect_scene_mesh_material_instances,
-        sync_revisioned_gpu,
+        retain_active_resources, sync_revisioned_gpu,
     };
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     fn register(registry: &mut AssetRegistry, id: ResourceId, kind: ResourceKind, path: &str) {
         registry
@@ -730,6 +750,26 @@ mod tests {
                 .unwrap(),
             )
             .unwrap();
+    }
+
+    #[test]
+    fn active_resource_reconciliation_removes_only_unreferenced_entries() {
+        let retained = ResourceId::new();
+        let shared = ResourceId::new();
+        let stale = ResourceId::new();
+        let mut cache = HashMap::from([
+            (retained, "active material"),
+            (shared, "shared texture"),
+            (stale, "orphaned allocation"),
+        ]);
+        let active = HashSet::from([retained, shared]);
+
+        retain_active_resources(&mut cache, &active);
+
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get(&retained), Some(&"active material"));
+        assert_eq!(cache.get(&shared), Some(&"shared texture"));
+        assert!(!cache.contains_key(&stale));
     }
 
     #[test]
