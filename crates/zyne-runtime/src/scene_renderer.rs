@@ -102,10 +102,7 @@ impl SceneMaterialRenderer {
     ) -> Result<usize, SceneRenderError> {
         let mut uploaded = 0;
         let mut synchronized = HashSet::new();
-        for entity_id in scene.entity_ids() {
-            let Some(resource_id) = scene.entity_material_reference(entity_id) else {
-                continue;
-            };
+        for (entity_id, resource_id) in collect_scene_material_references(scene) {
             if !synchronized.insert(resource_id) {
                 continue;
             }
@@ -186,15 +183,7 @@ impl SceneMaterialRenderer {
     ) -> Result<usize, SceneRenderError> {
         let mut uploaded = 0;
         let mut synchronized = HashSet::new();
-        let mut references = Vec::new();
-        for entity_id in scene.entity_ids() {
-            let Some(material_id) = scene.entity_material_reference(entity_id) else {
-                continue;
-            };
-            if let Some(Some(texture_id)) = self.material_textures.get(&material_id) {
-                references.push((entity_id, material_id, *texture_id));
-            }
-        }
+        let references = collect_scene_texture_references(scene, &self.material_textures);
 
         for (entity_id, material_id, resource_id) in references {
             if !synchronized.insert(resource_id) {
@@ -476,6 +465,33 @@ impl SceneMeshRenderer {
     }
 }
 
+fn collect_scene_material_references(scene: &Scene) -> Vec<(SceneEntityId, ResourceId)> {
+    scene
+        .entity_ids()
+        .into_iter()
+        .filter_map(|entity_id| {
+            scene
+                .entity_material_reference(entity_id)
+                .map(|resource_id| (entity_id, resource_id))
+        })
+        .collect()
+}
+
+fn collect_scene_texture_references(
+    scene: &Scene,
+    material_textures: &HashMap<ResourceId, Option<ResourceId>>,
+) -> Vec<(SceneEntityId, ResourceId, ResourceId)> {
+    let mut seen = HashSet::new();
+    collect_scene_material_references(scene)
+        .into_iter()
+        .filter_map(|(entity_id, material_id)| {
+            let texture_id = material_textures.get(&material_id).copied().flatten()?;
+            seen.insert(texture_id)
+                .then_some((entity_id, material_id, texture_id))
+        })
+        .collect()
+}
+
 fn remove_cached_resource<T>(cache: &mut HashMap<ResourceId, T>, resource_id: ResourceId) -> bool {
     cache.remove(&resource_id).is_some()
 }
@@ -750,6 +766,124 @@ mod tests {
                 .unwrap(),
             )
             .unwrap();
+    }
+
+    #[test]
+    fn material_reconciliation_tracks_reassignment_and_entity_despawn() {
+        let mut scene = Scene::new("Material Cache Lifecycle").unwrap();
+        let first = scene
+            .spawn_entity("First", Transform3d::identity())
+            .unwrap();
+        let second = scene
+            .spawn_entity("Second", Transform3d::identity())
+            .unwrap();
+        let first_material = ResourceId::new();
+        let second_material = ResourceId::new();
+        let stale_material = ResourceId::new();
+        scene.set_entity_material_reference(first, Some(first_material));
+        scene.set_entity_material_reference(second, Some(second_material));
+
+        let mut cache = HashMap::from([
+            (first_material, "first"),
+            (second_material, "second"),
+            (stale_material, "stale"),
+        ]);
+        let active = collect_scene_material_references(&scene)
+            .into_iter()
+            .map(|(_, material_id)| material_id)
+            .collect();
+
+        retain_active_resources(&mut cache, &active);
+        assert_eq!(cache.len(), 2);
+        assert!(cache.contains_key(&first_material));
+        assert!(cache.contains_key(&second_material));
+        assert!(!cache.contains_key(&stale_material));
+
+        scene.set_entity_material_reference(first, None);
+        scene.despawn_entity(second);
+        let active = collect_scene_material_references(&scene)
+            .into_iter()
+            .map(|(_, material_id)| material_id)
+            .collect();
+        retain_active_resources(&mut cache, &active);
+
+        assert!(cache.is_empty());
+    }
+
+    #[test]
+    fn shared_texture_remains_until_its_final_active_material_reference_is_removed() {
+        let mut scene = Scene::new("Shared Texture Lifecycle").unwrap();
+        let first = scene
+            .spawn_entity("First", Transform3d::identity())
+            .unwrap();
+        let second = scene
+            .spawn_entity("Second", Transform3d::identity())
+            .unwrap();
+        let first_material = ResourceId::new();
+        let second_material = ResourceId::new();
+        let shared_texture = ResourceId::new();
+        let orphan_texture = ResourceId::new();
+        scene.set_entity_material_reference(first, Some(first_material));
+        scene.set_entity_material_reference(second, Some(second_material));
+
+        let material_textures = HashMap::from([
+            (first_material, Some(shared_texture)),
+            (second_material, Some(shared_texture)),
+        ]);
+        let mut textures = HashMap::from([
+            (shared_texture, "shared GPU texture"),
+            (orphan_texture, "orphan GPU texture"),
+        ]);
+
+        let active: HashSet<_> = collect_scene_texture_references(&scene, &material_textures)
+            .into_iter()
+            .map(|(_, _, texture_id)| texture_id)
+            .collect();
+        retain_active_resources(&mut textures, &active);
+        assert_eq!(textures.len(), 1);
+        assert!(textures.contains_key(&shared_texture));
+
+        scene.set_entity_material_reference(first, None);
+        let active: HashSet<_> = collect_scene_texture_references(&scene, &material_textures)
+            .into_iter()
+            .map(|(_, _, texture_id)| texture_id)
+            .collect();
+        assert_eq!(active, HashSet::from([shared_texture]));
+
+        scene.despawn_entity(second);
+        let active: HashSet<_> = collect_scene_texture_references(&scene, &material_textures)
+            .into_iter()
+            .map(|(_, _, texture_id)| texture_id)
+            .collect();
+        retain_active_resources(&mut textures, &active);
+        assert!(textures.is_empty());
+    }
+
+    #[test]
+    fn material_texture_reassignment_uses_only_the_current_scene_assignment() {
+        let mut scene = Scene::new("Texture Reassignment").unwrap();
+        let entity = scene
+            .spawn_entity("Textured", Transform3d::identity())
+            .unwrap();
+        let old_material = ResourceId::new();
+        let new_material = ResourceId::new();
+        let old_texture = ResourceId::new();
+        let new_texture = ResourceId::new();
+        scene.set_entity_material_reference(entity, Some(old_material));
+
+        let material_textures = HashMap::from([
+            (old_material, Some(old_texture)),
+            (new_material, Some(new_texture)),
+        ]);
+        let old_references = collect_scene_texture_references(&scene, &material_textures);
+        assert_eq!(old_references.len(), 1);
+        assert_eq!(old_references[0].2, old_texture);
+
+        scene.set_entity_material_reference(entity, Some(new_material));
+        let new_references = collect_scene_texture_references(&scene, &material_textures);
+        assert_eq!(new_references.len(), 1);
+        assert_eq!(new_references[0].1, new_material);
+        assert_eq!(new_references[0].2, new_texture);
     }
 
     #[test]
