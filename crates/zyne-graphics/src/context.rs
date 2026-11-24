@@ -36,6 +36,10 @@ const DEFAULT_CLEAR_COLOR: Color = Color {
     a: 1.0,
 };
 
+fn select_texture_binding<T>(texture: Option<&T>, fallback: &T) -> &T {
+    texture.unwrap_or(fallback)
+}
+
 /// Owns the GPU connection, presentation surface, and frame lifecycle.
 pub struct GraphicsContext {
     _instance: Instance,
@@ -512,9 +516,9 @@ impl GraphicsContext {
                 for (mesh, material, texture, instances) in &batch_ranges {
                     render_pass.set_bind_group(
                         1,
-                        texture.map_or_else(
-                            || self.cube_pipeline.texture_bind_group(),
-                            |value| value.bind_group(),
+                        select_texture_binding(
+                            texture.map(GpuTexture::bind_group),
+                            self.cube_pipeline.texture_bind_group(),
                         ),
                         &[],
                     );
@@ -815,6 +819,25 @@ mod tests {
             present_modes: vec![PresentMode::Immediate, PresentMode::Fifo],
             alpha_modes: vec![CompositeAlphaMode::Opaque, CompositeAlphaMode::Auto],
         }
+    }
+
+    #[test]
+    fn textured_batch_selects_its_texture_binding() {
+        let texture = "material texture bind group";
+        let fallback = "checker fallback bind group";
+
+        let selected = super::select_texture_binding(Some(&texture), &fallback);
+
+        assert_eq!(selected, &texture);
+    }
+
+    #[test]
+    fn untextured_batch_selects_checker_fallback_binding() {
+        let fallback = "checker fallback bind group";
+
+        let selected: &&str = super::select_texture_binding(None, &fallback);
+
+        assert_eq!(selected, &fallback);
     }
 
     #[test]
