@@ -305,9 +305,16 @@ impl<T> AssetCache<T> {
     }
 
     /// Returns a mutable reference to a loaded runtime value.
+    ///
+    /// The content revision advances whenever mutable access is granted, even
+    /// when the caller ultimately leaves the value unchanged. This conservative
+    /// invalidation ensures revision-aware GPU caches cannot miss CPU mutations.
     pub fn get_mut(&mut self, id: ResourceId) -> Option<&mut T> {
         let handle = self.handle(id)?;
-        self.storage.get_mut(handle)
+        let value = self.storage.get_mut(handle)?;
+        let entry = self.entries.get_mut(&id)?;
+        entry.revision = entry.revision.saturating_add(1);
+        Some(value)
     }
 
     /// Returns the most recent failure reason, if the resource failed.
@@ -527,6 +534,23 @@ mod tests {
         cache
             .complete_loading(&registry, id, TestAsset("second"))
             .unwrap();
+        assert_eq!(cache.revision(id), Some(2));
+    }
+
+    #[test]
+    fn mutable_access_advances_content_revision() {
+        let (registry, id) = registry_with_asset(ResourceKind::Mesh);
+        let mut cache = AssetCache::new(ResourceKind::Mesh);
+
+        cache.begin_loading(&registry, id).unwrap();
+        cache
+            .complete_loading(&registry, id, TestAsset("before"))
+            .unwrap();
+        assert_eq!(cache.revision(id), Some(1));
+
+        *cache.get_mut(id).unwrap() = TestAsset("after");
+
+        assert_eq!(cache.get(id), Some(&TestAsset("after")));
         assert_eq!(cache.revision(id), Some(2));
     }
 
