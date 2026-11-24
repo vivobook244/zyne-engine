@@ -3,6 +3,7 @@ use wgpu::util::DeviceExt;
 use zyne_math::{Camera3d, Transform3d};
 
 use crate::MaterialData;
+use crate::texture::create_texture_bind_group_layout;
 use crate::lighting::{
     DirectionalLightData, LightingData, MAX_DIRECTIONAL_LIGHTS, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS,
     PointLightData, SpotLightData,
@@ -843,6 +844,10 @@ impl CubePipeline {
         &self.checker_texture.bind_group
     }
 
+    pub(super) const fn texture_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.checker_texture.layout
+    }
+
     pub(super) fn create_texture_bind_group(
         &self,
         device: &wgpu::Device,
@@ -1143,27 +1148,7 @@ struct CheckerTexture {
 }
 
 fn create_checker_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> CheckerTexture {
-    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("ZYNE Texture Bind Group Layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                count: None,
-            },
-        ],
-    });
+    let layout = create_texture_bind_group_layout(device);
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ZYNE Embedded Checker Texture"),
         size: wgpu::Extent3d {

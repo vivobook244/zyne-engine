@@ -213,67 +213,15 @@ impl GraphicsContext {
         color_space: TextureColorSpace,
         pixels: &[u8],
     ) -> Result<GpuTexture, GraphicsError> {
-        let format = match color_space {
-            TextureColorSpace::Srgb => TextureFormat::Rgba8UnormSrgb,
-            TextureColorSpace::Linear => TextureFormat::Rgba8Unorm,
-        };
-        let bytes_per_row = crate::texture::validate_rgba8_upload(
+        crate::texture::create_gpu_texture(
+            &self.device,
+            &self.queue,
+            self.cube_pipeline.texture_layout(),
             width,
             height,
-            self.device.limits().max_texture_dimension_2d,
+            color_space,
             pixels,
-        )?;
-
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ZYNE Uploaded Diffuse Texture"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        self.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            pixels,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row),
-                rows_per_image: Some(height),
-            },
-            wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-        );
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("ZYNE Diffuse Texture Sampler"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-        let bind_group =
-            self.cube_pipeline
-                .create_texture_bind_group(&self.device, &view, &sampler);
-        Ok(GpuTexture::new(
-            texture, view, sampler, bind_group, width, height, format,
-        ))
+        )
     }
 
     /// Uploads renderer-facing material parameters for reuse across draws.
