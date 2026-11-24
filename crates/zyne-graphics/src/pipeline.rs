@@ -848,7 +848,6 @@ impl CubePipeline {
         &self.checker_texture.layout
     }
 
-
     pub(super) const fn lighting_bind_group(&self) -> &wgpu::BindGroup {
         &self.lighting_bind_group
     }
