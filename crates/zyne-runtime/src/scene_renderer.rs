@@ -1014,10 +1014,14 @@ mod tests {
         let mut cache = HashMap::new();
         let mut upload_count = 0;
 
-        let uploaded = sync_revisioned_resources(&mut cache, [(shared, 3), (shared, 3)], |_| {
-            upload_count += 1;
-            Ok::<_, &'static str>("shared GPU texture")
-        })
+        let uploaded = sync_revisioned_resources(
+            &mut cache,
+            [(shared, 3), (shared, 3)],
+            |_| {
+                upload_count += 1;
+                Ok::<_, &'static str>("shared GPU texture")
+            },
+        )
         .unwrap();
 
         assert_eq!(uploaded, 1);
@@ -1065,17 +1069,15 @@ mod tests {
         assert_eq!(uploaded, 1);
         assert_eq!(cache.len(), 1);
         assert_eq!(cache.get(&shared).unwrap().revision, 2);
-        assert_eq!(
-            cache.get(&shared).unwrap().resource,
-            "updated shared texture"
-        );
+        assert_eq!(cache.get(&shared).unwrap().resource, "updated shared texture");
         assert!(!cache.contains_key(&orphan));
 
-        let uploaded =
-            sync_revisioned_resources::<&str, &'static str>(&mut cache, std::iter::empty(), |_| {
-                unreachable!("no active texture should be uploaded")
-            })
-            .unwrap();
+        let uploaded = sync_revisioned_resources::<&str, &'static str>(
+            &mut cache,
+            std::iter::empty(),
+            |_| unreachable!("no active texture should be uploaded"),
+        )
+        .unwrap();
 
         assert_eq!(uploaded, 0);
         assert!(cache.is_empty());
@@ -1087,10 +1089,14 @@ mod tests {
         let mut cache = HashMap::new();
         let mut upload_count = 0;
 
-        let uploaded = sync_revisioned_resources(&mut cache, [(shared, 1), (shared, 1)], |_| {
-            upload_count += 1;
-            Ok::<_, &'static str>("one shared allocation")
-        })
+        let uploaded = sync_revisioned_resources(
+            &mut cache,
+            [(shared, 1), (shared, 1)],
+            |_| {
+                upload_count += 1;
+                Ok::<_, &'static str>("one shared allocation")
+            },
+        )
         .unwrap();
         assert_eq!(uploaded, 1);
         assert_eq!(cache.len(), 1);
@@ -1104,9 +1110,11 @@ mod tests {
         assert_eq!(cache.len(), 1);
         assert_eq!(upload_count, 1);
 
-        sync_revisioned_resources::<&str, &'static str>(&mut cache, std::iter::empty(), |_| {
-            unreachable!("no active texture should be uploaded")
-        })
+        sync_revisioned_resources::<&str, &'static str>(
+            &mut cache,
+            std::iter::empty(),
+            |_| unreachable!("no active texture should be uploaded"),
+        )
         .unwrap();
         assert!(cache.is_empty());
     }
@@ -1139,10 +1147,7 @@ mod tests {
         assert_eq!(result, Err("simulated GPU upload failure"));
         assert_eq!(cache.len(), 2);
         assert_eq!(cache.get(&retained).unwrap().revision, 4);
-        assert_eq!(
-            cache.get(&retained).unwrap().resource,
-            "valid old allocation"
-        );
+        assert_eq!(cache.get(&retained).unwrap().resource, "valid old allocation");
         assert!(cache.contains_key(&stale));
     }
 
