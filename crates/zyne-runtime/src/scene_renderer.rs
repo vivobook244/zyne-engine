@@ -748,7 +748,8 @@ mod tests {
     use zyne_scene::Scene;
 
     use super::{
-        RevisionedGpu, collect_scene_mesh_instances, collect_scene_mesh_material_instances,
+        RevisionedGpu, collect_scene_material_references, collect_scene_mesh_instances,
+        collect_scene_mesh_material_instances, collect_scene_texture_references,
         retain_active_resources, sync_revisioned_gpu,
     };
     use std::collections::{HashMap, HashSet};
