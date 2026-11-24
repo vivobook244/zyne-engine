@@ -201,7 +201,9 @@ pub(crate) fn create_gpu_texture(
             },
         ],
     });
-    Ok(GpuTexture::new(texture, view, sampler, bind_group, width, height, format))
+    Ok(GpuTexture::new(
+        texture, view, sampler, bind_group, width, height, format,
+    ))
 }
 
 #[cfg(test)]
@@ -264,43 +266,55 @@ mod tests {
 
     #[test]
     fn headless_gpu_upload_preserves_srgb_and_linear_rgba8_pixels() {
+        use super::{create_gpu_texture, create_texture_bind_group_layout};
         use std::sync::mpsc;
         use wgpu::{DeviceDescriptor, Instance, MapMode, PollType, RequestAdapterOptions};
-        use super::{create_gpu_texture, create_texture_bind_group_layout};
 
         pollster::block_on(async {
             let instance = Instance::default();
-            let adapter = match instance.request_adapter(&RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::LowPower,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            }).await {
+            let adapter = match instance
+                .request_adapter(&RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::LowPower,
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                })
+                .await
+            {
                 Ok(adapter) => adapter,
                 Err(error) => {
                     eprintln!("GPU TEST BLOCKED: no headless adapter available: {error}");
                     return;
                 }
             };
-            let (device, queue) = adapter.request_device(&DeviceDescriptor {
-                label: Some("ZYNE Headless Texture Test Device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::downlevel_defaults(),
-                ..Default::default()
-            }).await.expect("headless test device should initialize");
+            let (device, queue) = adapter
+                .request_device(&DeviceDescriptor {
+                    label: Some("ZYNE Headless Texture Test Device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::downlevel_defaults(),
+                    ..Default::default()
+                })
+                .await
+                .expect("headless test device should initialize");
             let layout = create_texture_bind_group_layout(&device);
             let width = 3_u32;
             let height = 2_u32;
             let pixels: [u8; 24] = [
-                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255,
-                10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255,
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 10, 20, 30, 255, 40, 50, 60, 255,
+                70, 80, 90, 255,
             ];
             for (space, expected_format) in [
-                (super::TextureColorSpace::Srgb, wgpu::TextureFormat::Rgba8UnormSrgb),
-                (super::TextureColorSpace::Linear, wgpu::TextureFormat::Rgba8Unorm),
+                (
+                    super::TextureColorSpace::Srgb,
+                    wgpu::TextureFormat::Rgba8UnormSrgb,
+                ),
+                (
+                    super::TextureColorSpace::Linear,
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
             ] {
-                let uploaded = create_gpu_texture(
-                    &device, &queue, &layout, width, height, space, &pixels,
-                ).expect("valid texture upload should succeed");
+                let uploaded =
+                    create_gpu_texture(&device, &queue, &layout, width, height, space, &pixels)
+                        .expect("valid texture upload should succeed");
                 assert_eq!(uploaded.width(), width);
                 assert_eq!(uploaded.height(), height);
                 assert_eq!(uploaded.format(), expected_format);
@@ -330,7 +344,11 @@ mod tests {
                             rows_per_image: Some(height),
                         },
                     },
-                    wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+                    wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
                 );
                 queue.submit([encoder.finish()]);
                 let slice = readback.slice(..);
@@ -338,8 +356,12 @@ mod tests {
                 slice.map_async(MapMode::Read, move |result| {
                     let _ = sender.send(result);
                 });
-                device.poll(PollType::Wait).expect("GPU readback should complete");
-                receiver.recv().expect("GPU map callback should run")
+                device
+                    .poll(PollType::Wait)
+                    .expect("GPU readback should complete");
+                receiver
+                    .recv()
+                    .expect("GPU map callback should run")
                     .expect("GPU readback buffer should map");
                 {
                     let mapped = slice.get_mapped_range();
