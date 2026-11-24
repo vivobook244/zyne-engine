@@ -64,6 +64,31 @@ fn sync_revisioned_gpu<T, E>(
     Ok(true)
 }
 
+/// Synchronizes a deduplicated set of revisioned GPU resources and prunes stale entries.
+///
+/// Cache reconciliation happens only after every required upload succeeds. If an
+/// upload fails, existing allocations remain available for a later retry.
+fn sync_revisioned_resources<T, E>(
+    cache: &mut HashMap<ResourceId, RevisionedGpu<T>>,
+    resources: impl IntoIterator<Item = (ResourceId, u64)>,
+    mut create: impl FnMut(ResourceId) -> Result<T, E>,
+) -> Result<usize, E> {
+    let mut active = HashSet::new();
+    let mut uploaded = 0;
+
+    for (resource_id, revision) in resources {
+        if !active.insert(resource_id) {
+            continue;
+        }
+        uploaded += usize::from(sync_revisioned_gpu(cache, resource_id, revision, || {
+            create(resource_id)
+        })?);
+    }
+
+    retain_active_resources(cache, &active);
+    Ok(uploaded)
+}
+
 /// Owns GPU mesh uploads referenced by a scene.
 #[derive(Default)]
 pub struct SceneMeshRenderer {
@@ -181,10 +206,12 @@ impl SceneMaterialRenderer {
         _material_cache: &AssetCache<BlinnPhongMaterial>,
         texture_cache: &AssetCache<TextureData>,
     ) -> Result<usize, SceneRenderError> {
-        let mut uploaded = 0;
-        let mut synchronized = HashSet::new();
         let references = collect_scene_texture_references(scene, &self.material_textures);
+        let mut synchronized = HashSet::new();
+        let mut required = Vec::new();
 
+        // Resolve the complete active set before mutating GPU residency. A
+        // missing reference therefore cannot prune otherwise valid allocations.
         for (entity_id, material_id, resource_id) in references {
             if !synchronized.insert(resource_id) {
                 continue;
@@ -210,27 +237,24 @@ impl SceneMaterialRenderer {
             let revision = texture_cache
                 .revision(resource_id)
                 .ok_or(SceneRenderError::MissingAssetRevision { resource_id })?;
-            let created = sync_revisioned_gpu(&mut self.textures, resource_id, revision, || {
-                let data = texture_cache
-                    .get(resource_id)
-                    .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
-                let color_space = match data.color_space() {
-                    zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
-                    zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
-                };
-                graphics
-                    .create_texture(data.width(), data.height(), color_space, data.pixels())
-                    .map_err(SceneRenderError::Graphics)
-            })?;
-            uploaded += usize::from(created);
+            if texture_cache.get(resource_id).is_none() {
+                return Err(SceneRenderError::MissingCpuTexture { resource_id });
+            }
+            required.push((resource_id, revision));
         }
 
-        // The set is deduplicated by texture ID, so a texture shared by
-        // multiple active materials remains resident until its final
-        // scene reference disappears.
-        retain_active_resources(&mut self.textures, &synchronized);
-
-        Ok(uploaded)
+        sync_revisioned_resources(&mut self.textures, required, |resource_id| {
+            let data = texture_cache
+                .get(resource_id)
+                .ok_or(SceneRenderError::MissingCpuTexture { resource_id })?;
+            let color_space = match data.color_space() {
+                zyne_assets::TextureColorSpace::Srgb => TextureColorSpace::Srgb,
+                zyne_assets::TextureColorSpace::Linear => TextureColorSpace::Linear,
+            };
+            graphics
+                .create_texture(data.width(), data.height(), color_space, data.pixels())
+                .map_err(SceneRenderError::Graphics)
+        })
     }
 
     /// Removes a GPU diffuse texture upload and returns whether one was resident.
@@ -750,7 +774,8 @@ mod tests {
     use super::{
         RevisionedGpu, collect_scene_material_references, collect_scene_mesh_instances,
         collect_scene_mesh_material_instances, collect_scene_texture_references,
-        retain_active_resources, sync_revisioned_gpu,
+        remove_cached_resource, retain_active_resources, sync_revisioned_gpu,
+        sync_revisioned_resources,
     };
     use std::collections::{HashMap, HashSet};
 
@@ -981,6 +1006,161 @@ mod tests {
 
         assert_eq!(result, Err("simulated upload failure"));
         assert!(!cache.contains_key(&id));
+    }
+
+    #[test]
+    fn texture_sync_deduplicates_shared_ids_and_reuses_unchanged_gpu_allocations() {
+        let shared = ResourceId::new();
+        let mut cache = HashMap::new();
+        let mut upload_count = 0;
+
+        let uploaded = sync_revisioned_resources(
+            &mut cache,
+            [(shared, 3), (shared, 3)],
+            |_| {
+                upload_count += 1;
+                Ok::<_, &'static str>("shared GPU texture")
+            },
+        )
+        .unwrap();
+
+        assert_eq!(uploaded, 1);
+        assert_eq!(upload_count, 1);
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.get(&shared).unwrap().revision, 3);
+
+        let uploaded = sync_revisioned_resources(&mut cache, [(shared, 3)], |_| {
+            upload_count += 1;
+            Ok::<_, &'static str>("unneeded replacement")
+        })
+        .unwrap();
+
+        assert_eq!(uploaded, 0);
+        assert_eq!(upload_count, 1);
+        assert_eq!(cache.get(&shared).unwrap().resource, "shared GPU texture");
+    }
+
+    #[test]
+    fn texture_sync_replaces_changed_revision_and_prunes_after_last_reference() {
+        let shared = ResourceId::new();
+        let orphan = ResourceId::new();
+        let mut cache = HashMap::from([
+            (
+                shared,
+                RevisionedGpu {
+                    revision: 1,
+                    resource: "old shared texture",
+                },
+            ),
+            (
+                orphan,
+                RevisionedGpu {
+                    revision: 1,
+                    resource: "orphan texture",
+                },
+            ),
+        ]);
+
+        let uploaded = sync_revisioned_resources(&mut cache, [(shared, 2)], |_| {
+            Ok::<_, &'static str>("updated shared texture")
+        })
+        .unwrap();
+
+        assert_eq!(uploaded, 1);
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.get(&shared).unwrap().revision, 2);
+        assert_eq!(cache.get(&shared).unwrap().resource, "updated shared texture");
+        assert!(!cache.contains_key(&orphan));
+
+        let uploaded = sync_revisioned_resources::<&str, &'static str>(
+            &mut cache,
+            std::iter::empty(),
+            |_| unreachable!("no active texture should be uploaded"),
+        )
+        .unwrap();
+
+        assert_eq!(uploaded, 0);
+        assert!(cache.is_empty());
+    }
+
+    #[test]
+    fn texture_sync_keeps_shared_allocation_until_final_reference_is_removed() {
+        let shared = ResourceId::new();
+        let mut cache = HashMap::new();
+        let mut upload_count = 0;
+
+        let uploaded = sync_revisioned_resources(
+            &mut cache,
+            [(shared, 1), (shared, 1)],
+            |_| {
+                upload_count += 1;
+                Ok::<_, &'static str>("one shared allocation")
+            },
+        )
+        .unwrap();
+        assert_eq!(uploaded, 1);
+        assert_eq!(cache.len(), 1);
+
+        let uploaded = sync_revisioned_resources(&mut cache, [(shared, 1)], |_| {
+            upload_count += 1;
+            Ok::<_, &'static str>("duplicate allocation")
+        })
+        .unwrap();
+        assert_eq!(uploaded, 0);
+        assert_eq!(cache.len(), 1);
+        assert_eq!(upload_count, 1);
+
+        sync_revisioned_resources::<&str, &'static str>(
+            &mut cache,
+            std::iter::empty(),
+            |_| unreachable!("no active texture should be uploaded"),
+        )
+        .unwrap();
+        assert!(cache.is_empty());
+    }
+
+    #[test]
+    fn texture_sync_failure_preserves_old_allocation_and_skips_pruning() {
+        let retained = ResourceId::new();
+        let stale = ResourceId::new();
+        let mut cache = HashMap::from([
+            (
+                retained,
+                RevisionedGpu {
+                    revision: 4,
+                    resource: "valid old allocation",
+                },
+            ),
+            (
+                stale,
+                RevisionedGpu {
+                    revision: 1,
+                    resource: "still resident until successful reconciliation",
+                },
+            ),
+        ]);
+
+        let result = sync_revisioned_resources(&mut cache, [(retained, 5)], |_| {
+            Err::<&str, _>("simulated GPU upload failure")
+        });
+
+        assert_eq!(result, Err("simulated GPU upload failure"));
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get(&retained).unwrap().revision, 4);
+        assert_eq!(cache.get(&retained).unwrap().resource, "valid old allocation");
+        assert!(cache.contains_key(&stale));
+    }
+
+    #[test]
+    fn explicit_texture_unload_removes_only_the_requested_gpu_allocation() {
+        let first = ResourceId::new();
+        let second = ResourceId::new();
+        let mut cache = HashMap::from([(first, "first"), (second, "second")]);
+
+        assert!(remove_cached_resource(&mut cache, first));
+        assert!(!remove_cached_resource(&mut cache, first));
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.get(&second), Some(&"second"));
     }
 
     #[test]
