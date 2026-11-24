@@ -549,7 +549,7 @@ mod tests {
         cache
             .complete_loading(&registry, id, TestAsset("before"))
             .unwrap();
-        cache.entries.get_mut(&id).unwrap().revision = `u64::MAX`;
+        cache.entries.get_mut(&id).unwrap().revision = u64::MAX;
 
         *cache.get_mut(id).unwrap() = TestAsset("after");
 
