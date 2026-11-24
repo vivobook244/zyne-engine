@@ -117,11 +117,17 @@ The production `SceneMaterialRenderer::sync_textures` path now delegates revisio
 - A failed replacement preserves the old resource and skips stale-entry pruning.
 - Explicit unload's shared removal primitive removes only the requested allocation.
 
-CI run `45363725557` passed on Ubuntu and Windows for commit `c2bbabd`; the locked workspace suite reports 240 passing tests per platform, with formatting, strict Clippy, workspace check, and headless lifecycle smoke also passing. These tests exercise the exact generic synchronization helper used by the production GPU cache, using sentinel resources to observe upload calls and cache identity. They prove cache orchestration and failure semantics, but do not count driver-level GPU allocations or visually inspect a bound texture.
+CI run `45363725557` passed on Ubuntu and Windows for commit `c2bbabd`; formatting, strict Clippy, locked workspace tests/checks, and headless lifecycle smoke all passed. These tests exercise the exact generic synchronization helper used by the production GPU cache, using sentinel resources to observe upload calls and cache identity. They prove cache orchestration and failure semantics, but do not count driver-level GPU allocations or visually inspect a bound texture.
 
+
+### Texture binding selection coverage — 2026-11-24
+
+The renderer now routes batch texture selection through a small production helper used immediately before setting bind group 1. Focused tests verify both branches: a textured batch selects its material texture bind group, while an untextured batch selects the renderer-owned checker fallback. This tests binding selection logic but is not a full surface-backed frame-render integration test.
+
+CI run `45364747525` (workflow run #688) passed on Ubuntu and Windows for commit `27e4d53`. Both jobs passed formatting, strict Clippy, workspace tests, workspace check, and the headless lifecycle smoke example. The run includes the two texture-binding selection tests and five texture-cache lifecycle tests. The earlier code commit `c2bbabd` also passed both CI platforms with the cache lifecycle tests.
 ## Remaining integration work
 
-1. Add focused fallback-selection and per-batch binding assertions, then add device-backed integration coverage for cache residency if a surface-independent runtime cache test boundary is introduced. Cache orchestration (deduplication, revision reuse/replacement, shared-reference retention, pruning, and failed-replacement safety) is covered by the production synchronization helper tests; actual GPU allocation and exact pixel readback are covered separately by the headless graphics test.
+1. Add a surface-backed or otherwise end-to-end per-draw binding test if a reliable test boundary can be introduced. Fallback-versus-material bind-group selection is now covered by tests of the production selection helper (CI #688); cache orchestration is covered by production synchronization helper tests; actual GPU allocation and exact pixel readback are covered separately by the headless graphics test.
 2. Complete a deliberate physical-GPU regression review of HDR output, ACES tone mapping, lighting, and directional shadows. Exposure control was already physically validated during Phase 5.5.3; do not repeat it without a specific regression reason.
 
 ## Acceptance criteria
@@ -135,7 +141,8 @@ CI run `45363725557` passed on Ubuntu and Windows for commit `c2bbabd`; the lock
 - [ ] Automated tests cover resource resolution, reuse, fallback, and invalid input.
 - [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
 - [x] Dedicated headless GPU test exercises sRGB/Linear texture allocation, renderer-compatible bind-group creation, and exact pixel readback (CI run `45355797688`, Ubuntu and Windows).
-- [ ] Dedicated automated tests exercise fallback selection and per-draw binding. Cache reuse, revision replacement, shared-reference lifetime, pruning, failed-replacement safety, and the unload removal primitive are covered by production-helper tests (CI run `45363725557`); device-level allocation counts remain unverified.
+- [x] Dedicated automated tests verify material texture versus checker-fallback bind-group selection through the production selection helper (CI run #688, Ubuntu and Windows).
+- [ ] A full per-draw frame-render integration test verifies the selected bind group is consumed by an encoded/rendered frame. Cache reuse, revision replacement, shared-reference lifetime, pruning, failed-replacement safety, and the unload removal primitive are covered by production-helper tests (CI run `45363725557`); device-level allocation counts remain unverified.
 - [x] Physical-GPU showcase confirms blue/amber texture sampling, checker fallback, and resize stability (2026-11-24).
 - [ ] Physical-GPU regression review confirms HDR, ACES, lighting, and directional shadows remain correct.
 

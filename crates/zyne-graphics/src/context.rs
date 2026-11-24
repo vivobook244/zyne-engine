@@ -36,7 +36,7 @@ const DEFAULT_CLEAR_COLOR: Color = Color {
     a: 1.0,
 };
 
-fn select_texture_binding<'a, T>(texture: Option<&'a T>, fallback: &'a T) -> &'a T {
+fn select_texture_binding<T>(texture: Option<&T>, fallback: &T) -> &T {
     texture.unwrap_or(fallback)
 }
 
