@@ -104,11 +104,11 @@ The runtime cache lifecycle was tightened after reviewing revision-aware GPU syn
 - If material or texture resolution/upload fails, synchronization returns before cache reconciliation, preserving existing GPU allocations for a later retry.
 - Regression tests cover material reassignment, entity despawn, texture reassignment, shared texture retention, orphan cleanup, revision changes, revision wraparound, and preservation of the old GPU resource when a replacement upload fails.
 
-CI #670 passed on Ubuntu and Windows for commit `30ef5ed`. The workspace test suite reports 234 passing tests on each platform. These tests validate scene-reference reconciliation and cache contracts; they do not instantiate or visually inspect a physical GPU texture.
+CI run `45355797688` passed on Ubuntu and Windows for commit `8f4e8c6`. The workspace test suite reports 235 passing tests on each platform. The new headless GPU test creates a real adapter/device, uploads both sRGB and Linear RGBA8 textures through the same production upload helper, creates the renderer-compatible bind group, copies texture pixels back to a mapped buffer, and verifies exact byte equality. This is automated GPU resource validation; it is not a visual rendering test and does not replace the physical-GPU showcase.
 
 ## Remaining integration work
 
-1. Add focused automated coverage for GPU texture upload validation, cache reuse/unload, fallback selection, and per-batch binding. Existing CPU-side resolution tests and cross-platform CI pass, but they do not exercise an actual GPU texture allocation.
+1. Extend automated GPU coverage to cache reuse/unload, fallback selection, and per-batch binding. Actual GPU texture allocation, sRGB/Linear format selection, bind-group creation, and exact pixel readback are now covered by the headless GPU test.
 2. Complete a deliberate physical-GPU regression review of HDR output, ACES tone mapping, lighting, and directional shadows. Exposure control was already physically validated during Phase 5.5.3; do not repeat it without a specific regression reason.
 
 ## Acceptance criteria
@@ -121,7 +121,8 @@ CI #670 passed on Ubuntu and Windows for commit `30ef5ed`. The workspace test su
 - [ ] HDR output, ACES tone mapping, lighting, and directional shadows pass a deliberate physical-GPU regression review. Exposure control was previously physically validated in Phase 5.5.3.
 - [ ] Automated tests cover resource resolution, reuse, fallback, and invalid input.
 - [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
-- [ ] Dedicated automated tests exercise GPU texture allocation, cache reuse, fallback, and per-draw binding.
+- [x] Dedicated headless GPU test exercises sRGB/Linear texture allocation, renderer-compatible bind-group creation, and exact pixel readback (CI run `45355797688`, Ubuntu and Windows).
+- [ ] Dedicated automated tests exercise GPU cache reuse, fallback selection, and per-draw binding.
 - [x] Physical-GPU showcase confirms blue/amber texture sampling, checker fallback, and resize stability (2026-11-24).
 - [ ] Physical-GPU regression review confirms HDR, ACES, lighting, and directional shadows remain correct.
 
