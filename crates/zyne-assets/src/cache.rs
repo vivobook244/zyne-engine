@@ -284,7 +284,7 @@ impl<T> AssetCache<T> {
     /// The revision starts at zero and changes after a successful load or
     /// mutable access. It is retained while the CPU payload is unloaded,
     /// allowing GPU caches to keep a matching resident allocation until reload.
-    /// Revisions are opaque change tokens and wrap after u64::MAX; consumers
+    /// Revisions are opaque change tokens and wrap after `u64::MAX`; consumers
     /// must compare for equality rather than depend on numeric ordering.
     #[must_use]
     pub fn revision(&self, id: ResourceId) -> Option<u64> {
@@ -311,7 +311,7 @@ impl<T> AssetCache<T> {
     /// The content revision changes whenever mutable access is granted, even
     /// when the caller ultimately leaves the value unchanged. This conservative
     /// invalidation ensures revision-aware GPU caches cannot miss CPU mutations.
-    /// Revisions are opaque equality tokens, so wrapping at u64::MAX is safe.
+    /// Revisions are opaque equality tokens, so wrapping at `u64::MAX` is safe.
     pub fn get_mut(&mut self, id: ResourceId) -> Option<&mut T> {
         let handle = self.handle(id)?;
         let value = self.storage.get_mut(handle)?;
@@ -549,7 +549,7 @@ mod tests {
         cache
             .complete_loading(&registry, id, TestAsset("before"))
             .unwrap();
-        cache.entries.get_mut(&id).unwrap().revision = u64::MAX;
+        cache.entries.get_mut(&id).unwrap().revision = `u64::MAX`;
 
         *cache.get_mut(id).unwrap() = TestAsset("after");
 
