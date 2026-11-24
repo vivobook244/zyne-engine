@@ -281,9 +281,11 @@ impl<T> AssetCache<T> {
 
     /// Returns the content revision for a resource known to this cache.
     ///
-    /// The revision starts at zero and increments only after a successful
-    /// load. It is retained while the CPU payload is unloaded, allowing GPU
-    /// caches to keep a matching resident allocation until the next reload.
+    /// The revision starts at zero and changes after a successful load or
+    /// mutable access. It is retained while the CPU payload is unloaded,
+    /// allowing GPU caches to keep a matching resident allocation until reload.
+    /// Revisions are opaque change tokens and wrap after u64::MAX; consumers
+    /// must compare for equality rather than depend on numeric ordering.
     #[must_use]
     pub fn revision(&self, id: ResourceId) -> Option<u64> {
         self.entries.get(&id).map(|entry| entry.revision)
@@ -306,14 +308,15 @@ impl<T> AssetCache<T> {
 
     /// Returns a mutable reference to a loaded runtime value.
     ///
-    /// The content revision advances whenever mutable access is granted, even
+    /// The content revision changes whenever mutable access is granted, even
     /// when the caller ultimately leaves the value unchanged. This conservative
     /// invalidation ensures revision-aware GPU caches cannot miss CPU mutations.
+    /// Revisions are opaque equality tokens, so wrapping at u64::MAX is safe.
     pub fn get_mut(&mut self, id: ResourceId) -> Option<&mut T> {
         let handle = self.handle(id)?;
         let value = self.storage.get_mut(handle)?;
         let entry = self.entries.get_mut(&id)?;
-        entry.revision = entry.revision.saturating_add(1);
+        entry.revision = entry.revision.wrapping_add(1);
         Some(value)
     }
 
@@ -535,6 +538,23 @@ mod tests {
             .complete_loading(&registry, id, TestAsset("second"))
             .unwrap();
         assert_eq!(cache.revision(id), Some(2));
+    }
+
+    #[test]
+    fn mutable_access_wraps_revision_without_reusing_the_current_token() {
+        let (registry, id) = registry_with_asset(ResourceKind::Mesh);
+        let mut cache = AssetCache::new(ResourceKind::Mesh);
+
+        cache.begin_loading(&registry, id).unwrap();
+        cache
+            .complete_loading(&registry, id, TestAsset("before"))
+            .unwrap();
+        cache.entries.get_mut(&id).unwrap().revision = u64::MAX;
+
+        *cache.get_mut(id).unwrap() = TestAsset("after");
+
+        assert_eq!(cache.get(id), Some(&TestAsset("after")));
+        assert_eq!(cache.revision(id), Some(0));
     }
 
     #[test]
