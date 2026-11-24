@@ -151,7 +151,11 @@ pub(crate) fn create_gpu_texture(
     )?;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ZYNE Uploaded Diffuse Texture"),
-        size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -174,7 +178,11 @@ pub(crate) fn create_gpu_texture(
             bytes_per_row: Some(bytes_per_row),
             rows_per_image: Some(height),
         },
-        wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -376,5 +384,4 @@ mod tests {
             }
         });
     }
-
 }
