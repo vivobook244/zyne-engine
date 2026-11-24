@@ -848,27 +848,6 @@ impl CubePipeline {
         &self.checker_texture.layout
     }
 
-    pub(super) fn create_texture_bind_group(
-        &self,
-        device: &wgpu::Device,
-        view: &wgpu::TextureView,
-        sampler: &wgpu::Sampler,
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ZYNE Uploaded Texture Bind Group"),
-            layout: &self.checker_texture.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(sampler),
-                },
-            ],
-        })
-    }
 
     pub(super) const fn lighting_bind_group(&self) -> &wgpu::BindGroup {
         &self.lighting_bind_group

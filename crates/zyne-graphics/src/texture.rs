@@ -62,6 +62,10 @@ impl GpuTexture {
     pub(crate) const fn bind_group(&self) -> &wgpu::BindGroup {
         &self.bind_group
     }
+
+    const fn texture(&self) -> &wgpu::Texture {
+        &self._texture
+    }
 }
 
 /// Validates tightly packed RGBA8 upload dimensions and returns the row stride.
@@ -273,6 +277,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn headless_gpu_upload_preserves_srgb_and_linear_rgba8_pixels() {
         use super::{create_gpu_texture, create_texture_bind_group_layout};
         use std::sync::mpsc;
@@ -339,7 +344,7 @@ mod tests {
                 });
                 encoder.copy_texture_to_buffer(
                     wgpu::TexelCopyTextureInfo {
-                        texture: &uploaded._texture,
+                        texture: uploaded.texture(),
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
                         aspect: wgpu::TextureAspect::All,
