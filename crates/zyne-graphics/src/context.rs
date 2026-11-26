@@ -1026,8 +1026,8 @@ mod tests {
                 .expect("headless scene readback should map");
             let center_pixel = {
                 let mapped = slice.get_mapped_range();
-                let offset = (HEIGHT as usize / 2) * bytes_per_row as usize
-                    + (WIDTH as usize / 2) * 4;
+                let offset =
+                    (HEIGHT as usize / 2) * bytes_per_row as usize + (WIDTH as usize / 2) * 4;
                 [
                     mapped[offset],
                     mapped[offset + 1],
