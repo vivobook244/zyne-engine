@@ -65,7 +65,12 @@ impl PresentationPipeline {
         });
         let exposure_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ZYNE Presentation Exposure Uniform"),
-            contents: bytemuck::cast_slice(&[0.0_f32, if surface_format.is_srgb() { 0.0 } else { 1.0 }, 0.0, 0.0]),
+            contents: bytemuck::cast_slice(&[
+                0.0_f32,
+                if surface_format.is_srgb() { 0.0 } else { 1.0 },
+                0.0,
+                0.0,
+            ]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -159,7 +164,12 @@ impl PresentationPipeline {
         queue.write_buffer(
             &self.exposure_buffer,
             0,
-            bytemuck::cast_slice(&[exposure_ev, if self.encode_srgb_in_shader { 1.0 } else { 0.0 }, 0.0, 0.0]),
+            bytemuck::cast_slice(&[
+                exposure_ev,
+                if self.encode_srgb_in_shader { 1.0 } else { 0.0 },
+                0.0,
+                0.0,
+            ]),
         );
     }
 
