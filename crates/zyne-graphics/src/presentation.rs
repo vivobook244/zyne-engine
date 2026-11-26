@@ -54,6 +54,7 @@ pub(super) struct PresentationPipeline {
     bind_group_layout: wgpu::BindGroupLayout,
     exposure_buffer: wgpu::Buffer,
     exposure_ev: f32,
+    encode_srgb_in_shader: bool,
 }
 
 impl PresentationPipeline {
@@ -64,7 +65,7 @@ impl PresentationPipeline {
         });
         let exposure_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ZYNE Presentation Exposure Uniform"),
-            contents: bytemuck::cast_slice(&[0.0_f32, 0.0, 0.0, 0.0]),
+            contents: bytemuck::cast_slice(&[0.0_f32, f32::from(!surface_format.is_srgb()), 0.0, 0.0]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -128,6 +129,7 @@ impl PresentationPipeline {
             bind_group_layout,
             exposure_buffer,
             exposure_ev: 0.0,
+            encode_srgb_in_shader: !surface_format.is_srgb(),
         }
     }
 
@@ -157,7 +159,7 @@ impl PresentationPipeline {
         queue.write_buffer(
             &self.exposure_buffer,
             0,
-            bytemuck::cast_slice(&[exposure_ev, 0.0_f32, 0.0, 0.0]),
+            bytemuck::cast_slice(&[exposure_ev, f32::from(self.encode_srgb_in_shader), 0.0, 0.0]),
         );
     }
 
