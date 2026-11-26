@@ -201,8 +201,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     );
     var result = base_color * material.ambient.rgb * lighting.ambient_color.rgb;
 
-    for (var i = 0u; i < lighting.counts.x; i = i + 1u) {
-        let light = lighting.directional_lights[i];
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        if i < lighting.counts.x {
+            let light = lighting.directional_lights[i];
         let light_direction = safe_normalize(-light.direction.xyz, normal);
         let direct_light = blinn_phong(
             base_color,
@@ -218,11 +219,13 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             result += direct_light * shadow_visibility(input.shadow_position, normal, light_direction);
         } else {
             result += direct_light;
+            }
         }
     }
 
-    for (var i = 0u; i < lighting.counts.y; i = i + 1u) {
-        let light = lighting.point_lights[i];
+    for (var i = 0u; i < 16u; i = i + 1u) {
+        if i < lighting.counts.y {
+            let light = lighting.point_lights[i];
         let to_light = light.position_range.xyz - input.world_position;
         let distance_squared = max(dot(to_light, to_light), 0.0001);
         let distance = sqrt(distance_squared);
@@ -238,11 +241,13 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             light.color_intensity.w * attenuation,
             material.specular.rgb,
             material.specular.w,
-        );
+            );
+        }
     }
 
-    for (var i = 0u; i < lighting.counts.z; i = i + 1u) {
-        let light = lighting.spot_lights[i];
+    for (var i = 0u; i < 8u; i = i + 1u) {
+        if i < lighting.counts.z {
+            let light = lighting.spot_lights[i];
         let from_light = input.world_position - light.position_range.xyz;
         let distance_squared = max(dot(from_light, from_light), 0.0001);
         let distance = sqrt(distance_squared);
@@ -272,7 +277,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
             light.color_intensity.w * attenuation * cone_factor,
             material.specular.rgb,
             material.specular.w,
-        );
+            );
+        }
     }
 
     return vec4<f32>(result, sampled_color.a);
