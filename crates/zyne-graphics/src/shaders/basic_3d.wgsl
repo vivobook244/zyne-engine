@@ -204,21 +204,21 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     for (var i = 0u; i < 4u; i = i + 1u) {
         if i < lighting.counts.x {
             let light = lighting.directional_lights[i];
-        let light_direction = safe_normalize(-light.direction.xyz, normal);
-        let direct_light = blinn_phong(
-            base_color,
-            normal,
-            view_direction,
-            light_direction,
-            light.color_intensity.rgb,
-            light.color_intensity.w,
-            material.specular.rgb,
-            material.specular.w,
-        );
-        if i == 0u {
-            result += direct_light * shadow_visibility(input.shadow_position, normal, light_direction);
-        } else {
-            result += direct_light;
+            let light_direction = safe_normalize(-light.direction.xyz, normal);
+            let direct_light = blinn_phong(
+                base_color,
+                normal,
+                view_direction,
+                light_direction,
+                light.color_intensity.rgb,
+                light.color_intensity.w,
+                material.specular.rgb,
+                material.specular.w,
+            );
+            if i == 0u {
+                result += direct_light * shadow_visibility(input.shadow_position, normal, light_direction);
+            } else {
+                result += direct_light;
             }
         }
     }
@@ -226,21 +226,21 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     for (var i = 0u; i < 16u; i = i + 1u) {
         if i < lighting.counts.y {
             let light = lighting.point_lights[i];
-        let to_light = light.position_range.xyz - input.world_position;
-        let distance_squared = max(dot(to_light, to_light), 0.0001);
-        let distance = sqrt(distance_squared);
-        let light_direction = safe_normalize(to_light, normal);
-        let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
-        let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
-        result += blinn_phong(
-            base_color,
-            normal,
-            view_direction,
-            light_direction,
-            light.color_intensity.rgb,
-            light.color_intensity.w * attenuation,
-            material.specular.rgb,
-            material.specular.w,
+            let to_light = light.position_range.xyz - input.world_position;
+            let distance_squared = max(dot(to_light, to_light), 0.0001);
+            let distance = sqrt(distance_squared);
+            let light_direction = safe_normalize(to_light, normal);
+            let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
+            let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
+            result += blinn_phong(
+                base_color,
+                normal,
+                view_direction,
+                light_direction,
+                light.color_intensity.rgb,
+                light.color_intensity.w * attenuation,
+                material.specular.rgb,
+                material.specular.w,
             );
         }
     }
@@ -248,35 +248,35 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     for (var i = 0u; i < 8u; i = i + 1u) {
         if i < lighting.counts.z {
             let light = lighting.spot_lights[i];
-        let from_light = input.world_position - light.position_range.xyz;
-        let distance_squared = max(dot(from_light, from_light), 0.0001);
-        let distance = sqrt(distance_squared);
-        let from_light_direction = safe_normalize(from_light, -light.direction_inner_cos.xyz);
-        let cone_cosine = dot(
-            safe_normalize(light.direction_inner_cos.xyz, vec3<f32>(0.0, 0.0, -1.0)),
-            from_light_direction,
-        );
-        var cone_factor = 0.0;
-        let inner_cosine = light.direction_inner_cos.w;
-        let outer_cosine = light.outer_cos_padding.x;
-        if inner_cosine - outer_cosine <= 1.0e-6 {
-            if cone_cosine >= inner_cosine {
-                cone_factor = 1.0;
+            let from_light = input.world_position - light.position_range.xyz;
+            let distance_squared = max(dot(from_light, from_light), 0.0001);
+            let distance = sqrt(distance_squared);
+            let from_light_direction = safe_normalize(from_light, -light.direction_inner_cos.xyz);
+            let cone_cosine = dot(
+                safe_normalize(light.direction_inner_cos.xyz, vec3<f32>(0.0, 0.0, -1.0)),
+                from_light_direction,
+            );
+            var cone_factor = 0.0;
+            let inner_cosine = light.direction_inner_cos.w;
+            let outer_cosine = light.outer_cos_padding.x;
+            if inner_cosine - outer_cosine <= 1.0e-6 {
+                if cone_cosine >= inner_cosine {
+                    cone_factor = 1.0;
+                }
+            } else {
+                cone_factor = smoothstep(outer_cosine, inner_cosine, cone_cosine);
             }
-        } else {
-            cone_factor = smoothstep(outer_cosine, inner_cosine, cone_cosine);
-        }
-        let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
-        let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
-        result += blinn_phong(
-            base_color,
-            normal,
-            view_direction,
-            -from_light_direction,
-            light.color_intensity.rgb,
-            light.color_intensity.w * attenuation * cone_factor,
-            material.specular.rgb,
-            material.specular.w,
+            let range_factor = max(1.0 - distance / light.position_range.w, 0.0);
+            let attenuation = range_factor * range_factor / max(distance_squared, 0.01);
+            result += blinn_phong(
+                base_color,
+                normal,
+                view_direction,
+                -from_light_direction,
+                light.color_intensity.rgb,
+                light.color_intensity.w * attenuation * cone_factor,
+                material.specular.rgb,
+                material.specular.w,
             );
         }
     }
