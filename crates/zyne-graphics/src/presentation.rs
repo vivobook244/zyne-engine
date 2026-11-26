@@ -184,7 +184,7 @@ impl PresentationPipeline {
 
 #[cfg(test)]
 mod tests {
-    use super::{HDR_FORMAT, MAX_EXPOSURE_EV, MIN_EXPOSURE_EV, is_valid_exposure_ev};
+    use super::{\n        HDR_FORMAT, MAX_EXPOSURE_EV, MIN_EXPOSURE_EV, PresentationPipeline, is_valid_exposure_ev,\n    };
 
     #[test]
     fn scene_target_uses_half_precision_floating_point_color() {
