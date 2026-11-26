@@ -840,6 +840,211 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
+    fn headless_scene_pass_renders_the_selected_material_texture() {
+        use std::sync::mpsc;
+        use wgpu::util::DeviceExt;
+        use wgpu::{DeviceDescriptor, Instance, MapMode, PollType, RequestAdapterOptions};
+        use zyne_math::{Camera3d, Transform3d};
+
+        use crate::mesh::{GpuMesh, MeshBounds, MeshRenderBatch, MeshVertex};
+        use crate::pipeline::CubePipeline;
+        use crate::texture::{TextureColorSpace, create_gpu_texture};
+
+        pollster::block_on(async {
+            let instance = Instance::default();
+            let adapter = match instance
+                .request_adapter(&RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::LowPower,
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                })
+                .await
+            {
+                Ok(adapter) => adapter,
+                Err(error) => {
+                    eprintln!("GPU TEST BLOCKED: no headless adapter available: {error}");
+                    return;
+                }
+            };
+            let (device, queue) = adapter
+                .request_device(&DeviceDescriptor {
+                    label: Some("ZYNE Headless Scene Render Test Device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::downlevel_defaults(),
+                    ..Default::default()
+                })
+                .await
+                .expect("headless render test device should initialize");
+
+            const WIDTH: u32 = 64;
+            const HEIGHT: u32 = 64;
+            let target_format = wgpu::TextureFormat::Rgba8Unorm;
+            let target = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("ZYNE Headless Scene Color Target"),
+                size: wgpu::Extent3d {
+                    width: WIDTH,
+                    height: HEIGHT,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: target_format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let target_view = target.create_view(&wgpu::TextureViewDescriptor::default());
+            let depth = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("ZYNE Headless Scene Depth Target"),
+                size: wgpu::Extent3d {
+                    width: WIDTH,
+                    height: HEIGHT,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: super::DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            });
+            let depth_view = depth.create_view(&wgpu::TextureViewDescriptor::default());
+
+            let mut pipeline = CubePipeline::new(&device, &queue, target_format);
+            let vertices = [
+                MeshVertex::new([-0.9, -0.9, 0.0], [1.0; 3], [0.0, 1.0], [0.0, 0.0, 1.0]),
+                MeshVertex::new([0.9, -0.9, 0.0], [1.0; 3], [1.0, 1.0], [0.0, 0.0, 1.0]),
+                MeshVertex::new([0.0, 0.9, 0.0], [1.0; 3], [0.5, 0.0], [0.0, 0.0, 1.0]),
+            ];
+            let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ZYNE Headless Triangle Vertices"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+            let indices = [0_u32, 1, 2];
+            let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ZYNE Headless Triangle Indices"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+            let mesh = GpuMesh::new(
+                vertex_buffer,
+                index_buffer,
+                3,
+                MeshBounds::new([-0.9, -0.9, 0.0], [0.9, 0.9, 0.0]),
+            );
+            let material_data = crate::MaterialData::new([1.0; 3], [1.0; 3], [0.0; 3], 16.0);
+            let (material_buffer, material_bind_group) =
+                pipeline.create_material_bind_group(&device, &material_data);
+            let material = crate::GpuMaterial::new(material_buffer, material_bind_group);
+            let texture = create_gpu_texture(
+                &device,
+                &queue,
+                pipeline.texture_layout(),
+                1,
+                1,
+                TextureColorSpace::Linear,
+                &[255, 0, 0, 255],
+            )
+            .expect("solid red test texture should upload");
+            let transforms = [Transform3d::identity()];
+            let batch =
+                MeshRenderBatch::with_material_and_texture(&mesh, &transforms, &material, &texture);
+            let camera = Camera3d::new(
+                [0.0, 0.0, 3.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                45.0_f32.to_radians(),
+                1.0,
+                0.1,
+                100.0,
+            )
+            .expect("headless test camera should be valid");
+            let lighting = crate::LightingData::with_ambient([1.0; 3]);
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ZYNE Headless Scene Render Encoder"),
+            });
+            super::encode_scene_passes(
+                &device,
+                &queue,
+                &mut pipeline,
+                &mut encoder,
+                &target_view,
+                &depth_view,
+                WIDTH,
+                HEIGHT,
+                Some(&camera),
+                None,
+                None,
+                Some(&[batch]),
+                Some(&lighting),
+            )
+            .expect("production scene passes should encode");
+
+            let bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+            let readback = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ZYNE Headless Scene Pixel Readback"),
+                size: u64::from(bytes_per_row) * u64::from(HEIGHT),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            encoder.copy_texture_to_buffer(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &target,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &readback,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(bytes_per_row),
+                        rows_per_image: Some(HEIGHT),
+                    },
+                },
+                wgpu::Extent3d {
+                    width: WIDTH,
+                    height: HEIGHT,
+                    depth_or_array_layers: 1,
+                },
+            );
+            queue.submit([encoder.finish()]);
+
+            let slice = readback.slice(..);
+            let (sender, receiver) = mpsc::channel();
+            slice.map_async(MapMode::Read, move |result| {
+                let _ = sender.send(result);
+            });
+            device
+                .poll(PollType::Wait)
+                .expect("headless scene render should complete");
+            receiver
+                .recv()
+                .expect("headless scene map callback should run")
+                .expect("headless scene readback should map");
+            let center_pixel = {
+                let mapped = slice.get_mapped_range();
+                let offset = (HEIGHT as usize / 2) * bytes_per_row as usize
+                    + (WIDTH as usize / 2) * 4;
+                [
+                    mapped[offset],
+                    mapped[offset + 1],
+                    mapped[offset + 2],
+                    mapped[offset + 3],
+                ]
+            };
+            readback.unmap();
+
+            assert!(
+                center_pixel[0] > 160 && center_pixel[1] < 32 && center_pixel[2] < 32,
+                "center pixel should contain the selected red diffuse texture, got {center_pixel:?}"
+            );
+        });
+    }
+
+    #[test]
     fn textured_batch_selects_its_texture_binding() {
         let texture = "material texture bind group";
         let fallback = "checker fallback bind group";
