@@ -213,7 +213,8 @@ mod tests {
         use wgpu::{
             Color, DeviceDescriptor, Instance, LoadOp, MapMode, Operations, PollType,
             RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp,
-            TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,\n            TextureViewDescriptor,
+            TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+            TextureViewDescriptor,
         };
 
         const WIDTH: u32 = 1;
