@@ -315,10 +315,9 @@ mod tests {
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                     mapped_at_creation: false,
                 });
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("ZYNE Presentation Render Encoder"),
-                    });
+                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("ZYNE Presentation Render Encoder"),
+                });
                 {
                     let attachments = [Some(RenderPassColorAttachment {
                         view: &output_view,
