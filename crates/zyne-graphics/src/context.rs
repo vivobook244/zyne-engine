@@ -644,6 +644,183 @@ fn build_surface_configuration(
     })
 }
 
+/// Encodes the shared shadow and HDR scene passes for windowed and headless rendering.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+fn encode_scene_passes(
+    device: &Device,
+    queue: &Queue,
+    cube_pipeline: &mut CubePipeline,
+    encoder: &mut wgpu::CommandEncoder,
+    hdr_view: &wgpu::TextureView,
+    depth_view: &wgpu::TextureView,
+    width: u32,
+    height: u32,
+    camera: Option<&Camera3d>,
+    transforms: Option<&[Transform3d]>,
+    mesh: Option<&GpuMesh>,
+    mesh_batches: Option<&[MeshRenderBatch<'_>]>,
+    lighting: Option<&LightingData>,
+) -> Result<(), GraphicsError> {
+    cube_pipeline.update_camera(queue, width, height, camera);
+    cube_pipeline.update_lighting(queue, lighting);
+
+    let batch_transforms = mesh_batches.map(|batches| {
+        batches
+            .iter()
+            .flat_map(|batch| batch.transforms().iter().copied())
+            .collect::<Vec<_>>()
+    });
+    let frame_transforms = batch_transforms.as_deref().or(transforms);
+    let shadow_bounds = if let Some(batches) = mesh_batches {
+        let mut bounds = None;
+        for batch in batches {
+            merge_transformed_bounds(&mut bounds, batch.mesh().bounds(), batch.transforms());
+        }
+        bounds
+    } else if let Some(mesh) = mesh {
+        let mut bounds = None;
+        merge_transformed_bounds(&mut bounds, mesh.bounds(), frame_transforms.unwrap_or(&[]));
+        bounds
+    } else {
+        let cube_bounds = MeshBounds::new([-0.7; 3], [0.7; 3]);
+        let mut bounds = None;
+        if let Some(transforms) = frame_transforms {
+            merge_transformed_bounds(&mut bounds, cube_bounds, transforms);
+        } else {
+            bounds = Some(cube_bounds);
+        }
+        bounds
+    };
+    cube_pipeline.update_shadow_camera(queue, lighting, shadow_bounds);
+    let instance_count = cube_pipeline.update_instances(device, queue, frame_transforms)?;
+
+    let mut batch_ranges = Vec::new();
+    if let Some(batches) = mesh_batches {
+        let mut first_instance = 0_u32;
+        for batch in batches {
+            let count = u32::try_from(batch.transforms().len())
+                .map_err(|_| GraphicsError::TooManyInstances)?;
+            let end_instance = first_instance
+                .checked_add(count)
+                .ok_or(GraphicsError::TooManyInstances)?;
+            if count > 0 {
+                batch_ranges.push((
+                    batch.mesh(),
+                    batch.material(),
+                    batch.texture(),
+                    first_instance..end_instance,
+                ));
+            }
+            first_instance = end_instance;
+        }
+        if first_instance != instance_count {
+            return Err(GraphicsError::TooManyInstances);
+        }
+    }
+
+    {
+        let mut shadow_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("ZYNE Directional Shadow Pass"),
+            color_attachments: &[],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: cube_pipeline.shadow_view(),
+                depth_ops: Some(wgpu::Operations {
+                    load: LoadOp::Clear(1.0),
+                    store: StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        shadow_pass.set_pipeline(cube_pipeline.shadow_pipeline());
+        shadow_pass.set_bind_group(0, cube_pipeline.shadow_camera_bind_group(), &[]);
+        shadow_pass.set_vertex_buffer(1, cube_pipeline.instance_buffer().slice(..));
+        if !batch_ranges.is_empty() {
+            for (mesh, _, _, instances) in &batch_ranges {
+                shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+                shadow_pass
+                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                shadow_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
+            }
+        } else if let Some(mesh) = mesh {
+            shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+            shadow_pass.set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+            shadow_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
+        } else if mesh_batches.is_none() {
+            shadow_pass.set_vertex_buffer(0, cube_pipeline.vertex_buffer().slice(..));
+            shadow_pass.draw(0..36, 0..instance_count);
+        }
+    }
+
+    {
+        let color_attachments = [Some(RenderPassColorAttachment {
+            view: hdr_view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: LoadOp::Clear(DEFAULT_CLEAR_COLOR),
+                store: StoreOp::Store,
+            },
+        })];
+
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("ZYNE 3D Cube Render Pass"),
+            color_attachments: &color_attachments,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: LoadOp::Clear(1.0),
+                    store: StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        render_pass.set_pipeline(cube_pipeline.pipeline());
+        render_pass.set_bind_group(0, cube_pipeline.camera_bind_group(), &[]);
+        render_pass.set_bind_group(1, cube_pipeline.texture_bind_group(), &[]);
+        render_pass.set_bind_group(2, cube_pipeline.lighting_bind_group(), &[]);
+        render_pass.set_vertex_buffer(1, cube_pipeline.instance_buffer().slice(..));
+        if !batch_ranges.is_empty() {
+            for (mesh, material, texture, instances) in &batch_ranges {
+                render_pass.set_bind_group(
+                    1,
+                    select_texture_binding(
+                        texture.map(GpuTexture::bind_group),
+                        cube_pipeline.texture_bind_group(),
+                    ),
+                    &[],
+                );
+                render_pass.set_bind_group(
+                    3,
+                    material.map_or_else(
+                        || cube_pipeline.default_material_bind_group(),
+                        |value| value.bind_group(),
+                    ),
+                    &[],
+                );
+                render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+                render_pass
+                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
+            }
+        } else if let Some(mesh) = mesh {
+            render_pass.set_bind_group(3, cube_pipeline.default_material_bind_group(), &[]);
+            render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
+        } else if mesh_batches.is_none() {
+            render_pass.set_bind_group(3, cube_pipeline.default_material_bind_group(), &[]);
+            render_pass.set_vertex_buffer(0, cube_pipeline.vertex_buffer().slice(..));
+            render_pass.draw(0..36, 0..instance_count);
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use wgpu::{
@@ -777,184 +954,4 @@ mod tests {
 
         assert_eq!(result, Err(GraphicsError::NoAlphaModes));
     }
-}
-
-
-/// Encodes the shared shadow and HDR scene passes for windowed and headless rendering.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn encode_scene_passes(
-    device: &Device,
-    queue: &Queue,
-    cube_pipeline: &mut CubePipeline,
-    encoder: &mut wgpu::CommandEncoder,
-    hdr_view: &wgpu::TextureView,
-    depth_view: &wgpu::TextureView,
-    width: u32,
-    height: u32,
-    camera: Option<&Camera3d>,
-    transforms: Option<&[Transform3d]>,
-    mesh: Option<&GpuMesh>,
-    mesh_batches: Option<&[MeshRenderBatch<'_>]>,
-    lighting: Option<&LightingData>,
-) -> Result<(), GraphicsError> {
-    cube_pipeline.update_camera(queue, width, height, camera);
-    cube_pipeline.update_lighting(queue, lighting);
-
-    let batch_transforms = mesh_batches.map(|batches| {
-        batches
-            .iter()
-            .flat_map(|batch| batch.transforms().iter().copied())
-            .collect::<Vec<_>>()
-    });
-    let frame_transforms = batch_transforms.as_deref().or(transforms);
-    let shadow_bounds = if let Some(batches) = mesh_batches {
-        let mut bounds = None;
-        for batch in batches {
-            merge_transformed_bounds(&mut bounds, batch.mesh().bounds(), batch.transforms());
-        }
-        bounds
-    } else if let Some(mesh) = mesh {
-        let mut bounds = None;
-        merge_transformed_bounds(&mut bounds, mesh.bounds(), frame_transforms.unwrap_or(&[]));
-        bounds
-    } else {
-        let cube_bounds = MeshBounds::new([-0.7; 3], [0.7; 3]);
-        let mut bounds = None;
-        if let Some(transforms) = frame_transforms {
-            merge_transformed_bounds(&mut bounds, cube_bounds, transforms);
-        } else {
-            bounds = Some(cube_bounds);
-        }
-        bounds
-    };
-    cube_pipeline.update_shadow_camera(queue, lighting, shadow_bounds);
-    let instance_count = cube_pipeline.update_instances(device, queue, frame_transforms)?;
-
-    let mut batch_ranges = Vec::new();
-    if let Some(batches) = mesh_batches {
-        let mut first_instance = 0_u32;
-        for batch in batches {
-            let count = u32::try_from(batch.transforms().len())
-                .map_err(|_| GraphicsError::TooManyInstances)?;
-            let end_instance = first_instance
-                .checked_add(count)
-                .ok_or(GraphicsError::TooManyInstances)?;
-            if count > 0 {
-                batch_ranges.push((
-                    batch.mesh(),
-                    batch.material(),
-                    batch.texture(),
-                    first_instance..end_instance,
-                ));
-            }
-            first_instance = end_instance;
-        }
-        if first_instance != instance_count {
-            return Err(GraphicsError::TooManyInstances);
-        }
-    }
-
-    {
-        let mut shadow_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("ZYNE Directional Shadow Pass"),
-            color_attachments: &[],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: cube_pipeline.shadow_view(),
-                depth_ops: Some(wgpu::Operations {
-                    load: LoadOp::Clear(1.0),
-                    store: StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-        shadow_pass.set_pipeline(cube_pipeline.shadow_pipeline());
-        shadow_pass.set_bind_group(0, cube_pipeline.shadow_camera_bind_group(), &[]);
-        shadow_pass.set_vertex_buffer(1, cube_pipeline.instance_buffer().slice(..));
-        if !batch_ranges.is_empty() {
-            for (mesh, _, _, instances) in &batch_ranges {
-                shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                shadow_pass
-                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
-                shadow_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
-            }
-        } else if let Some(mesh) = mesh {
-            shadow_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-            shadow_pass
-                .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
-            shadow_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
-        } else if mesh_batches.is_none() {
-            shadow_pass.set_vertex_buffer(0, cube_pipeline.vertex_buffer().slice(..));
-            shadow_pass.draw(0..36, 0..instance_count);
-        }
-    }
-
-    {
-        let color_attachments = [Some(RenderPassColorAttachment {
-            view: hdr_view,
-            depth_slice: None,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: LoadOp::Clear(DEFAULT_CLEAR_COLOR),
-                store: StoreOp::Store,
-            },
-        })];
-
-        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("ZYNE 3D Cube Render Pass"),
-            color_attachments: &color_attachments,
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: depth_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: LoadOp::Clear(1.0),
-                    store: StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-        render_pass.set_pipeline(cube_pipeline.pipeline());
-        render_pass.set_bind_group(0, cube_pipeline.camera_bind_group(), &[]);
-        render_pass.set_bind_group(1, cube_pipeline.texture_bind_group(), &[]);
-        render_pass.set_bind_group(2, cube_pipeline.lighting_bind_group(), &[]);
-        render_pass.set_vertex_buffer(1, cube_pipeline.instance_buffer().slice(..));
-        if !batch_ranges.is_empty() {
-            for (mesh, material, texture, instances) in &batch_ranges {
-                render_pass.set_bind_group(
-                    1,
-                    select_texture_binding(
-                        texture.map(GpuTexture::bind_group),
-                        cube_pipeline.texture_bind_group(),
-                    ),
-                    &[],
-                );
-                render_pass.set_bind_group(
-                    3,
-                    material.map_or_else(
-                        || cube_pipeline.default_material_bind_group(),
-                        |value| value.bind_group(),
-                    ),
-                    &[],
-                );
-                render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                render_pass
-                    .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
-                render_pass.draw_indexed(0..mesh.index_count(), 0, instances.clone());
-            }
-        } else if let Some(mesh) = mesh {
-            render_pass.set_bind_group(3, cube_pipeline.default_material_bind_group(), &[]);
-            render_pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-            render_pass
-                .set_index_buffer(mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..mesh.index_count(), 0, 0..instance_count);
-        } else if mesh_batches.is_none() {
-            render_pass.set_bind_group(3, cube_pipeline.default_material_bind_group(), &[]);
-            render_pass.set_vertex_buffer(0, cube_pipeline.vertex_buffer().slice(..));
-            render_pass.draw(0..36, 0..instance_count);
-        }
-    }
-
-    Ok(())
 }
