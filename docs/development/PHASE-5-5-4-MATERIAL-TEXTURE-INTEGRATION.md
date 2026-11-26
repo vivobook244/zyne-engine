@@ -135,10 +135,10 @@ CI run `45364747525` (workflow run #688) passed on Ubuntu and Windows for commit
 - [x] A material with a valid diffuse texture ResourceId visibly samples that texture in the scene (physical GPU showcase, 2026-11-24).
 - [x] A material without a diffuse texture uses the documented checker fallback in the physical GPU showcase (2026-11-24).
 - [x] The production texture-cache synchronization helper deduplicates multiple active references to one texture ID and reuses an unchanged revision (CI run `45363725557`; sentinel-resource tests verify the upload closure is called once).
-- [ ] Missing or unresolved texture references produce a typed, actionable runtime error rather than silently binding an unrelated texture.
-- [ ] Texture and material resources are released through explicit unload paths.
+- [x] Missing or unresolved texture references produce a typed, actionable runtime error rather than silently binding an unrelated texture (`SceneRenderError::UnresolvedTexture` and `MissingCpuTexture`; resolution occurs before cache reconciliation).
+- [x] Texture and material resources are released through explicit `SceneMaterialRenderer::unload_texture` and `unload_material` paths; scene reconciliation also prunes inactive GPU allocations after successful synchronization.
 - [ ] HDR output, ACES tone mapping, lighting, and directional shadows pass a deliberate physical-GPU regression review. Exposure control was previously physically validated in Phase 5.5.3.
-- [ ] Automated tests cover resource resolution, reuse, fallback, and invalid input.
+- [x] Automated tests cover resource resolution (registered/missing/wrong-kind/not-loaded), cache reuse and replacement, checker fallback selection, upload validation, and lifecycle reconciliation.
 - [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
 - [x] Dedicated headless GPU test exercises sRGB/Linear texture allocation, renderer-compatible bind-group creation, and exact pixel readback (CI run `45355797688`, Ubuntu and Windows).
 - [x] Dedicated automated tests verify material texture versus checker-fallback bind-group selection through the production selection helper (CI run #688, Ubuntu and Windows).
@@ -166,3 +166,14 @@ Keep the existing checker texture as an explicit fallback for untextured materia
 The existing renderer writes scene-linear values to an RGBA16Float target, then applies exposure and ACES in the presentation pass. Diffuse texture sampling must happen in the scene shader before lighting and must not bypass that HDR-to-SDR pipeline.
 
 The current renderer uses one directional shadow map. Texture integration must not change shadow ownership, scene creation-order behavior, or shadow pass geometry submission.
+
+
+### Acceptance checklist reconciliation — 2026-11-26
+
+A source audit of the current `main` branch reconciled three stale unchecked acceptance boxes with code and tests already present in the repository:
+
+- `SceneMaterialRenderer::sync_textures` validates registry membership, resource kind, CPU cache revision, and CPU payload before GPU cache synchronization. It returns typed `SceneRenderError::UnresolvedTexture` or `MissingCpuTexture` errors; it does not silently substitute the checker texture for an explicit broken diffuse reference.
+- `SceneMaterialRenderer::unload_texture` and `unload_material` provide explicit GPU-resource removal. Normal scene synchronization also prunes inactive material/texture allocations only after successful resolution/upload.
+- `scene_materials.rs` tests cover resolved and missing texture references; `scene_renderer.rs` tests cover shared-resource lifetime, reassignment, stale-resource pruning, and failed replacement preservation; graphics tests cover invalid upload dimensions/payloads and checker-versus-material binding selection.
+
+These criteria were implemented before this audit; this entry records the verification and corrects checklist bookkeeping, not a new runtime implementation. Remaining acceptance work is still the end-to-end encoded-frame binding test and the deliberate physical-GPU HDR/ACES/lighting/directional-shadow regression review. Do not mark Phase 5.5.4 complete until those are addressed or explicitly accepted as deferred.
