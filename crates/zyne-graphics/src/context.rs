@@ -851,6 +851,9 @@ mod tests {
         use crate::pipeline::CubePipeline;
         use crate::texture::{TextureColorSpace, create_gpu_texture};
 
+        const WIDTH: u32 = 64;
+        const HEIGHT: u32 = 64;
+
         pollster::block_on(async {
             let instance = Instance::default();
             let adapter = match instance
@@ -877,8 +880,6 @@ mod tests {
                 .await
                 .expect("headless render test device should initialize");
 
-            const WIDTH: u32 = 64;
-            const HEIGHT: u32 = 64;
             let target_format = wgpu::TextureFormat::Rgba8Unorm;
             let target = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("ZYNE Headless Scene Color Target"),
