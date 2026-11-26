@@ -12,6 +12,13 @@ struct PresentationExposure {
 @group(0) @binding(1)
 var<uniform> presentation_exposure: PresentationExposure;
 
+// IEC 61966-2-1 transfer function for non-sRGB presentation surfaces.
+fn linear_to_srgb(color: vec3<f32>) -> vec3<f32> {
+    let low = color * 12.92;
+    let high = 1.055 * pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
+    return select(high, low, color <= vec3<f32>(0.0031308));
+}
+
 // Narkowicz's fitted ACES approximation. The input and output remain in
 // linear-light space; an sRGB surface performs the display transfer.
 fn tone_map_aces_fitted(color: vec3<f32>) -> vec3<f32> {
@@ -41,5 +48,12 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let exposure_multiplier = exp2(presentation_exposure.exposure.x);
     let exposed_color = hdr_color.rgb * exposure_multiplier;
     let display_color = tone_map_aces_fitted(exposed_color);
-    return vec4<f32>(display_color, 1.0);
+    // sRGB render targets perform this transfer automatically. Non-sRGB
+    // surfaces need an explicit transfer to preserve display-referred output.
+    let output_color = select(
+        display_color,
+        linear_to_srgb(display_color),
+        presentation_exposure.exposure.y > 0.5,
+    );
+    return vec4<f32>(output_color, 1.0);
 }
