@@ -955,3 +955,4 @@ mod tests {
         assert_eq!(result, Err(GraphicsError::NoAlphaModes));
     }
 }
+
