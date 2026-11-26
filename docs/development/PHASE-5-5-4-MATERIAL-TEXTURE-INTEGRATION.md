@@ -1,6 +1,6 @@
 # Phase 5.5.4 — Material Texture Integration
 
-**Status:** IMPLEMENTED; PHYSICAL GPU SHOWCASE PARTIALLY VALIDATED; FOCUSED GPU AUTOMATED TESTS AND FINAL REGRESSION ACCEPTANCE OPEN | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
+**Status:** IMPLEMENTED; HEADLESS GPU FRAME INTEGRATION VALIDATED ON UBUNTU/WINDOWS; PHYSICAL GPU HDR/ACES/LIGHTING/SHADOW REGRESSION OPEN | **Branch:** `main` | **Prerequisite:** Phase 5.5.3 — Exposure Control
 
 ## Audit findings
 
@@ -79,7 +79,7 @@ The current `main` branch was inspected before changing the renderer. The follow
 
 ### Implementation boundary
 
-The graphics upload path, runtime texture cache, application synchronization path, per-draw binding, and textured showcase source are implemented. CI verifies compilation, formatting, Clippy, workspace tests/checks, and headless lifecycle smoke tests; it does not instantiate a physical GPU or visually inspect the showcase. Dedicated GPU upload/binding coverage and physical-GPU showcase validation remain pending.
+The graphics upload path, runtime texture cache, application synchronization path, per-draw binding, and textured showcase source are implemented. CI verifies compilation, formatting, Clippy, workspace tests/checks, headless lifecycle smoke tests, GPU texture upload/readback, and an offscreen production scene-pass render that reads back the selected material texture. CI GPU tests are automated and do not replace visual review on a physical GPU.
 
 ### Physical GPU showcase validation — 2026-11-24
 
@@ -142,7 +142,7 @@ CI run `45364747525` (workflow run #688) passed on Ubuntu and Windows for commit
 - [x] Formatting, strict Clippy, locked workspace tests/checks, and Ubuntu/Windows CI pass for the implementation commit (#619).
 - [x] Dedicated headless GPU test exercises sRGB/Linear texture allocation, renderer-compatible bind-group creation, and exact pixel readback (CI run `45355797688`, Ubuntu and Windows).
 - [x] Dedicated automated tests verify material texture versus checker-fallback bind-group selection through the production selection helper (CI run #688, Ubuntu and Windows).
-- [ ] A full per-draw frame-render integration test verifies the selected bind group is consumed by an encoded/rendered frame. Cache reuse, revision replacement, shared-reference lifetime, pruning, failed-replacement safety, and the unload removal primitive are covered by production-helper tests (CI run `45363725557`); device-level allocation counts remain unverified.
+- [x] A headless per-draw scene-pass integration test verifies the selected texture bind group is consumed by the production `encode_scene_passes` path and appears in GPU frame output via pixel readback (CI #700, Ubuntu and Windows). This is an offscreen scene-pass test, not a surface-backed presentation test. Cache reuse, revision replacement, shared-reference lifetime, pruning, failed-replacement safety, and the unload removal primitive are covered by production-helper tests (CI run `45363725557`); device-level allocation counts remain unverified.
 - [x] Physical-GPU showcase confirms blue/amber texture sampling, checker fallback, and resize stability (2026-11-24).
 - [ ] Physical-GPU regression review confirms HDR, ACES, lighting, and directional shadows remain correct.
 
@@ -177,3 +177,8 @@ A source audit of the current `main` branch reconciled three stale unchecked acc
 - `scene_materials.rs` tests cover resolved and missing texture references; `scene_renderer.rs` tests cover shared-resource lifetime, reassignment, stale-resource pruning, and failed replacement preservation; graphics tests cover invalid upload dimensions/payloads and checker-versus-material binding selection.
 
 These criteria were implemented before this audit; this entry records the verification and corrects checklist bookkeeping, not a new runtime implementation. Remaining acceptance work is still the end-to-end encoded-frame binding test and the deliberate physical-GPU HDR/ACES/lighting/directional-shadow regression review. Do not mark Phase 5.5.4 complete until those are addressed or explicitly accepted as deferred.
+
+
+### Headless production scene-pass render validation — 2026-11-26
+
+A focused test, `context::tests::headless_scene_pass_renders_the_selected_material_texture`, creates a headless WGPU adapter/device, constructs the production `CubePipeline`, uploads a solid red linear RGBA8 texture, creates a material and mesh batch using that texture, and calls the production `encode_scene_passes` helper. It copies the offscreen render target into a mapped readback buffer and asserts that the center pixel is strongly red with low green/blue channels. The test passed on both Ubuntu and Windows in CI workflow run #700 (commit `c9d60cc`). The companion GPU texture upload/readback test also passed on both platforms. This closes the previous unchecked acceptance item for selected texture consumption by an encoded/rendered scene pass. It does not validate the window surface presentation pass or replace physical-GPU visual regression review for HDR, ACES, lighting, and directional shadows.
