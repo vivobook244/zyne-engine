@@ -385,3 +385,41 @@ mod tests {
                         [mapped[0], mapped[1], mapped[2], mapped[3]]
                     };
                     readback.unmap();
+
+                    assert!(
+                        pixel[0].abs_diff(pixel[1]) <= 1
+                            && pixel[1].abs_diff(pixel[2]) <= 1
+                            && pixel[3] >= 254,
+                        "presentation should preserve neutral gray and opaque alpha, got {pixel:?} for {surface_format:?} at {exposure_ev} EV"
+                    );
+                    if let Some(previous) = previous_red {
+                        assert!(
+                            pixel[0] > previous,
+                            "increasing exposure should increase the presented gray value, got {previous} then {} for {surface_format:?}",
+                            pixel[0]
+                        );
+                    }
+                    previous_red = Some(pixel[0]);
+                    if exposure_ev == 0.0 {
+                        assert!(
+                            (132..=150).contains(&pixel[0]),
+                            "0.18 linear gray at 0 EV should tone-map and encode to about 141 sRGB, got {pixel:?} for {surface_format:?}"
+                        );
+                    }
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn presentation_shader_is_valid_wgsl() {
+        let module = naga::front::wgsl::parse_str(include_str!("shaders/presentation.wgsl"))
+            .expect("presentation shader should parse");
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        )
+        .validate(&module)
+        .expect("presentation shader should validate");
+    }
+}
