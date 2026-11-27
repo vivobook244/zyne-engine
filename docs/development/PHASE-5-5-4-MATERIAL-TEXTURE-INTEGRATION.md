@@ -182,3 +182,10 @@ These criteria were implemented before this audit; this entry records the verifi
 ### Headless production scene-pass render validation — 2026-11-26
 
 A focused test, `context::tests::headless_scene_pass_renders_the_selected_material_texture`, creates a headless WGPU adapter/device, constructs the production `CubePipeline`, uploads a solid red linear RGBA8 texture, creates a material and mesh batch using that texture, and calls the production `encode_scene_passes` helper. It copies the offscreen render target into a mapped readback buffer and asserts that the center pixel is strongly red with low green/blue channels. The test passed on both Ubuntu and Windows in CI workflow run #700 (commit `c9d60cc`). The companion GPU texture upload/readback test also passed on both platforms. This closes the previous unchecked acceptance item for selected texture consumption by an encoded/rendered scene pass. It does not validate the window surface presentation pass or replace physical-GPU visual regression review for HDR, ACES, lighting, and directional shadows.
+
+
+### HDR presentation GPU readback validation — 2026-11-27
+
+The production `PresentationPipeline` now has a headless GPU readback regression test, `presentation_gpu_readback_matches_srgb_display_output_for_both_surface_formats`. It renders a known linear 0.18 gray HDR input through the production presentation pipeline into both `Rgba8Unorm` and `Rgba8UnormSrgb` targets, then reads the output pixel back from the GPU. The test checks neutral RGB channels, opaque alpha, the expected approximately 141 sRGB baseline at 0 EV, and monotonically increasing brightness across -1, 0, and +1 EV.
+
+CI workflow run #717 passed on Ubuntu and Windows for commit `b0c2eb851e0cd43d15ceab1f952e908c62634e77`. Both platforms passed formatting, strict Clippy, workspace tests, workspace check, and the headless lifecycle smoke example. This verifies the production HDR-to-display presentation pipeline offscreen for both sRGB and non-sRGB target formats. It does not replace a window surface-backed test or the outstanding physical-GPU visual review of HDR output, ACES tone mapping, lighting, and directional shadows.
