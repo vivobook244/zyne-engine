@@ -189,3 +189,24 @@ A focused test, `context::tests::headless_scene_pass_renders_the_selected_materi
 The production `PresentationPipeline` now has a headless GPU readback regression test, `presentation_gpu_readback_matches_srgb_display_output_for_both_surface_formats`. It renders a known linear 0.18 gray HDR input through the production presentation pipeline into both `Rgba8Unorm` and `Rgba8UnormSrgb` targets, then reads the output pixel back from the GPU. The test checks neutral RGB channels, opaque alpha, the expected approximately 141 sRGB baseline at 0 EV, and monotonically increasing brightness across -1, 0, and +1 EV.
 
 CI workflow run #717 passed on Ubuntu and Windows for commit `b0c2eb851e0cd43d15ceab1f952e908c62634e77`. Both platforms passed formatting, strict Clippy, workspace tests, workspace check, and the headless lifecycle smoke example. This verifies the production HDR-to-display presentation pipeline offscreen for both sRGB and non-sRGB target formats. It does not replace a window surface-backed test or the outstanding physical-GPU visual review of HDR output, ACES tone mapping, lighting, and directional shadows.
+
+
+### Physical-GPU regression procedure — 2026-11-27
+
+The remaining visual acceptance item is intentionally manual: headless readback cannot establish that the actual desktop surface, display color path, driver, and visible scene agree. Use the existing material showcase on a physical GPU; do not interpret a successful CI run as visual sign-off.
+
+Run:
+
+```bash
+cargo run -p zyne-runtime --example material_showcase
+```
+
+Record the adapter/driver line emitted by graphics initialization and inspect the following at the default exposure (0 EV):
+
+1. **HDR and ACES:** the scene remains visible without clipped, featureless highlights; the dark matte object retains readable form; the bright specular highlights roll off smoothly rather than abruptly clipping. Compare -1 EV and +1 EV with Arrow Down/Up, then restore 0 EV with Digit0. Exposure itself was already physically checked in Phase 5.5.3; this comparison is only to detect a presentation regression.
+2. **Lighting:** the warm key light and cooler fill light both contribute visibly. The fill light should illuminate surfaces without creating a second directional shadow.
+3. **Directional shadows:** the key light produces a coherent shadow on the ground receiver; shadow direction remains consistent with the key-light direction and does not flicker or disappear while orbiting.
+4. **Material response:** matte, blue textured glossy, and amber textured metal-like objects remain visually distinct; the texture patterns remain stable while orbiting and resizing.
+5. **Window surface:** resize the window several times and confirm the scene continues presenting without a blank frame, corrupted colors, validation errors, or device loss.
+
+For every failed observation, capture a screenshot and the relevant runtime log; report GPU adapter/driver, OS, and the exact step. A pass requires visual inspection on the target machine, not merely a successful process exit. Until this evidence is reviewed, keep the physical-GPU acceptance criterion unchecked and Phase 5.5.4 open.
