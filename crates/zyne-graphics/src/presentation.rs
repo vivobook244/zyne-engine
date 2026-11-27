@@ -312,7 +312,7 @@ mod tests {
                 let output_view = output.create_view(&TextureViewDescriptor::default());
                 let mut presentation = PresentationPipeline::new(&device, surface_format);
                 let bind_group = presentation.create_bind_group(&device, &hdr_view);
-                let mut previous_red = None;
+                let mut previous_red: Option<u8> = None;
                 for exposure_ev in [-1.0_f32, 0.0, 1.0] {
                     presentation.set_exposure_ev(&queue, exposure_ev);
                     let readback = device.create_buffer(&wgpu::BufferDescriptor {
@@ -321,9 +321,10 @@ mod tests {
                         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                         mapped_at_creation: false,
                     });
-                    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("ZYNE Presentation Render Encoder"),
-                    });
+                    let mut encoder =
+                        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("ZYNE Presentation Render Encoder"),
+                        });
                     {
                         let attachments = [Some(RenderPassColorAttachment {
                             view: &output_view,
@@ -367,7 +368,7 @@ mod tests {
                         },
                     );
                     queue.submit([encoder.finish()]);
-    
+
                     let slice = readback.slice(..);
                     let (sender, receiver) = mpsc::channel();
                     slice.map_async(MapMode::Read, move |result| {
