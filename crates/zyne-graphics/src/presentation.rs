@@ -210,6 +210,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn presentation_gpu_readback_matches_srgb_display_output_for_both_surface_formats() {
         use std::sync::mpsc;
         use wgpu::{
