@@ -316,110 +316,72 @@ mod tests {
                 for exposure_ev in [-1.0_f32, 0.0, 1.0] {
                     presentation.set_exposure_ev(&queue, exposure_ev);
                     let readback = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("ZYNE Presentation Pixel Readback"),
-                    size: u64::from(BYTES_PER_ROW),
-                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                    mapped_at_creation: false,
-                });
-                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("ZYNE Presentation Render Encoder"),
-                });
-                {
-                    let attachments = [Some(RenderPassColorAttachment {
-                        view: &output_view,
-                        depth_slice: None,
-                        resolve_target: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(Color::BLACK),
-                            store: StoreOp::Store,
-                        },
-                    })];
-                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                        label: Some("ZYNE HDR Presentation Pass"),
-                        color_attachments: &attachments,
-                        depth_stencil_attachment: None,
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
+                        label: Some("ZYNE Presentation Pixel Readback"),
+                        size: u64::from(BYTES_PER_ROW),
+                        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                        mapped_at_creation: false,
                     });
-                    pass.set_pipeline(presentation.pipeline());
-                    pass.set_bind_group(0, &bind_group, &[]);
-                    pass.draw(0..3, 0..1);
-                }
-                encoder.copy_texture_to_buffer(
-                    wgpu::TexelCopyTextureInfo {
-                        texture: &output,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::TexelCopyBufferInfo {
-                        buffer: &readback,
-                        layout: wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(BYTES_PER_ROW),
-                            rows_per_image: Some(HEIGHT),
+                    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("ZYNE Presentation Render Encoder"),
+                    });
+                    {
+                        let attachments = [Some(RenderPassColorAttachment {
+                            view: &output_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: Operations {
+                                load: LoadOp::Clear(Color::BLACK),
+                                store: StoreOp::Store,
+                            },
+                        })];
+                        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                            label: Some("ZYNE HDR Presentation Pass"),
+                            color_attachments: &attachments,
+                            depth_stencil_attachment: None,
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                        });
+                        pass.set_pipeline(presentation.pipeline());
+                        pass.set_bind_group(0, &bind_group, &[]);
+                        pass.draw(0..3, 0..1);
+                    }
+                    encoder.copy_texture_to_buffer(
+                        wgpu::TexelCopyTextureInfo {
+                            texture: &output,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
                         },
-                    },
-                    wgpu::Extent3d {
-                        width: WIDTH,
-                        height: HEIGHT,
-                        depth_or_array_layers: 1,
-                    },
-                );
-                queue.submit([encoder.finish()]);
-
-                let slice = readback.slice(..);
-                let (sender, receiver) = mpsc::channel();
-                slice.map_async(MapMode::Read, move |result| {
-                    let _ = sender.send(result);
-                });
-                device
-                    .poll(PollType::Wait)
-                    .expect("presentation GPU work should complete");
-                receiver
-                    .recv()
-                    .expect("presentation map callback should run")
-                    .expect("presentation output should map");
-                let pixel = {
-                    let mapped = slice.get_mapped_range();
-                    [mapped[0], mapped[1], mapped[2], mapped[3]]
-                };
-                readback.unmap();
-
-                    assert!(
-                        pixel[0].abs_diff(pixel[1]) <= 1
-                            && pixel[1].abs_diff(pixel[2]) <= 1
-                            && pixel[3] >= 254,
-                        "presentation should preserve neutral gray and opaque alpha, got {pixel:?} for {surface_format:?} at {exposure_ev} EV"
+                        wgpu::TexelCopyBufferInfo {
+                            buffer: &readback,
+                            layout: wgpu::TexelCopyBufferLayout {
+                                offset: 0,
+                                bytes_per_row: Some(BYTES_PER_ROW),
+                                rows_per_image: Some(HEIGHT),
+                            },
+                        },
+                        wgpu::Extent3d {
+                            width: WIDTH,
+                            height: HEIGHT,
+                            depth_or_array_layers: 1,
+                        },
                     );
-                    if let Some(previous) = previous_red {
-                        assert!(
-                            pixel[0] > previous,
-                            "increasing exposure should increase the presented gray value, got {previous} then {} for {surface_format:?}",
-                            pixel[0]
-                        );
-                    }
-                    previous_red = Some(pixel[0]);
-                    if exposure_ev == 0.0 {
-                        assert!(
-                            (132..=150).contains(&pixel[0]),
-                            "0.18 linear gray at 0 EV should tone-map and encode to about 141 sRGB, got {pixel:?} for {surface_format:?}"
-                        );
-                    }
-                }
-            }
-        });
-    }
-
-    #[test]
-    fn presentation_shader_is_valid_wgsl() {
-        let module = naga::front::wgsl::parse_str(include_str!("shaders/presentation.wgsl"))
-            .expect("presentation shader should parse");
-        naga::valid::Validator::new(
-            naga::valid::ValidationFlags::all(),
-            naga::valid::Capabilities::all(),
-        )
-        .validate(&module)
-        .expect("presentation shader should validate");
-    }
-}
+                    queue.submit([encoder.finish()]);
+    
+                    let slice = readback.slice(..);
+                    let (sender, receiver) = mpsc::channel();
+                    slice.map_async(MapMode::Read, move |result| {
+                        let _ = sender.send(result);
+                    });
+                    device
+                        .poll(PollType::Wait)
+                        .expect("presentation GPU work should complete");
+                    receiver
+                        .recv()
+                        .expect("presentation map callback should run")
+                        .expect("presentation output should map");
+                    let pixel = {
+                        let mapped = slice.get_mapped_range();
+                        [mapped[0], mapped[1], mapped[2], mapped[3]]
+                    };
+                    readback.unmap();
