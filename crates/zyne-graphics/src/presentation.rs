@@ -310,9 +310,12 @@ mod tests {
                     view_formats: &[],
                 });
                 let output_view = output.create_view(&TextureViewDescriptor::default());
-                let presentation = PresentationPipeline::new(&device, surface_format);
+                let mut presentation = PresentationPipeline::new(&device, surface_format);
                 let bind_group = presentation.create_bind_group(&device, &hdr_view);
-                let readback = device.create_buffer(&wgpu::BufferDescriptor {
+                let mut previous_red = None;
+                for exposure_ev in [-1.0_f32, 0.0, 1.0] {
+                    presentation.set_exposure_ev(&queue, exposure_ev);
+                    let readback = device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("ZYNE Presentation Pixel Readback"),
                     size: u64::from(BYTES_PER_ROW),
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
@@ -383,16 +386,27 @@ mod tests {
                 };
                 readback.unmap();
 
-                assert!(
-                    (132..=150).contains(&pixel[0]),
-                    "0.18 linear gray should tone-map and encode to about 141 sRGB, got {pixel:?} for {surface_format:?}"
-                );
-                assert!(
-                    pixel[0].abs_diff(pixel[1]) <= 1
-                        && pixel[1].abs_diff(pixel[2]) <= 1
-                        && pixel[3] >= 254,
-                    "presentation should preserve neutral gray and opaque alpha, got {pixel:?} for {surface_format:?}"
-                );
+                    assert!(
+                        pixel[0].abs_diff(pixel[1]) <= 1
+                            && pixel[1].abs_diff(pixel[2]) <= 1
+                            && pixel[3] >= 254,
+                        "presentation should preserve neutral gray and opaque alpha, got {pixel:?} for {surface_format:?} at {exposure_ev} EV"
+                    );
+                    if let Some(previous) = previous_red {
+                        assert!(
+                            pixel[0] > previous,
+                            "increasing exposure should increase the presented gray value, got {previous} then {} for {surface_format:?}",
+                            pixel[0]
+                        );
+                    }
+                    previous_red = Some(pixel[0]);
+                    if exposure_ev == 0.0 {
+                        assert!(
+                            (132..=150).contains(&pixel[0]),
+                            "0.18 linear gray at 0 EV should tone-map and encode to about 141 sRGB, got {pixel:?} for {surface_format:?}"
+                        );
+                    }
+                }
             }
         });
     }
